@@ -85,7 +85,7 @@ export function useVeiculos(): UseVeiculosReturn {
         try {
             const { data, error: insertError } = await supabase
                 .from('veiculos')
-                .insert(veiculo as any)
+                .insert(veiculo)
                 .select()
                 .single();
 
@@ -111,7 +111,7 @@ export function useVeiculos(): UseVeiculosReturn {
         try {
             const { data, error: insertError } = await supabase
                 .from('veiculos')
-                .insert(veiculosToCreate as any)
+                .insert(veiculosToCreate)
                 .select();
 
             const veiculosList = (data || []) as Veiculo[];
@@ -134,7 +134,7 @@ export function useVeiculos(): UseVeiculosReturn {
         try {
             const { data, error: updateError } = await supabase
                 .from('veiculos')
-                .update({ ...updates, updated_at: new Date().toISOString() } as any)
+                .update({ ...updates, updated_at: new Date().toISOString() })
                 .eq('id', id)
                 .select()
                 .single();
@@ -236,7 +236,7 @@ export function useVeiculos(): UseVeiculosReturn {
 
             const { data, error: updateError } = await supabase
                 .from('veiculos')
-                .update({ ...updates, updated_at: new Date().toISOString() } as any)
+                .update({ ...updates, updated_at: new Date().toISOString() })
                 .eq('id', id)
                 .select()
                 .single();

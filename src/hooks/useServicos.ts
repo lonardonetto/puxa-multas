@@ -22,7 +22,7 @@ export function useServicos(): UseServicosReturn {
         setError(null);
         try {
             const { data, error: fetchError } = await supabase
-                .from('servicos' as any)
+                .from('servicos')
                 .select('*')
                 .eq('organization_id', organizationId)
                 .order('nome');
@@ -41,8 +41,8 @@ export function useServicos(): UseServicosReturn {
         setError(null);
         try {
             const { data, error: insertError } = await supabase
-                .from('servicos' as any)
-                .insert(servico as any)
+                .from('servicos')
+                .insert(servico)
                 .select()
                 .single();
 
@@ -63,8 +63,8 @@ export function useServicos(): UseServicosReturn {
         setError(null);
         try {
             const { data, error: updateError } = await supabase
-                .from('servicos' as any)
-                .update(updates as any)
+                .from('servicos')
+                .update(updates)
                 .eq('id', id)
                 .select()
                 .single();
@@ -86,7 +86,7 @@ export function useServicos(): UseServicosReturn {
         setError(null);
         try {
             const { error: deleteError } = await supabase
-                .from('servicos' as any)
+                .from('servicos')
                 .delete()
                 .eq('id', id);
 

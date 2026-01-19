@@ -40,7 +40,7 @@ export function useWallet() {
             .update({
                 saldo_sacavel: saldoSacavel - deductionFromSacavel,
                 saldo_bonus: saldoBonus - deductionFromBonus
-            } as any)
+            })
             .eq('id', currentOrganization.id);
 
         if (updateError) throw updateError;
@@ -56,7 +56,7 @@ export function useWallet() {
                 status: 'paid',
                 categoria: category,
                 metodo_pagamento: 'saldo_interno'
-            } as any);
+            });
 
         if (billingError) {
             console.error('Erro ao registrar extrato:', billingError);

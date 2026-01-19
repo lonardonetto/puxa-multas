@@ -11,10 +11,10 @@ export function usePlans() {
         setLoading(true);
         setError(null);
         try {
-            let query = supabase.from('planos' as any).select('*').order('preco_mensal');
+            let query = supabase.from('planos').select('*').order('preco_mensal');
 
             if (onlyActive) {
-                query = (query as any).eq('ativo', true);
+                query = query.eq('ativo', true);
             }
 
             const { data, error: fetchError } = await query;
@@ -33,8 +33,8 @@ export function usePlans() {
         setError(null);
         try {
             const { data, error: insertError } = await supabase
-                .from('planos' as any)
-                .insert(plan as any)
+                .from('planos')
+                .insert(plan)
                 .select()
                 .single();
 
@@ -54,8 +54,8 @@ export function usePlans() {
         setError(null);
         try {
             const { data, error: updateError } = await supabase
-                .from('planos' as any)
-                .update(updates as any)
+                .from('planos')
+                .update(updates)
                 .eq('id', id)
                 .select()
                 .single();
@@ -76,7 +76,7 @@ export function usePlans() {
         setError(null);
         try {
             const { error: deleteError } = await supabase
-                .from('planos' as any)
+                .from('planos')
                 .delete()
                 .eq('id', id);
 

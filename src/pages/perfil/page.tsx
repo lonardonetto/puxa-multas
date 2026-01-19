@@ -143,7 +143,7 @@ export default function ProfilePage() {
 
             const { error, data } = await supabase
                 .from('organizations')
-                .update(updateData as any)
+                .update(updateData)
                 .eq('id', currentOrganization.id)
                 .select();
 

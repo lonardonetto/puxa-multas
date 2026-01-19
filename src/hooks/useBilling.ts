@@ -21,7 +21,7 @@ export function useBilling(): UseBillingReturn {
         setError(null);
         try {
             const { data, error: fetchError } = await supabase
-                .from('faturamento' as any)
+                .from('faturamento')
                 .select('*')
                 .eq('organization_id', organizationId)
                 .order('created_at', { ascending: false });
@@ -40,14 +40,15 @@ export function useBilling(): UseBillingReturn {
         setError(null);
         try {
             const { data, error: insertError } = await supabase
-                .from('faturamento' as any)
-                .insert(invoice as any)
+                .from('faturamento')
+                .insert(invoice)
                 .select()
                 .single();
 
             if (insertError) throw insertError;
-            if (data) setBilling(prev => [data as Faturamento, ...prev]);
-            return data as Faturamento;
+            const result = data as unknown as Faturamento;
+            if (result) setBilling(prev => [result, ...prev]);
+            return result;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao criar fatura'));
             return null;
@@ -61,15 +62,16 @@ export function useBilling(): UseBillingReturn {
         setError(null);
         try {
             const { data, error: updateError } = await supabase
-                .from('faturamento' as any)
-                .update(updates as any)
+                .from('faturamento')
+                .update(updates)
                 .eq('id', id)
                 .select()
                 .single();
 
             if (updateError) throw updateError;
-            if (data) setBilling(prev => prev.map(i => i.id === id ? (data as Faturamento) : i));
-            return data as Faturamento;
+            const result = data as unknown as Faturamento;
+            if (result) setBilling(prev => prev.map(i => i.id === id ? result : i));
+            return result;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao atualizar fatura'));
             return null;

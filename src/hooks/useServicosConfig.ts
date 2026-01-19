@@ -341,7 +341,7 @@ export function useServicosConfig() {
             .insert({
                 ...data,
                 organization_id: currentOrganization.id,
-            } as any)
+            })
             .select()
             .single();
 
@@ -358,7 +358,7 @@ export function useServicosConfig() {
             .update({
                 ...data,
                 updated_at: new Date().toISOString(),
-            } as any)
+            })
             .eq('id', id)
             .select()
             .single();

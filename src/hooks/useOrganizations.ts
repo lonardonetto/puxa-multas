@@ -58,14 +58,15 @@ export function useOrganizations(): UseOrganizationsReturn {
         try {
             const { data, error: insertError } = await supabase
                 .from('organizations')
-                .insert(organization as any)
+                .insert(organization)
                 .select()
                 .single();
 
             if (insertError) throw insertError;
 
-            if (data) {
-                setOrganizations(prev => [data, ...prev]);
+            const result = data as unknown as Organization;
+            if (result) {
+                setOrganizations(prev => [result, ...prev]);
             }
 
             return data;
@@ -83,15 +84,16 @@ export function useOrganizations(): UseOrganizationsReturn {
         try {
             const { data, error: updateError } = await supabase
                 .from('organizations')
-                .update({ ...updates, updated_at: new Date().toISOString() } as any)
+                .update({ ...updates, updated_at: new Date().toISOString() })
                 .eq('id', id)
                 .select()
                 .single();
 
             if (updateError) throw updateError;
 
-            if (data) {
-                setOrganizations(prev => prev.map(o => o.id === id ? data : o));
+            const result = data as unknown as Organization;
+            if (result) {
+                setOrganizations(prev => prev.map(o => o.id === id ? result : o));
             }
 
             return data;
