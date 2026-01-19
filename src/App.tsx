@@ -5,7 +5,6 @@ import i18n from "./i18n";
 import { AuthProvider } from "./contexts/AuthContext";
 import { OrganizationProvider } from "./contexts/OrganizationContext";
 
-
 function App() {
   return (
     <I18nextProvider i18n={i18n}>
