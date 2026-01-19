@@ -48,16 +48,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     useEffect(() => {
+        let isMounted = true;
+        
         // Get initial session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            setLoading(false);
-        });
+        const initializeAuth = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                
+                if (!isMounted) return;
+                
+                setSession(session);
+                const currentUser = session?.user ?? null;
+                setUser(currentUser);
+
+                if (currentUser) {
+                    await fetchUserProfile(currentUser.id);
+                }
+            } catch (error) {
+                console.error('Error initializing auth:', error);
+            } finally {
+                if (isMounted) {
+                    setLoading(false);
+                }
+            }
+        };
+        
+        initializeAuth();
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event: AuthChangeEvent, session: Session | null) => {
+                if (!isMounted) return;
+                
                 setSession(session);
                 const currentUser = session?.user ?? null;
                 setUser(currentUser);
@@ -73,6 +95,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         );
 
         return () => {
+            isMounted = false;
             subscription.unsubscribe();
         };
     }, []);

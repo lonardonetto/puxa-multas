@@ -32,13 +32,19 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
         }
 
         try {
+            setLoading(true);
+            
             // Fetch user's organization memberships
             const { data: memberships, error: membershipsError } = await supabase
                 .from('user_organizations')
                 .select('*')
                 .eq('user_id', user.id);
 
-            if (membershipsError) throw membershipsError;
+            if (membershipsError) {
+                console.error('Error fetching memberships:', membershipsError);
+                setLoading(false);
+                return;
+            }
 
             setUserOrganizations(memberships || []);
 
@@ -51,15 +57,15 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
                     .from('organizations')
                     .select('*')
                     .eq('id', orgIdToFetch)
-                    .single();
+                    .maybeSingle();
 
-                if (orgError) {
+                if (orgError || !org) {
                     // If saved org not found, use first available
                     const { data: firstOrg } = await supabase
                         .from('organizations')
                         .select('*')
                         .eq('id', (memberships[0] as any).organization_id)
-                        .single();
+                        .maybeSingle();
 
                     setCurrentOrganization(firstOrg);
                     if (firstOrg) {
