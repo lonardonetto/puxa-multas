@@ -33,7 +33,7 @@ export function useNotificationAlerts() {
             const now = new Date().toISOString();
             await supabase
                 .from('contratos')
-                .update({ alerta_ativo: true, lido: false } as any)
+                .update({ alerta_ativo: true, lido: false })
                 .eq('organization_id', currentOrganization.id)
                 .eq('lembrete_ativado', true)
                 .eq('alerta_ativo', false)
@@ -114,7 +114,7 @@ export function useNotificationAlerts() {
 
             if (getError) throw getError;
 
-            const interval = contrato?.intervalo_notificacao || currentOrganization?.intervalo_notificacao || 7;
+            const interval = (contrato as { intervalo_notificacao?: number } | null)?.intervalo_notificacao || currentOrganization?.intervalo_notificacao || 7;
             const nextReminder = new Date(new Date().getTime() + interval * 24 * 60 * 60 * 1000);
 
             const { error: updateError } = await supabase
@@ -124,7 +124,7 @@ export function useNotificationAlerts() {
                     data_ultima_notificacao: new Date().toISOString(),
                     data_proximo_lembrete: nextReminder.toISOString(),
                     lido: true
-                } as any)
+                })
                 .eq('id', contratoId);
 
             if (updateError) throw updateError;
@@ -139,7 +139,7 @@ export function useNotificationAlerts() {
         try {
             const { error: clearError } = await supabase
                 .from('contratos')
-                .update({ alerta_ativo: false, lido: false } as any)
+                .update({ alerta_ativo: false, lido: false })
                 .eq('organization_id', currentOrganization.id)
                 .eq('alerta_ativo', true);
 

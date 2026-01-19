@@ -30,7 +30,7 @@ export function useCRMStages() {
         setLoading(true);
         try {
             const { data, error } = await supabase
-                .from('fases_custom' as any)
+                .from('fases_custom')
                 .select('*')
                 .eq('organization_id', currentOrganization.id)
                 .like('nome', '[CRM]%')
@@ -73,13 +73,13 @@ export function useCRMStages() {
         try {
             if (id && !id.startsWith('default')) {
                 const { error } = await supabase
-                    .from('fases_custom' as any)
+                    .from('fases_custom')
                     .update({ nome: finalNome })
                     .eq('id', id);
                 if (error) throw error;
             } else {
                 const { error } = await supabase
-                    .from('fases_custom' as any)
+                    .from('fases_custom')
                     .insert({
                         organization_id: currentOrganization.id,
                         nome: finalNome
@@ -98,7 +98,7 @@ export function useCRMStages() {
         if (!currentOrganization || id.startsWith('default')) return;
         try {
             const { error } = await supabase
-                .from('fases_custom' as any)
+                .from('fases_custom')
                 .delete()
                 .eq('id', id);
             if (error) throw error;
@@ -119,7 +119,7 @@ export function useCRMStages() {
                 nome: s.nome
             }));
             const { error } = await supabase
-                .from('fases_custom' as any)
+                .from('fases_custom')
                 .insert(insertData);
             if (error) throw error;
             await fetchStages();

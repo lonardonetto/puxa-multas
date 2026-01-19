@@ -18,13 +18,13 @@ export function useCustomFases() {
         setLoading(true);
         try {
             const { data, error } = await supabase
-                .from('fases_custom' as any)
+                .from('fases_custom')
                 .select('*')
                 .eq('organization_id', currentOrganization.id)
                 .order('created_at', { ascending: true });
 
             if (error) throw error;
-            setFases(data || []);
+            setFases((data || []) as FaseCustom[]);
         } catch (err) {
             console.error('Erro ao buscar fases:', err);
         } finally {
@@ -36,7 +36,7 @@ export function useCustomFases() {
         if (!currentOrganization) return;
         try {
             const { data, error } = await supabase
-                .from('fases_custom' as any)
+                .from('fases_custom')
                 .insert({
                     organization_id: currentOrganization.id,
                     nome
@@ -45,10 +45,11 @@ export function useCustomFases() {
                 .single();
 
             if (error) throw error;
-            if (data) {
-                setFases(prev => [...prev, data]);
+            const result = data as unknown as FaseCustom;
+            if (result) {
+                setFases(prev => [...prev, result]);
             }
-            return data;
+            return result;
         } catch (err) {
             console.error('Erro ao adicionar fase:', err);
             return null;

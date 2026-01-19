@@ -172,12 +172,12 @@ export default function EditaisManagement() {
             if (editingEdital.id) {
                 result = await supabase
                     .from('editais')
-                    .update(payload as any)
+                    .update(payload)
                     .eq('id', editingEdital.id);
             } else {
                 result = await supabase
                     .from('editais')
-                    .insert(payload as any);
+                    .insert(payload);
             }
 
             if (result.error) throw result.error;

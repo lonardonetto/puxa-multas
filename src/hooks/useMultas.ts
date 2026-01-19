@@ -134,19 +134,20 @@ export function useMultas(): UseMultasReturn {
         try {
             const { data, error: insertError } = await supabase
                 .from('multas')
-                .insert(multa)
+                .insert(multa as Record<string, unknown>)
                 .select()
                 .single();
 
             if (insertError) throw insertError;
 
-            if (data) {
-                const newMultas = [data, ...multas];
+            const result = data as unknown as Multa;
+            if (result) {
+                const newMultas = [result, ...multas];
                 setMultas(newMultas);
                 setStats(calculateStats(newMultas));
             }
 
-            return data;
+            return result;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao criar multa'));
             return null;
@@ -161,20 +162,21 @@ export function useMultas(): UseMultasReturn {
         try {
             const { data, error: updateError } = await supabase
                 .from('multas')
-                .update({ ...updates, updated_at: new Date().toISOString() })
+                .update({ ...updates, updated_at: new Date().toISOString() } as Record<string, unknown>)
                 .eq('id', id)
                 .select()
                 .single();
 
             if (updateError) throw updateError;
 
-            if (data) {
-                const newMultas = multas.map(m => m.id === id ? data : m);
+            const result = data as unknown as Multa;
+            if (result) {
+                const newMultas = multas.map(m => m.id === id ? result : m);
                 setMultas(newMultas);
                 setStats(calculateStats(newMultas));
             }
 
-            return data;
+            return result;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao atualizar multa'));
             return null;

@@ -101,19 +101,20 @@ export function useClientes(): UseClientesReturn {
             }
 
             const { data, error: insertError } = await supabase
-                .from('clientes' as any)
-                .insert(cliente as any)
+                .from('clientes')
+                .insert(cliente)
                 .select()
                 .single();
 
             if (insertError) throw insertError;
 
             // Update local state
-            if (data) {
-                setClientes(prev => [data, ...prev]);
+            const result = data as unknown as Cliente;
+            if (result) {
+                setClientes(prev => [result, ...prev]);
             }
 
-            return data;
+            return result;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao criar cliente'));
             return null;
@@ -127,8 +128,8 @@ export function useClientes(): UseClientesReturn {
         setError(null);
         try {
             const { data, error: updateError } = await supabase
-                .from('clientes' as any)
-                .update({ ...updates, updated_at: new Date().toISOString() } as any)
+                .from('clientes')
+                .update({ ...updates, updated_at: new Date().toISOString() })
                 .eq('id', id)
                 .select()
                 .single();
@@ -136,8 +137,9 @@ export function useClientes(): UseClientesReturn {
             if (updateError) throw updateError;
 
             // Update local state
-            if (data) {
-                setClientes(prev => prev.map(c => c.id === id ? data : c));
+            const result = data as unknown as Cliente;
+            if (result) {
+                setClientes(prev => prev.map(c => c.id === id ? result : c));
             }
 
             return data;

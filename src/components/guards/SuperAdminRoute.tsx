@@ -28,7 +28,7 @@ export function SuperAdminRoute({ children }: SuperAdminRouteProps) {
 
                 if (error) throw error;
 
-                setIsSuperAdmin(data?.role === 'super_admin' || false);
+                setIsSuperAdmin((data as { role: string } | null)?.role === 'super_admin');
             } catch (error) {
                 console.error('Error checking super admin:', error);
                 setIsSuperAdmin(false);
