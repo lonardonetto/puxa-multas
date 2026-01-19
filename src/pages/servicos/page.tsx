@@ -5,7 +5,7 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import RichTextEditor from '../../components/contracts/RichTextEditor';
 
 export default function ServicosPage() {
-    const { currentOrganization } = useOrganization();
+    const { currentOrganization, loading: orgLoading } = useOrganization();
     const {
         servicos,
         loading,
@@ -15,6 +15,9 @@ export default function ServicosPage() {
         deleteServico,
         substituirVariaveis
     } = useServicosConfig();
+
+    // Show loading while organization is being fetched
+    const isLoading = orgLoading || loading;
 
     // Estados
     const [showModal, setShowModal] = useState(false);
@@ -189,10 +192,18 @@ export default function ServicosPage() {
 
                 {/* Lista de Serviços */}
                 <div className="space-y-4">
-                    {loading ? (
+                    {isLoading ? (
                         <div className="text-center py-12">
                             <i className="ri-loader-4-line animate-spin text-4xl text-gray-400"></i>
                             <p className="text-gray-500 mt-2">Carregando serviços...</p>
+                        </div>
+                    ) : !currentOrganization ? (
+                        <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
+                            <div className="w-20 h-20 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i className="ri-building-line text-4xl text-yellow-400"></i>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-600">Organização não encontrada</h3>
+                            <p className="text-gray-400 mt-2">Você precisa estar vinculado a uma organização para gerenciar serviços.</p>
                         </div>
                     ) : servicos.length === 0 ? (
                         <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
