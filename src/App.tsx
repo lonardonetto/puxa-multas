@@ -11,7 +11,7 @@ function App() {
     <I18nextProvider i18n={i18n}>
       <AuthProvider>
         <OrganizationProvider>
-          <BrowserRouter basename={__BASE_PATH__}>
+          <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>
         </OrganizationProvider>
