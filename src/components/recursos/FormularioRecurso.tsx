@@ -168,8 +168,12 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
 
   // Estado para fonte dos dados
   const [fonteVeiculo, setFonteVeiculo] = useState<'interno' | 'api' | null>(null);
+  
+  // Flag para saber se já veio do rastreamento (para não sobrescrever dados)
+  const viuDadosDoRastreamento = Boolean(dadosIniciais?.codigoInfracao);
 
   // Detectar estado pela placa e buscar dados do veículo
+  // MAS NÃO sobrescrever dados da infração que vieram do rastreamento
   useEffect(() => {
     const buscarDadosPorPlaca = async () => {
       if (!dados.placa || dados.placa.length < 7) {
@@ -202,6 +206,14 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
               detranNome: detran.nome,
             }));
           }
+        }
+
+        // Se viemos do rastreamento, NÃO buscar veículo no banco para sobrescrever dados
+        // pois já temos os dados completos vindos do modal de detalhes
+        if (viuDadosDoRastreamento) {
+          console.log('Dados vieram do rastreamento, pulando busca de veículo');
+          setBuscandoPlaca(false);
+          return;
         }
 
         // 2. Buscar veículo no banco interno PRIMEIRO
@@ -248,11 +260,13 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
           });
           setFonteVeiculo('interno');
 
-          // Preencher automaticamente os dados
+          // Preencher automaticamente os dados do CLIENTE/VEÍCULO
+          // MAS preservar dados da INFRAÇÃO que possam ter vindo do rastreamento
           if (cliente) {
             const endereco = cliente.endereco || {};
             setDados(prev => ({
               ...prev,
+              // Dados do cliente - usar do banco
               nomeRecorrente: cliente.nome_completo || prev.nomeRecorrente,
               cpfCnpj: cliente.cpf || cliente.cnpj || prev.cpfCnpj,
               telefone: cliente.celular || cliente.telefone || prev.telefone,
@@ -261,8 +275,10 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
               cidade: endereco.cidade || prev.cidade,
               estado: endereco.estado || prev.estado,
               cep: endereco.cep || prev.cep,
+              // Dados do veículo - usar do banco
               modelo: veiculo.modelo || prev.modelo,
               renavam: veiculo.renavam || prev.renavam,
+              // NÃO SOBRESCREVER dados da infração - manter o que veio antes
             }));
           }
         } else {
@@ -280,11 +296,13 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
               setFonteVeiculo('api');
               
               // Preencher dados do veículo obtidos da API
+              // MAS preservar dados da infração
               setDados(prev => ({
                 ...prev,
                 modelo: veiculoAPI.modelo ? `${veiculoAPI.marca} ${veiculoAPI.modelo}`.trim() : prev.modelo,
                 estado: veiculoAPI.uf || prev.estado,
                 cidade: veiculoAPI.cidade || prev.cidade,
+                // NÃO SOBRESCREVER dados da infração
               }));
 
               console.log('Dados obtidos da API:', veiculoAPI);
