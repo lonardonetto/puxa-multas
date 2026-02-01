@@ -50,10 +50,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
     useEffect(() => {
         let isMounted = true;
         
+        // Safety timeout to prevent infinite loading
+        const safetyTimeout = setTimeout(() => {
+            if (isMounted && loading) {
+                console.warn('Auth initialization timeout - forcing loading to false');
+                setLoading(false);
+            }
+        }, 5000);
+        
         // Get initial session
         const initializeAuth = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                const { data: { session }, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    console.error('Error getting session:', error);
+                }
                 
                 if (!isMounted) return;
                 
@@ -62,7 +74,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 setUser(currentUser);
 
                 if (currentUser) {
-                    await fetchUserProfile(currentUser.id);
+                    // Fetch profile in background, don't block loading
+                    fetchUserProfile(currentUser.id).catch(err => 
+                        console.error('Error fetching profile:', err)
+                    );
                 }
             } catch (error) {
                 console.error('Error initializing auth:', error);
@@ -75,27 +90,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
         
         initializeAuth();
 
-        // Listen for auth changes
+        // Listen for auth changes - use synchronous updates only
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event: AuthChangeEvent, session: Session | null) => {
+            (event: AuthChangeEvent, session: Session | null) => {
                 if (!isMounted) return;
                 
                 setSession(session);
                 const currentUser = session?.user ?? null;
                 setUser(currentUser);
+                setLoading(false);
 
+                // Fetch profile in background to avoid deadlock
                 if (currentUser) {
-                    await fetchUserProfile(currentUser.id);
+                    setTimeout(() => {
+                        fetchUserProfile(currentUser.id).catch(err => 
+                            console.error('Error fetching profile:', err)
+                        );
+                    }, 0);
                 } else {
                     setUserProfile(null);
                 }
-
-                setLoading(false);
             }
         );
 
         return () => {
             isMounted = false;
+            clearTimeout(safetyTimeout);
             subscription.unsubscribe();
         };
     }, []);
