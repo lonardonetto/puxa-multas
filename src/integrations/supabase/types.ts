@@ -651,6 +651,54 @@ export type Database = {
           },
         ]
       }
+      infracoes_transito: {
+        Row: {
+          artigo: string
+          ativo: boolean | null
+          categoria: string | null
+          codigo: string
+          created_at: string | null
+          descricao: string
+          gravidade: string
+          id: string
+          observacoes: string | null
+          pontos: number
+          suspende_cnh: boolean | null
+          updated_at: string | null
+          valor: number
+        }
+        Insert: {
+          artigo: string
+          ativo?: boolean | null
+          categoria?: string | null
+          codigo: string
+          created_at?: string | null
+          descricao: string
+          gravidade: string
+          id?: string
+          observacoes?: string | null
+          pontos?: number
+          suspende_cnh?: boolean | null
+          updated_at?: string | null
+          valor: number
+        }
+        Update: {
+          artigo?: string
+          ativo?: boolean | null
+          categoria?: string | null
+          codigo?: string
+          created_at?: string | null
+          descricao?: string
+          gravidade?: string
+          id?: string
+          observacoes?: string | null
+          pontos?: number
+          suspende_cnh?: boolean | null
+          updated_at?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
       multas: {
         Row: {
           codigo_infracao: string | null
