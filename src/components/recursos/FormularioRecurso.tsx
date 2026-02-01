@@ -74,34 +74,45 @@ interface VeiculoEncontrado {
 }
 
 export default function FormularioRecurso({ onSubmit, gerando, organizationId, dadosIniciais }: FormularioRecursoProps) {
-  // Estados do formulário
-  const [dados, setDados] = useState<DadosRecurso>({
-    nomeRecorrente: '',
-    cpfCnpj: '',
-    endereco: '',
-    cidade: '',
-    estado: '',
-    cep: '',
-    telefone: '',
-    email: '',
-    placa: '',
-    renavam: '',
-    modelo: '',
-    numeroAuto: '',
-    dataInfracao: '',
-    horaInfracao: '',
-    localInfracao: '',
-    codigoInfracao: '',
-    descricaoInfracao: '',
-    valorMulta: 0,
-    pontos: 0,
-    gravidade: '',
-    tipoRecurso: 'defesa_previa',
-    descricaoSituacao: '',
-    detranId: null,
-    detranNome: null,
-    estadoDetran: null,
-    ...dadosIniciais, // Aplicar dados iniciais se fornecidos
+  // Estados do formulário - inicializar com dados iniciais completos
+  const [dados, setDados] = useState<DadosRecurso>(() => {
+    const defaultDados: DadosRecurso = {
+      nomeRecorrente: '',
+      cpfCnpj: '',
+      endereco: '',
+      cidade: '',
+      estado: '',
+      cep: '',
+      telefone: '',
+      email: '',
+      placa: '',
+      renavam: '',
+      modelo: '',
+      numeroAuto: '',
+      dataInfracao: '',
+      horaInfracao: '',
+      localInfracao: '',
+      codigoInfracao: '',
+      descricaoInfracao: '',
+      valorMulta: 0,
+      pontos: 0,
+      gravidade: '',
+      tipoRecurso: 'defesa_previa',
+      descricaoSituacao: '',
+      detranId: null,
+      detranNome: null,
+      estadoDetran: null,
+    };
+    
+    // Aplicar dados iniciais se fornecidos (spread completo)
+    if (dadosIniciais) {
+      return {
+        ...defaultDados,
+        ...dadosIniciais,
+      };
+    }
+    
+    return defaultDados;
   });
 
   // Estados auxiliares
@@ -136,19 +147,20 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
   }, []);
 
   // Pré-selecionar infração quando dados iniciais são fornecidos
+  // Mas PRESERVAR os valores vindos do rastreamento (valorMulta, pontos, gravidade reais)
   useEffect(() => {
-    if (dadosIniciais?.codigoInfracao && infracoes.length > 0 && !dados.descricaoInfracao) {
+    if (dadosIniciais?.codigoInfracao && infracoes.length > 0) {
       const infracao = infracoes.find(i => i.codigo === dadosIniciais.codigoInfracao);
       if (infracao) {
         setDados(prev => ({
           ...prev,
           codigoInfracao: infracao.codigo,
-          descricaoInfracao: infracao.descricao,
-          valorMulta: infracao.valor,
-          pontos: infracao.pontos,
-          gravidade: infracao.gravidade,
-          // Manter data se veio dos dados iniciais
-          dataInfracao: dadosIniciais.dataInfracao || prev.dataInfracao,
+          // Usar descrição da tabela se não veio do rastreamento
+          descricaoInfracao: dadosIniciais.descricaoInfracao || infracao.descricao,
+          // PRESERVAR valores vindos do rastreamento, usar da tabela apenas como fallback
+          valorMulta: dadosIniciais.valorMulta || infracao.valor,
+          pontos: dadosIniciais.pontos || infracao.pontos,
+          gravidade: dadosIniciais.gravidade || infracao.gravidade,
         }));
       }
     }

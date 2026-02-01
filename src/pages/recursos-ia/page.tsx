@@ -24,20 +24,53 @@ export default function RecursosIA() {
   const dadosIniciais = useMemo(() => {
     const placa = searchParams.get('placa');
     const codigoInfracao = searchParams.get('codigoInfracao');
-    const descricaoInfracao = searchParams.get('descricaoInfracao');
-    const valorMulta = searchParams.get('valorMulta');
-    const pontos = searchParams.get('pontos');
-    const dataInfracao = searchParams.get('dataInfracao');
     
     if (!placa && !codigoInfracao) return undefined;
     
+    // Tentar parsear endereço do cliente se existir
+    let clienteEndereco: any = null;
+    try {
+      const enderecoParam = searchParams.get('clienteEndereco');
+      if (enderecoParam) {
+        clienteEndereco = JSON.parse(enderecoParam);
+      }
+    } catch (e) {
+      console.error('Erro ao parsear endereço:', e);
+    }
+    
     return {
-      placa: placa || '',
-      codigoInfracao: codigoInfracao || '',
-      descricaoInfracao: descricaoInfracao || '',
-      valorMulta: valorMulta ? parseFloat(valorMulta) : 0,
-      pontos: pontos ? parseInt(pontos) : 0,
-      dataInfracao: dataInfracao || '',
+      // Dados do veículo
+      placa: searchParams.get('placa') || '',
+      modelo: searchParams.get('modelo') || '',
+      renavam: searchParams.get('renavam') || '',
+      
+      // Dados da infração
+      codigoInfracao: searchParams.get('codigoInfracao') || '',
+      descricaoInfracao: searchParams.get('descricaoInfracao') || '',
+      valorMulta: searchParams.get('valorMulta') ? parseFloat(searchParams.get('valorMulta')!) : 0,
+      pontos: searchParams.get('pontos') ? parseInt(searchParams.get('pontos')!) : 0,
+      gravidade: searchParams.get('gravidade') || '',
+      dataInfracao: searchParams.get('dataInfracao') || '',
+      horaInfracao: searchParams.get('horaInfracao') || '',
+      numeroAuto: searchParams.get('numeroAuto') || '',
+      localInfracao: searchParams.get('localInfracao') || '',
+      orgaoAutuador: searchParams.get('orgaoAutuador') || '',
+      municipio: searchParams.get('municipio') || '',
+      ufInfracao: searchParams.get('ufInfracao') || '',
+      
+      // Dados do cliente/recorrente
+      nomeRecorrente: searchParams.get('clienteNome') || '',
+      cpfCnpj: searchParams.get('clienteCpf') || searchParams.get('clienteCnpj') || '',
+      email: searchParams.get('clienteEmail') || '',
+      telefone: searchParams.get('clienteTelefone') || '',
+      
+      // Endereço do cliente (se disponível)
+      endereco: clienteEndereco?.logradouro 
+        ? `${clienteEndereco.logradouro}, ${clienteEndereco.numero || 'S/N'}${clienteEndereco.complemento ? ` - ${clienteEndereco.complemento}` : ''}`
+        : '',
+      cidade: clienteEndereco?.cidade || '',
+      estado: clienteEndereco?.estado || searchParams.get('ufInfracao') || '',
+      cep: clienteEndereco?.cep || '',
     };
   }, [searchParams]);
   
