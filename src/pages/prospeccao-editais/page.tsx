@@ -52,7 +52,7 @@ export default function ProspeccaoEditais() {
           .order('created_at', { ascending: false });
 
         if (editaisError) throw editaisError;
-        setEditais(editaisData || []);
+        setEditais((editaisData || []) as any);
 
       } catch (err) {
         console.error('Erro ao buscar editais:', err);
@@ -99,7 +99,7 @@ export default function ProspeccaoEditais() {
       setEditalParaComprar(null);
 
       const { data: editalData } = await supabase.from('editais').select('*').eq('id', editalId).single();
-      setEditais(prev => prev.map(e => e.id === editalId ? editalData : e));
+      setEditais(prev => prev.map(e => e.id === editalId ? editalData as any : e));
 
     } catch (err: any) {
       console.error('Erro ao comprar edital:', err);

@@ -33,7 +33,7 @@ export function useClientes(): UseClientesReturn {
                 .order('created_at', { ascending: false });
 
             if (fetchError) throw fetchError;
-            setClientes(data || []);
+            setClientes((data || []) as any);
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao buscar clientes'));
         } finally {
@@ -52,7 +52,7 @@ export function useClientes(): UseClientesReturn {
                 .order('created_at', { ascending: false });
 
             if (fetchError) throw fetchError;
-            setClientes(data || []);
+            setClientes((data || []) as any);
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao buscar clientes da organização'));
         } finally {
@@ -69,7 +69,7 @@ export function useClientes(): UseClientesReturn {
                 .single();
 
             if (fetchError) throw fetchError;
-            return data;
+            return data as any;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao buscar cliente'));
             return null;
@@ -102,7 +102,7 @@ export function useClientes(): UseClientesReturn {
 
             const { data, error: insertError } = await supabase
                 .from('clientes')
-                .insert(cliente)
+                .insert(cliente as any)
                 .select()
                 .single();
 
@@ -129,7 +129,7 @@ export function useClientes(): UseClientesReturn {
         try {
             const { data, error: updateError } = await supabase
                 .from('clientes')
-                .update({ ...updates, updated_at: new Date().toISOString() })
+                .update({ ...updates, updated_at: new Date().toISOString() } as any)
                 .eq('id', id)
                 .select()
                 .single();
@@ -142,7 +142,7 @@ export function useClientes(): UseClientesReturn {
                 setClientes(prev => prev.map(c => c.id === id ? result : c));
             }
 
-            return data;
+            return data as any;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao atualizar cliente'));
             return null;
@@ -183,7 +183,7 @@ export function useClientes(): UseClientesReturn {
                 .order('nome_completo');
 
             if (searchError) throw searchError;
-            return data || [];
+            return (data || []) as any;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao buscar clientes'));
             return [];

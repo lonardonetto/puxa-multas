@@ -114,7 +114,7 @@ export function useNotificationAlerts() {
 
             if (getError) throw getError;
 
-            const interval = (contrato as { intervalo_notificacao?: number } | null)?.intervalo_notificacao || currentOrganization?.intervalo_notificacao || 7;
+            const interval = (contrato as any)?.intervalo_notificacao || currentOrganization?.intervalo_notificacao || 7;
             const nextReminder = new Date(new Date().getTime() + interval * 24 * 60 * 60 * 1000);
 
             const { error: updateError } = await supabase

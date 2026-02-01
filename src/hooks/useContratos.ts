@@ -32,7 +32,7 @@ export function useContratos(): UseContratosReturn {
                 .order('created_at', { ascending: false });
 
             if (fetchError) throw fetchError;
-            setContratos((data || []) as Contrato[]);
+            setContratos((data || []) as any);
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao buscar contratos'));
         } finally {

@@ -27,7 +27,7 @@ export function useHistorico() {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setActivities(data || []);
+            setActivities((data || []) as any);
         } catch (err) {
             console.error('Erro ao buscar histórico:', err);
         } finally {

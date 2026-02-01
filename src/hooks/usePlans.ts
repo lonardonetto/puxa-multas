@@ -20,7 +20,7 @@ export function usePlans() {
             const { data, error: fetchError } = await query;
 
             if (fetchError) throw fetchError;
-            setPlans(data || []);
+            setPlans((data || []) as any);
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao buscar planos'));
         } finally {
@@ -34,7 +34,7 @@ export function usePlans() {
         try {
             const { data, error: insertError } = await supabase
                 .from('planos')
-                .insert(plan)
+                .insert(plan as any)
                 .select()
                 .single();
 

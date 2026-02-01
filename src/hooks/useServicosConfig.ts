@@ -303,7 +303,7 @@ export function useServicosConfig() {
                 .order('ordem', { ascending: true });
 
             if (fetchError) throw fetchError;
-            setServicos(data || []);
+            setServicos((data || []) as any);
         } catch (err: any) {
             console.error('[useServicosConfig] Erro ao buscar serviços:', err);
             setError(err.message);
