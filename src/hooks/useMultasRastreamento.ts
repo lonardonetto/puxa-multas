@@ -6,14 +6,33 @@ export interface MultaRastreada {
   id: string;
   placa: string;
   modelo: string;
+  ano?: string;
+  renavam?: string;
   codigoInfracao: string;
   descricaoInfracao: string;
   status: 'pendente' | 'suspensiva' | 'analise' | 'concluido' | 'pago';
   dataMulta: string;
   valor: number;
   pontos: number;
+  gravidade: string;
   veiculoId: string;
   clienteNome?: string;
+  clienteCpf?: string;
+  clienteCnpj?: string;
+  clienteEmail?: string;
+  clienteTelefone?: string;
+  clienteCelular?: string;
+  clienteEndereco?: any;
+  // Campos completos da multa
+  numeroAuto?: string;
+  horaInfracao?: string;
+  localInfracao?: string;
+  orgaoAutuador?: string;
+  agenteAutuador?: string;
+  municipio?: string;
+  ufInfracao?: string;
+  dataVencimento?: string;
+  observacoes?: string;
 }
 
 interface UseMultasRastreamentoReturn {
@@ -45,7 +64,7 @@ export function useMultasRastreamento(): UseMultasRastreamentoReturn {
     setError(null);
 
     try {
-      // Buscar multas com dados do veículo e cliente
+      // Buscar multas com dados completos do veículo e cliente
       const { data, error: fetchError } = await supabase
         .from('multas')
         .select(`
@@ -56,13 +75,32 @@ export function useMultasRastreamento(): UseMultasRastreamentoReturn {
           data_multa,
           valor,
           veiculo_id,
+          numero_auto,
+          hora_infracao,
+          local_infracao,
+          orgao_autuador,
+          agente_autuador,
+          municipio,
+          uf_infracao,
+          data_vencimento,
+          pontos,
+          gravidade,
+          observacoes,
           veiculos!inner (
             id,
             placa,
             modelo,
+            ano,
+            renavam,
             clientes!inner (
               id,
               nome_completo,
+              cpf,
+              cnpj,
+              email,
+              telefone,
+              celular,
+              endereco,
               organization_id
             )
           )
@@ -78,29 +116,55 @@ export function useMultasRastreamento(): UseMultasRastreamentoReturn {
           id: m.id,
           placa: m.veiculos?.placa || '',
           modelo: m.veiculos?.modelo || '',
+          ano: m.veiculos?.ano || '',
+          renavam: m.veiculos?.renavam || '',
           codigoInfracao: m.codigo_infracao || '',
           descricaoInfracao: m.descricao || '',
           status: m.status || 'pendente',
           dataMulta: m.data_multa || '',
           valor: m.valor || 0,
-          pontos: 0, // Buscar da tabela de infrações se necessário
+          pontos: m.pontos || 0,
+          gravidade: m.gravidade || '',
           veiculoId: m.veiculo_id || '',
           clienteNome: m.veiculos?.clientes?.nome_completo || '',
+          clienteCpf: m.veiculos?.clientes?.cpf || '',
+          clienteCnpj: m.veiculos?.clientes?.cnpj || '',
+          clienteEmail: m.veiculos?.clientes?.email || '',
+          clienteTelefone: m.veiculos?.clientes?.telefone || '',
+          clienteCelular: m.veiculos?.clientes?.celular || '',
+          clienteEndereco: m.veiculos?.clientes?.endereco || null,
+          // Campos completos da multa
+          numeroAuto: m.numero_auto || '',
+          horaInfracao: m.hora_infracao || '',
+          localInfracao: m.local_infracao || '',
+          orgaoAutuador: m.orgao_autuador || '',
+          agenteAutuador: m.agente_autuador || '',
+          municipio: m.municipio || '',
+          ufInfracao: m.uf_infracao || '',
+          dataVencimento: m.data_vencimento || '',
+          observacoes: m.observacoes || '',
         }));
 
-      // Buscar pontos das infrações
+      // Se pontos não vier da multa, buscar da tabela de infrações
       if (multasFiltradas.length > 0) {
-        const codigos = [...new Set(multasFiltradas.map(m => m.codigoInfracao).filter(Boolean))];
-        if (codigos.length > 0) {
+        const multasSemPontos = multasFiltradas.filter(m => !m.pontos && m.codigoInfracao);
+        if (multasSemPontos.length > 0) {
+          const codigos = [...new Set(multasSemPontos.map(m => m.codigoInfracao))];
           const { data: infracoes } = await supabase
             .from('infracoes_transito')
-            .select('codigo, pontos')
+            .select('codigo, pontos, gravidade')
             .in('codigo', codigos);
 
           if (infracoes) {
-            const pontosMap = new Map(infracoes.map(i => [i.codigo, i.pontos]));
+            const pontosMap = new Map(infracoes.map(i => [i.codigo, { pontos: i.pontos, gravidade: i.gravidade }]));
             multasFiltradas.forEach(m => {
-              m.pontos = pontosMap.get(m.codigoInfracao) || 0;
+              if (!m.pontos) {
+                const info = pontosMap.get(m.codigoInfracao);
+                if (info) {
+                  m.pontos = info.pontos || 0;
+                  m.gravidade = m.gravidade || info.gravidade || '';
+                }
+              }
             });
           }
         }

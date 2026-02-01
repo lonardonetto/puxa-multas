@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMultasRastreamento, MultaRastreada } from '../../hooks/useMultasRastreamento';
+import ModalDetalhesMulta from '../../components/rastreamento/ModalDetalhesMulta';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -21,6 +22,7 @@ export default function Rastreamento() {
   const [busca, setBusca] = useState('');
   const [modalAberto, setModalAberto] = useState(false);
   const [tipoRastreamento, setTipoRastreamento] = useState<'frota' | 'individual' | null>(null);
+  const [multaSelecionada, setMultaSelecionada] = useState<MultaRastreada | null>(null);
   const [formData, setFormData] = useState({
     nomeCliente: '',
     cpfCnpj: '',
@@ -30,6 +32,40 @@ export default function Rastreamento() {
     nomeEmpresa: '',
     numeroVeiculos: '',
   });
+
+  // Função para navegar para recursos-ia com todos os dados completos
+  const navegarParaRecursoIA = (multa: MultaRastreada) => {
+    const params = new URLSearchParams({
+      placa: multa.placa,
+      modelo: multa.modelo || '',
+      ano: multa.ano || '',
+      renavam: multa.renavam || '',
+      codigoInfracao: multa.codigoInfracao,
+      descricaoInfracao: multa.descricaoInfracao,
+      valorMulta: String(multa.valor),
+      pontos: String(multa.pontos),
+      gravidade: multa.gravidade || '',
+      dataInfracao: multa.dataMulta,
+      horaInfracao: multa.horaInfracao || '',
+      numeroAuto: multa.numeroAuto || '',
+      localInfracao: multa.localInfracao || '',
+      orgaoAutuador: multa.orgaoAutuador || '',
+      municipio: multa.municipio || '',
+      ufInfracao: multa.ufInfracao || '',
+      clienteNome: multa.clienteNome || '',
+      clienteCpf: multa.clienteCpf || '',
+      clienteCnpj: multa.clienteCnpj || '',
+      clienteEmail: multa.clienteEmail || '',
+      clienteTelefone: multa.clienteCelular || multa.clienteTelefone || '',
+    });
+    
+    // Adicionar endereço se existir
+    if (multa.clienteEndereco) {
+      params.set('clienteEndereco', JSON.stringify(multa.clienteEndereco));
+    }
+    
+    navigate(`/recursos-ia?${params.toString()}`);
+  };
 
   // Filtrar multas
   const multasFiltradas = multasReais.filter(multa => {
@@ -455,17 +491,7 @@ export default function Rastreamento() {
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              // Navegar para recursos-ia com dados pré-preenchidos
-                              const params = new URLSearchParams({
-                                placa: multa.placa,
-                                codigoInfracao: multa.codigoInfracao,
-                                descricaoInfracao: multa.descricaoInfracao,
-                                valorMulta: String(multa.valor),
-                                pontos: String(multa.pontos),
-                                dataInfracao: multa.dataMulta,
-                              });
-                              
-                              navigate(`/recursos-ia?${params.toString()}`);
+                              navegarParaRecursoIA(multa);
                             }}
                             className="px-4 py-2 bg-[#10B981] text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors cursor-pointer whitespace-nowrap"
                           >
@@ -476,7 +502,14 @@ export default function Rastreamento() {
                             <i className="ri-money-dollar-circle-line mr-1"></i>
                             Pagar Multa
                           </button>
-                          <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#1E3A8A] transition-colors cursor-pointer">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMultaSelecionada(multa);
+                            }}
+                            className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#1E3A8A] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                            title="Ver detalhes"
+                          >
                             <i className="ri-eye-line text-lg"></i>
                           </button>
                           <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#1E3A8A] transition-colors cursor-pointer">
@@ -496,6 +529,18 @@ export default function Rastreamento() {
           </>
         )}
       </div>
+
+      {/* Modal de Detalhes da Multa */}
+      {multaSelecionada && (
+        <ModalDetalhesMulta
+          multa={multaSelecionada}
+          onClose={() => setMultaSelecionada(null)}
+          onGerarRecurso={(multa) => {
+            setMultaSelecionada(null);
+            navegarParaRecursoIA(multa);
+          }}
+        />
+      )}
     </div>
   );
 }
