@@ -165,13 +165,14 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
             .eq('veiculo_id', v.id);
 
           // Buscar última multa para saber última consulta
-          const { data: ultimaMulta } = await supabase
+          const { data: ultimaMultaData } = await supabase
             .from('multas')
             .select('created_at')
             .eq('veiculo_id', v.id)
             .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+            .limit(1);
+          
+          const ultimaMulta = ultimaMultaData?.[0] || null;
 
           return {
             id: v.id,
