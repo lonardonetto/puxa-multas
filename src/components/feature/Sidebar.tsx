@@ -263,16 +263,24 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
               <i className={`ri-arrow-${superAdminOpen ? 'up' : 'down'}-s-line text-base transition-transform`}></i>
             </button>
 
-            {superAdminOpen && (
-              <div className={darkMode ? 'bg-[#1B2838]/50' : 'bg-blue-800/50'}>
-                <Link
-                  to="/super-admin/organizations"
-                  className={`flex items-center px-4 py-2 pl-10 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname === '/super-admin/organizations' ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
-                    }`}
-                >
-                  <i className="ri-building-line text-base mr-3"></i>
-                  <span className="text-sm font-medium">Organizações</span>
-                </Link>
+          {superAdminOpen && (
+            <div className={darkMode ? 'bg-[#1B2838]/50' : 'bg-blue-800/50'}>
+              <Link
+                to="/super-admin/dashboard"
+                className={`flex items-center px-4 py-2 pl-10 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname.startsWith('/super-admin/dashboard') ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+                  }`}
+              >
+                <i className="ri-dashboard-3-line text-base mr-3"></i>
+                <span className="text-sm font-medium">Dashboard Comercial</span>
+              </Link>
+              <Link
+                to="/super-admin/organizations"
+                className={`flex items-center px-4 py-2 pl-10 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname === '/super-admin/organizations' ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+                  }`}
+              >
+                <i className="ri-building-line text-base mr-3"></i>
+                <span className="text-sm font-medium">Organizações</span>
+              </Link>
                 <Link
                   to="/super-admin/users"
                   className={`flex items-center px-4 py-2 pl-10 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname === '/super-admin/users' ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
