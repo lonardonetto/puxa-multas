@@ -17,6 +17,8 @@ const Register = lazy(() => import('../pages/auth/register/page'));
 
 // Super Admin pages
 const SuperAdminDashboard = lazy(() => import('../pages/super-admin/dashboard/page'));
+const SuperAdminClientes = lazy(() => import('../pages/super-admin/dashboard/clientes'));
+const SuperAdminProdutos = lazy(() => import('../pages/super-admin/dashboard/produtos'));
 const SuperAdminOrganizations = lazy(() => import('../pages/super-admin/organizations/page'));
 const SuperAdminUsers = lazy(() => import('../pages/super-admin/users/page'));
 const SuperAdminSettings = lazy(() => import('../pages/super-admin/settings/page'));
@@ -207,6 +209,36 @@ const routes: RouteObject[] = [
           <SuperAdminRoute>
             <Suspense fallback={<LoadingFallback />}>
               <SuperAdminDashboard />
+            </Suspense>
+          </SuperAdminRoute>
+        ),
+      },
+      {
+        path: 'super-admin/dashboard',
+        element: (
+          <SuperAdminRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <SuperAdminDashboard />
+            </Suspense>
+          </SuperAdminRoute>
+        ),
+      },
+      {
+        path: 'super-admin/dashboard/clientes',
+        element: (
+          <SuperAdminRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <SuperAdminClientes />
+            </Suspense>
+          </SuperAdminRoute>
+        ),
+      },
+      {
+        path: 'super-admin/dashboard/produtos',
+        element: (
+          <SuperAdminRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <SuperAdminProdutos />
             </Suspense>
           </SuperAdminRoute>
         ),
