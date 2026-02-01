@@ -91,7 +91,7 @@ export default function AddCreditsModal({ organization, onClose, onSuccess }: Ad
 
       onSuccess();
       onClose();
-      navigate('/super-admin/dashboard');
+      navigate(`/super-admin/organizations/${organization.id}`);
     } catch (err) {
       console.error('Erro ao adicionar créditos:', err);
       setError('Erro ao adicionar créditos. Tente novamente.');
