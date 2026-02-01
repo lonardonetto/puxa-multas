@@ -556,6 +556,53 @@ export type Database = {
           },
         ]
       }
+      fundamentos_legais: {
+        Row: {
+          ativo: boolean | null
+          codigo_infracao: string | null
+          conteudo: string
+          created_at: string | null
+          id: string
+          ordem: number | null
+          orgao_id: string | null
+          tipo_recurso: string
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          codigo_infracao?: string | null
+          conteudo: string
+          created_at?: string | null
+          id?: string
+          ordem?: number | null
+          orgao_id?: string | null
+          tipo_recurso: string
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          codigo_infracao?: string | null
+          conteudo?: string
+          created_at?: string | null
+          id?: string
+          ordem?: number | null
+          orgao_id?: string | null
+          tipo_recurso?: string
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fundamentos_legais_orgao_id_fkey"
+            columns: ["orgao_id"]
+            isOneToOne: false
+            referencedRelation: "orgaos_transito"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       historico_atividades: {
         Row: {
           cliente_id: string | null
@@ -761,6 +808,57 @@ export type Database = {
           slug?: string | null
           telefone?: string | null
           timbre_contrato_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      orgaos_transito: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          endereco: string | null
+          estado: string
+          id: string
+          nome: string
+          prazo_cetran: number | null
+          prazo_defesa_previa: number | null
+          prazo_jari: number | null
+          sigla_estado: string
+          site_url: string | null
+          telefone: string | null
+          tipo: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          endereco?: string | null
+          estado: string
+          id?: string
+          nome: string
+          prazo_cetran?: number | null
+          prazo_defesa_previa?: number | null
+          prazo_jari?: number | null
+          sigla_estado: string
+          site_url?: string | null
+          telefone?: string | null
+          tipo: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          endereco?: string | null
+          estado?: string
+          id?: string
+          nome?: string
+          prazo_cetran?: number | null
+          prazo_defesa_previa?: number | null
+          prazo_jari?: number | null
+          sigla_estado?: string
+          site_url?: string | null
+          telefone?: string | null
+          tipo?: string
           updated_at?: string | null
         }
         Relationships: []
@@ -1072,6 +1170,59 @@ export type Database = {
           value?: string | null
         }
         Relationships: []
+      }
+      templates_recursos: {
+        Row: {
+          ativo: boolean | null
+          cabecalho: string | null
+          codigo_infracao: string | null
+          corpo: string
+          created_at: string | null
+          id: string
+          orgao_id: string | null
+          prompt_ia: string | null
+          rodape: string | null
+          tipo_recurso: string
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          cabecalho?: string | null
+          codigo_infracao?: string | null
+          corpo: string
+          created_at?: string | null
+          id?: string
+          orgao_id?: string | null
+          prompt_ia?: string | null
+          rodape?: string | null
+          tipo_recurso: string
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          cabecalho?: string | null
+          codigo_infracao?: string | null
+          corpo?: string
+          created_at?: string | null
+          id?: string
+          orgao_id?: string | null
+          prompt_ia?: string | null
+          rodape?: string | null
+          tipo_recurso?: string
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "templates_recursos_orgao_id_fkey"
+            columns: ["orgao_id"]
+            isOneToOne: false
+            referencedRelation: "orgaos_transito"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_organizations: {
         Row: {
