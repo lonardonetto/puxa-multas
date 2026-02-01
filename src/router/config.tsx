@@ -20,6 +20,7 @@ const SuperAdminDashboard = lazy(() => import('../pages/super-admin/dashboard/pa
 const SuperAdminClientes = lazy(() => import('../pages/super-admin/dashboard/clientes'));
 const SuperAdminProdutos = lazy(() => import('../pages/super-admin/dashboard/produtos'));
 const SuperAdminOrganizations = lazy(() => import('../pages/super-admin/organizations/page'));
+const SuperAdminOrganizationDetails = lazy(() => import('../pages/super-admin/organizations/[id]/page'));
 const SuperAdminUsers = lazy(() => import('../pages/super-admin/users/page'));
 const SuperAdminSettings = lazy(() => import('../pages/super-admin/settings/page'));
 const SuperAdminPlans = lazy(() => import('../pages/super-admin/plans/page'));
@@ -249,6 +250,16 @@ const routes: RouteObject[] = [
           <SuperAdminRoute>
             <Suspense fallback={<LoadingFallback />}>
               <SuperAdminOrganizations />
+            </Suspense>
+          </SuperAdminRoute>
+        ),
+      },
+      {
+        path: 'super-admin/organizations/:id',
+        element: (
+          <SuperAdminRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <SuperAdminOrganizationDetails />
             </Suspense>
           </SuperAdminRoute>
         ),
