@@ -10,6 +10,22 @@ const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 };
 
+interface Infracao {
+  id: string;
+  codigo: string;
+  descricao: string;
+  gravidade: string;
+  valor: number;
+  pontos: number;
+  categoria: string;
+}
+
+interface TemplateRecurso {
+  id: string;
+  titulo: string;
+  tipo_recurso: string;
+}
+
 export default function RecursosIA() {
   const { user } = useAuth();
   const { currentOrganization } = useOrganization();
@@ -25,6 +41,48 @@ export default function RecursosIA() {
   const navigate = useNavigate();
   const [confirmacaoCompra, setConfirmacaoCompra] = useState<{ valor: number } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  
+  // Estados para dados do banco
+  const [infracoes, setInfracoes] = useState<Infracao[]>([]);
+  const [tiposRecurso, setTiposRecurso] = useState<string[]>([]);
+  const [loadingDados, setLoadingDados] = useState(true);
+
+  // Carregar infrações e tipos de recurso do banco
+  useEffect(() => {
+    const carregarDados = async () => {
+      setLoadingDados(true);
+      try {
+        // Buscar todas as infrações ativas
+        const { data: infracoesData, error: infracoesError } = await supabase
+          .from('infracoes_transito')
+          .select('id, codigo, descricao, gravidade, valor, pontos, categoria')
+          .eq('ativo', true)
+          .order('categoria', { ascending: true })
+          .order('codigo', { ascending: true });
+
+        if (infracoesError) throw infracoesError;
+        setInfracoes(infracoesData || []);
+
+        // Buscar tipos únicos de recurso dos templates
+        const { data: templatesData, error: templatesError } = await supabase
+          .from('templates_recursos')
+          .select('tipo_recurso')
+          .eq('ativo', true);
+
+        if (templatesError) throw templatesError;
+        
+        // Extrair tipos únicos
+        const tiposUnicos = [...new Set((templatesData || []).map(t => t.tipo_recurso))];
+        setTiposRecurso(tiposUnicos);
+      } catch (err) {
+        console.error('Erro ao carregar dados:', err);
+      } finally {
+        setLoadingDados(false);
+      }
+    };
+
+    carregarDados();
+  }, []);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -224,10 +282,16 @@ export default function RecursosIA() {
                 value={tipoRecurso}
                 onChange={(e) => setTipoRecurso(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] cursor-pointer"
+                disabled={loadingDados}
               >
                 <option value="">Selecione o tipo de recurso</option>
-                <option value="infracao">Recurso de Infração de Trânsito</option>
-                <option value="suspensivo">Recurso de Processo Suspensivo</option>
+                {tiposRecurso.map((tipo) => (
+                  <option key={tipo} value={tipo}>
+                    {tipo === 'defesa_previa' ? 'Defesa Prévia' : 
+                     tipo === 'jari' ? 'Recurso JARI (1ª Instância)' : 
+                     tipo === 'cetran' ? 'Recurso CETRAN (2ª Instância)' : tipo}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -243,23 +307,33 @@ export default function RecursosIA() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Multa</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tipo de Multa/Infração ({infracoes.length} disponíveis)
+              </label>
               <select
                 value={tipoMulta}
                 onChange={(e) => setTipoMulta(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] cursor-pointer"
+                disabled={loadingDados}
               >
-                <option value="">Selecione o tipo</option>
-                <option value="5169">5169 - Dirigir sob efeito de substância que cause dependência</option>
-                <option value="7579">7579 - Forçar passagem entre veículos em sentidos opostos</option>
-                <option value="5797">5797 - Estacionar em desacordo com a regulamentação</option>
-                <option value="5274">5274 - Manobras perigosas (arrancada brusca, derrapagem ou frenagem)</option>
-                <option value="5240">5240 - Disputar corrida (racha)</option>
-                <option value="5266">5266 - Participar em competição ou evento sem permissão</option>
-                <option value="5290">5290 - Deixar de adotar providências para evitar perigo no trânsito</option>
-                <option value="7617">7617 - Interromper ou perturbar a circulação da via sem autorização</option>
-                <option value="7471">7471 - Transitar em velocidade superior à máxima em mais de 50%</option>
-                <option value="5029">5029 - Dirigir veículo com CNH ou PPD cassada</option>
+                <option value="">{loadingDados ? 'Carregando infrações...' : 'Selecione a infração'}</option>
+                {/* Agrupar por categoria */}
+                {Object.entries(
+                  infracoes.reduce((acc, inf) => {
+                    const cat = inf.categoria || 'Outros';
+                    if (!acc[cat]) acc[cat] = [];
+                    acc[cat].push(inf);
+                    return acc;
+                  }, {} as Record<string, Infracao[]>)
+                ).map(([categoria, items]) => (
+                  <optgroup key={categoria} label={categoria.charAt(0).toUpperCase() + categoria.slice(1).replace('_', ' ')}>
+                    {items.map((inf) => (
+                      <option key={inf.id} value={inf.codigo}>
+                        {inf.codigo} - {inf.descricao.substring(0, 80)}{inf.descricao.length > 80 ? '...' : ''} ({inf.gravidade})
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
             </div>
 
