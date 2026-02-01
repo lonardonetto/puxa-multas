@@ -644,6 +644,14 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
               disabled={loadingDados}
             >
               <option value="">{loadingDados ? 'Carregando...' : 'Selecione a infração'}</option>
+              
+              {/* Opção customizada para infrações vindas do rastreamento que não estão na lista */}
+              {dados.codigoInfracao && !infracoes.some(i => i.codigo === dados.codigoInfracao) && (
+                <option value={dados.codigoInfracao}>
+                  {dados.codigoInfracao} - {dados.descricaoInfracao || 'Infração do rastreamento'} ({dados.gravidade || 'N/A'})
+                </option>
+              )}
+              
               {Object.entries(
                 infracoes.reduce((acc, inf) => {
                   const cat = inf.categoria || 'Outros';
