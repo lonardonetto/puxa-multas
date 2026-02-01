@@ -6,141 +6,89 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+interface DadosRecurso {
+  // Dados do Recorrente
+  nomeRecorrente: string;
+  cpfCnpj: string;
+  endereco?: string;
+  cidade?: string;
+  estado?: string;
+  cep?: string;
+  telefone?: string;
+  email?: string;
+  
+  // Dados do Veículo
+  placa: string;
+  renavam?: string;
+  modelo?: string;
+  
+  // Dados da Infração
+  numeroAuto: string;
+  dataInfracao: string;
+  horaInfracao?: string;
+  localInfracao?: string;
+  codigoInfracao: string;
+  descricaoInfracao: string;
+  valorMulta: number;
+  pontos: number;
+  gravidade: string;
+  
+  // Dados do Recurso
+  tipoRecurso: 'defesa_previa' | 'jari' | 'cetran';
+  descricaoSituacao: string;
+  
+  // Dados do DETRAN
+  detranId?: string | null;
+  detranNome?: string | null;
+  estadoDetran?: string | null;
+}
+
 interface GenerateRequest {
-  orgao_id: string;
-  tipo_recurso: 'defesa_previa' | 'jari' | 'cetran';
-  codigo_infracao?: string;
-  dados_cliente: {
-    nome: string;
-    cpf: string;
-    endereco?: string;
-  };
-  dados_infracao: {
-    auto_infracao: string;
-    data_infracao?: string;
-    local?: string;
-    descricao_fatos: string;
-    placa?: string;
-    modelo_veiculo?: string;
-  };
+  dados: DadosRecurso;
+  organizationId: string;
 }
 
-async function getAiApiKey(supabase: any): Promise<{ provider: string; apiKey: string } | null> {
-  // Get AI provider setting
-  const { data: providerSetting } = await supabase
-    .from('system_settings')
-    .select('value')
-    .eq('key', 'ai_provider')
-    .single();
+// Template base estruturado para o recurso
+function getTemplateBase(tipo: string, dados: DadosRecurso, orgao: any): string {
+  const tipoFormatado = tipo === 'defesa_previa' ? 'DEFESA PRÉVIA' : 
+                        tipo === 'jari' ? 'RECURSO À JARI' : 
+                        'RECURSO AO CETRAN';
+  
+  const destinatario = tipo === 'defesa_previa' ? 'À AUTORIDADE DE TRÂNSITO' :
+                       tipo === 'jari' ? 'EXCELENTÍSSIMO(A) SENHOR(A) PRESIDENTE DA JUNTA ADMINISTRATIVA DE RECURSOS DE INFRAÇÕES' :
+                       'EXCELENTÍSSIMO(A) SENHOR(A) PRESIDENTE DO CONSELHO ESTADUAL DE TRÂNSITO';
 
-  const provider = providerSetting?.value || 'google';
+  const dataFormatada = dados.dataInfracao ? new Date(dados.dataInfracao).toLocaleDateString('pt-BR') : '[DATA]';
+  
+  return `
+${tipoFormatado}
 
-  // Get corresponding API key
-  let keyName = '';
-  switch (provider) {
-    case 'google':
-      keyName = 'google_ai_api_key';
-      break;
-    case 'openai':
-      keyName = 'openai_api_key';
-      break;
-    case 'anthropic':
-      keyName = 'anthropic_api_key';
-      break;
-    default:
-      keyName = 'google_ai_api_key';
-  }
+${destinatario}
+${orgao?.nome || dados.detranNome || 'DETRAN'}
+${orgao?.estado || dados.estadoDetran || ''}
 
-  const { data: keySetting } = await supabase
-    .from('system_settings')
-    .select('value')
-    .eq('key', keyName)
-    .single();
+RECORRENTE: ${dados.nomeRecorrente}
+CPF/CNPJ: ${dados.cpfCnpj}
+${dados.endereco ? `ENDEREÇO: ${dados.endereco}${dados.cidade ? `, ${dados.cidade}` : ''}${dados.estado ? ` - ${dados.estado}` : ''}${dados.cep ? ` CEP: ${dados.cep}` : ''}` : ''}
+${dados.telefone ? `TELEFONE: ${dados.telefone}` : ''}
+${dados.email ? `E-MAIL: ${dados.email}` : ''}
 
-  if (!keySetting?.value) {
-    return null;
-  }
+VEÍCULO: ${dados.modelo || ''} - Placa ${dados.placa}
+${dados.renavam ? `RENAVAM: ${dados.renavam}` : ''}
 
-  return { provider, apiKey: keySetting.value };
-}
+AUTO DE INFRAÇÃO Nº: ${dados.numeroAuto}
+DATA DA INFRAÇÃO: ${dataFormatada}${dados.horaInfracao ? ` às ${dados.horaInfracao}` : ''}
+${dados.localInfracao ? `LOCAL: ${dados.localInfracao}` : ''}
 
-async function generateWithGoogle(apiKey: string, prompt: string): Promise<string> {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 4096,
-        },
-      }),
-    }
-  );
+CÓDIGO DA INFRAÇÃO: ${dados.codigoInfracao}
+DESCRIÇÃO: ${dados.descricaoInfracao}
+VALOR DA MULTA: R$ ${dados.valorMulta.toFixed(2)}
+PONTUAÇÃO: ${dados.pontos} pontos
+GRAVIDADE: ${dados.gravidade}
 
-  if (!response.ok) {
-    const error = await response.text();
-    console.error('Google AI error:', error);
-    throw new Error(`Google AI error: ${response.status}`);
-  }
+---
 
-  const data = await response.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-}
-
-async function generateWithOpenAI(apiKey: string, prompt: string): Promise<string> {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'Você é um advogado especialista em direito de trânsito brasileiro.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 4096,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    console.error('OpenAI error:', error);
-    throw new Error(`OpenAI error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
-}
-
-async function generateWithAnthropic(apiKey: string, prompt: string): Promise<string> {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-3-haiku-20240307',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    console.error('Anthropic error:', error);
-    throw new Error(`Anthropic error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.content?.[0]?.text || '';
+`;
 }
 
 serve(async (req) => {
@@ -151,132 +99,180 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body: GenerateRequest = await req.json();
-    const { orgao_id, tipo_recurso, codigo_infracao, dados_cliente, dados_infracao } = body;
+    const { dados, organizationId } = body;
 
-    console.log('Generating recurso for orgao:', orgao_id, 'tipo:', tipo_recurso);
+    console.log('Generating recurso for:', dados.placa, 'tipo:', dados.tipoRecurso);
 
-    // Get AI configuration
-    const aiConfig = await getAiApiKey(supabase);
-    if (!aiConfig) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'API Key de IA não configurada. Configure em Super Admin > Configurações.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Buscar órgão de trânsito
+    let orgao = null;
+    if (dados.detranId) {
+      const { data } = await supabase
+        .from('orgaos_transito')
+        .select('*')
+        .eq('id', dados.detranId)
+        .single();
+      orgao = data;
+    } else if (dados.estadoDetran) {
+      const { data } = await supabase
+        .from('orgaos_transito')
+        .select('*')
+        .eq('sigla_estado', dados.estadoDetran)
+        .eq('tipo', 'DETRAN')
+        .single();
+      orgao = data;
     }
 
-    // Get orgao data
-    const { data: orgao, error: orgaoError } = await supabase
-      .from('orgaos_transito')
-      .select('*')
-      .eq('id', orgao_id)
-      .single();
-
-    if (orgaoError || !orgao) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Órgão não encontrado' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get template
-    let templateQuery = supabase
-      .from('templates_recursos')
-      .select('*')
-      .eq('orgao_id', orgao_id)
-      .eq('tipo_recurso', tipo_recurso)
-      .eq('ativo', true);
-
-    if (codigo_infracao) {
-      templateQuery = templateQuery.or(`codigo_infracao.eq.${codigo_infracao},codigo_infracao.is.null`);
-    } else {
-      templateQuery = templateQuery.is('codigo_infracao', null);
-    }
-
-    const { data: templates } = await templateQuery.order('codigo_infracao', { ascending: false, nullsFirst: false }).limit(1);
-    const template = templates?.[0];
-
-    // Get fundamentos legais
+    // Buscar fundamentos legais relevantes
     const { data: fundamentos } = await supabase
       .from('fundamentos_legais')
       .select('*')
-      .eq('orgao_id', orgao_id)
-      .eq('tipo_recurso', tipo_recurso)
+      .eq('tipo_recurso', dados.tipoRecurso)
       .eq('ativo', true)
-      .order('ordem');
+      .or(`codigo_infracao.eq.${dados.codigoInfracao},codigo_infracao.is.null`)
+      .order('ordem')
+      .limit(5);
 
-    // Build prompt
-    const fundamentosText = fundamentos?.map(f => `${f.titulo}:\n${f.conteudo}`).join('\n\n') || '';
+    // Buscar template específico
+    const { data: templates } = await supabase
+      .from('templates_recursos')
+      .select('*')
+      .eq('tipo_recurso', dados.tipoRecurso)
+      .eq('ativo', true)
+      .or(`codigo_infracao.eq.${dados.codigoInfracao},codigo_infracao.is.null`)
+      .order('codigo_infracao', { ascending: false, nullsFirst: false })
+      .limit(1);
 
+    const template = templates?.[0];
+    const fundamentosText = fundamentos?.map(f => `• ${f.titulo}: ${f.conteudo}`).join('\n\n') || '';
+
+    // Gerar o template base estruturado
+    const templateBase = getTemplateBase(dados.tipoRecurso, dados, orgao);
+
+    // Prompt para a IA gerar apenas a argumentação jurídica
     const prompt = `
-${template?.prompt_ia || 'Você é um advogado especialista em direito de trânsito brasileiro. Gere uma defesa/recurso completo e fundamentado.'}
+${template?.prompt_ia || 'Você é um advogado especialista em direito de trânsito brasileiro, com vasta experiência em recursos administrativos.'}
 
-DADOS DO ÓRGÃO:
-- Nome: ${orgao.nome}
-- Estado: ${orgao.estado} (${orgao.sigla_estado})
-- Tipo: ${orgao.tipo.toUpperCase()}
+Você deve CONTINUAR o recurso abaixo, adicionando a argumentação jurídica completa.
 
-DADOS DO CLIENTE:
-- Nome: ${dados_cliente.nome}
-- CPF: ${dados_cliente.cpf}
-${dados_cliente.endereco ? `- Endereço: ${dados_cliente.endereco}` : ''}
+RECURSO JÁ ESTRUTURADO:
+${templateBase}
 
-DADOS DA INFRAÇÃO:
-- Auto de Infração: ${dados_infracao.auto_infracao}
-${dados_infracao.data_infracao ? `- Data: ${dados_infracao.data_infracao}` : ''}
-${dados_infracao.local ? `- Local: ${dados_infracao.local}` : ''}
-${dados_infracao.placa ? `- Placa: ${dados_infracao.placa}` : ''}
-${dados_infracao.modelo_veiculo ? `- Veículo: ${dados_infracao.modelo_veiculo}` : ''}
-${codigo_infracao ? `- Código da Infração: ${codigo_infracao}` : ''}
-
-DESCRIÇÃO DOS FATOS:
-${dados_infracao.descricao_fatos}
+DESCRIÇÃO DA SITUAÇÃO PELO CLIENTE:
+${dados.descricaoSituacao || 'O recorrente discorda da autuação e solicita sua anulação.'}
 
 FUNDAMENTOS LEGAIS DISPONÍVEIS:
-${fundamentosText}
+${fundamentosText || 'Utilize os artigos do Código de Trânsito Brasileiro (CTB), resoluções do CONTRAN e jurisprudências aplicáveis.'}
 
-TIPO DE RECURSO: ${tipo_recurso.replace('_', ' ').toUpperCase()}
+INFRAÇÃO EM QUESTÃO:
+- Código: ${dados.codigoInfracao}
+- Descrição: ${dados.descricaoInfracao}
+- Gravidade: ${dados.gravidade}
+- Valor: R$ ${dados.valorMulta.toFixed(2)}
+- Pontos: ${dados.pontos}
 
-Por favor, gere um ${tipo_recurso === 'defesa_previa' ? 'recurso de Defesa Prévia' : tipo_recurso === 'jari' ? 'recurso para JARI' : 'recurso para CETRAN'} completo, com:
-1. Cabeçalho formal adequado ao órgão
-2. Qualificação completa do recorrente
-3. Exposição detalhada dos fatos
-4. Fundamentação jurídica robusta (cite artigos do CTB, resoluções do CONTRAN, jurisprudências)
-5. Pedidos claros e específicos
-6. Fechamento formal
+TIPO DE RECURSO: ${dados.tipoRecurso === 'defesa_previa' ? 'Defesa Prévia' : dados.tipoRecurso === 'jari' ? 'Recurso à JARI (1ª Instância)' : 'Recurso ao CETRAN (2ª Instância)'}
 
-Use linguagem jurídica formal e persuasiva.
+Por favor, CONTINUE o recurso acima gerando:
+
+1. **DOS FATOS** - Exposição detalhada dos fatos conforme descrição do cliente
+2. **DO DIREITO** - Fundamentação jurídica robusta com:
+   - Artigos do CTB aplicáveis
+   - Resoluções do CONTRAN relevantes
+   - Jurisprudências (se aplicável)
+   - Argumentos técnicos sobre possíveis vícios formais ou materiais
+3. **DOS PEDIDOS** - Pedidos claros e específicos (anulação do auto, cancelamento da multa, restituição de pontos)
+4. **FECHAMENTO** - Fechamento formal com "Nestes termos, pede deferimento" e espaço para assinatura
+
+Use linguagem jurídica formal, persuasiva e técnica. Seja detalhista na fundamentação.
+NÃO repita o cabeçalho - apenas continue de onde o template parou.
 `;
 
-    console.log('Using AI provider:', aiConfig.provider);
+    console.log('Using Lovable AI Gateway');
 
-    let generatedContent = '';
-    switch (aiConfig.provider) {
-      case 'google':
-        generatedContent = await generateWithGoogle(aiConfig.apiKey, prompt);
-        break;
-      case 'openai':
-        generatedContent = await generateWithOpenAI(aiConfig.apiKey, prompt);
-        break;
-      case 'anthropic':
-        generatedContent = await generateWithAnthropic(aiConfig.apiKey, prompt);
-        break;
-      default:
-        generatedContent = await generateWithGoogle(aiConfig.apiKey, prompt);
+    // Usar Lovable AI Gateway
+    if (!lovableApiKey) {
+      console.error('LOVABLE_API_KEY not configured');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Gateway de IA não configurado. Entre em contato com o suporte.' 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    console.log('Generation successful, content length:', generatedContent.length);
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-3-flash-preview',
+        messages: [
+          { 
+            role: 'system', 
+            content: 'Você é um advogado especialista em direito de trânsito brasileiro, com mais de 15 anos de experiência em recursos administrativos. Sua argumentação é sempre técnica, bem fundamentada e persuasiva. Você conhece profundamente o CTB, resoluções do CONTRAN e jurisprudências dos tribunais.' 
+          },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 4096,
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error('AI Gateway error:', aiResponse.status, errorText);
+      
+      if (aiResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Limite de requisições excedido. Tente novamente em alguns segundos.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Créditos insuficientes. Adicione créditos na sua conta.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: false, error: 'Erro ao gerar recurso. Tente novamente.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const aiData = await aiResponse.json();
+    const argumentacao = aiData.choices?.[0]?.message?.content || '';
+
+    if (!argumentacao) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'IA não retornou conteúdo. Tente novamente.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Combinar template base + argumentação da IA
+    const recursoCompleto = templateBase + argumentacao;
+
+    console.log('Generation successful, content length:', recursoCompleto.length);
 
     return new Response(
       JSON.stringify({
         success: true,
-        content: generatedContent,
+        content: recursoCompleto,
+        templateBase,
+        argumentacao,
         orgao,
-        template,
         fundamentos,
-        provider: aiConfig.provider,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
