@@ -701,34 +701,70 @@ export type Database = {
       }
       multas: {
         Row: {
+          agente_autuador: string | null
           codigo_infracao: string | null
           created_at: string | null
           data_multa: string | null
+          data_vencimento: string | null
           descricao: string | null
+          gravidade: string | null
+          hora_infracao: string | null
           id: string
+          local_infracao: string | null
+          municipio: string | null
+          numero_auto: string | null
+          observacoes: string | null
+          orgao_autuador: string | null
+          placa_autuada: string | null
+          pontos: number | null
           status: Database["public"]["Enums"]["status_multa"] | null
+          uf_infracao: string | null
           updated_at: string | null
           valor: number | null
           veiculo_id: string | null
         }
         Insert: {
+          agente_autuador?: string | null
           codigo_infracao?: string | null
           created_at?: string | null
           data_multa?: string | null
+          data_vencimento?: string | null
           descricao?: string | null
+          gravidade?: string | null
+          hora_infracao?: string | null
           id?: string
+          local_infracao?: string | null
+          municipio?: string | null
+          numero_auto?: string | null
+          observacoes?: string | null
+          orgao_autuador?: string | null
+          placa_autuada?: string | null
+          pontos?: number | null
           status?: Database["public"]["Enums"]["status_multa"] | null
+          uf_infracao?: string | null
           updated_at?: string | null
           valor?: number | null
           veiculo_id?: string | null
         }
         Update: {
+          agente_autuador?: string | null
           codigo_infracao?: string | null
           created_at?: string | null
           data_multa?: string | null
+          data_vencimento?: string | null
           descricao?: string | null
+          gravidade?: string | null
+          hora_infracao?: string | null
           id?: string
+          local_infracao?: string | null
+          municipio?: string | null
+          numero_auto?: string | null
+          observacoes?: string | null
+          orgao_autuador?: string | null
+          placa_autuada?: string | null
+          pontos?: number | null
           status?: Database["public"]["Enums"]["status_multa"] | null
+          uf_infracao?: string | null
           updated_at?: string | null
           valor?: number | null
           veiculo_id?: string | null
