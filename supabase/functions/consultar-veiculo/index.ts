@@ -58,6 +58,7 @@ serve(async (req) => {
     // - Sinesp Cidadão (requer cadastro)
     // - APIs privadas de consulta veicular
 
+    // Retorna apenas os dados que conseguimos inferir pela placa
     const dadosVeiculo: VeiculoResponse = {
       success: true,
       dados: {
@@ -74,66 +75,7 @@ serve(async (req) => {
       source: 'mock',
     };
 
-    // Tentar consulta real via API gratuita (se disponível)
-    try {
-      // Usando API pública de consulta de placas
-      // Nota: Em produção, usar uma API paga/confiável
-      const apiUrl = `https://wdapi2.com.br/consulta/${placaNormalizada}/85eeb5abe203a8fbbb2d45c64ebef78c`;
-      
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data && !data.error && !data.erro) {
-          dadosVeiculo.dados = {
-            placa: formatPlaca(placaNormalizada),
-            marca: data.MARCA || data.marca || '',
-            modelo: data.MODELO || data.modelo || '',
-            ano: data.ano || data.ANO || '',
-            anoModelo: data.anoModelo || data.ANO_MODELO || '',
-            cor: data.cor || data.COR || '',
-            combustivel: data.combustivel || data.COMBUSTIVEL || '',
-            uf: data.uf || data.UF || ufEstimada,
-            cidade: data.cidade || data.CIDADE || data.municipio || '',
-          };
-          dadosVeiculo.source = 'api_brasil';
-          console.log('Dados obtidos da API:', dadosVeiculo.dados.modelo);
-        }
-      }
-    } catch (apiError) {
-      console.log('API externa não disponível, usando dados estimados');
-    }
-
-    // Se não conseguiu dados da API, tentar consulta alternativa
-    if (!dadosVeiculo.dados?.modelo) {
-      try {
-        // API alternativa gratuita
-        const altUrl = `https://placas-brasileiras.firebaseio.com/veiculos/${placaNormalizada}.json`;
-        const altResponse = await fetch(altUrl);
-        
-        if (altResponse.ok) {
-          const altData = await altResponse.json();
-          if (altData) {
-            dadosVeiculo.dados = {
-              ...dadosVeiculo.dados!,
-              marca: altData.marca || '',
-              modelo: altData.modelo || '',
-              ano: altData.ano || '',
-              cor: altData.cor || '',
-            };
-            dadosVeiculo.source = 'api_brasil';
-          }
-        }
-      } catch {
-        console.log('API alternativa não disponível');
-      }
-    }
+    console.log('UF estimada pela placa:', ufEstimada || 'não identificada');
 
     console.log('Retornando dados do veículo:', dadosVeiculo.dados?.modelo || 'não encontrado');
 

@@ -387,23 +387,20 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId }:
           </div>
         )}
 
-        {/* Indicador de dados obtidos via API externa */}
-        {fonteVeiculo === 'api' && !veiculoEncontrado && (
-          <div className="mt-3 p-3 bg-yellow-100 border border-yellow-300 rounded-lg flex items-center gap-2">
-            <i className="ri-global-line text-yellow-600"></i>
-            <span className="text-sm text-yellow-800">
-              <strong>Veículo não cadastrado.</strong> Dados básicos obtidos via consulta externa.
-            </span>
-          </div>
-        )}
-
-        {/* Indicador de veículo não encontrado */}
-        {!buscandoPlaca && dados.placa.length >= 7 && !veiculoEncontrado && fonteVeiculo !== 'api' && (
-          <div className="mt-3 p-3 bg-gray-100 border border-gray-300 rounded-lg flex items-center gap-2">
-            <i className="ri-information-line text-gray-600"></i>
-            <span className="text-sm text-gray-700">
-              Veículo não encontrado. Preencha os dados manualmente.
-            </span>
+        {/* Indicador de veículo não encontrado - preencher manualmente */}
+        {!buscandoPlaca && dados.placa.length >= 7 && !veiculoEncontrado && (
+          <div className="mt-3 p-3 bg-amber-50 border border-amber-300 rounded-lg">
+            <div className="flex items-center gap-2 mb-1">
+              <i className="ri-edit-line text-amber-600"></i>
+              <span className="text-sm font-medium text-amber-800">
+                Veículo não cadastrado no sistema
+              </span>
+            </div>
+            <p className="text-xs text-amber-700">
+              {detranDetectado 
+                ? `Estado detectado pela placa: ${getNomeEstado(detranDetectado.sigla_estado)}. Preencha os demais dados manualmente (modelo, RENAVAM, proprietário).`
+                : 'Preencha todos os dados do veículo e proprietário manualmente.'}
+            </p>
           </div>
         )}
       </div>
