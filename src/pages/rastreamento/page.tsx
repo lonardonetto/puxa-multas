@@ -8,6 +8,7 @@ import { useVeiculos } from '../../hooks/useVeiculos';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
+import { supabase } from '../../lib/supabase';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -33,6 +34,7 @@ export default function Rastreamento() {
   const [modalAberto, setModalAberto] = useState(false);
   const [tipoRastreamento, setTipoRastreamento] = useState<'frota' | 'individual' | null>(null);
   const [multaSelecionada, setMultaSelecionada] = useState<MultaRastreada | null>(null);
+  const [multaParaEditar, setMultaParaEditar] = useState<MultaRastreada | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [formData, setFormData] = useState({
     nomeCliente: '',
@@ -85,6 +87,25 @@ export default function Rastreamento() {
     const matchTipo = filtroTipo === 'todos' || multa.codigoInfracao.includes(filtroTipo);
     return matchBusca && matchStatus && matchTipo;
   });
+
+  // Função para excluir multa
+  const handleDeleteMulta = async (multaId: string, placa: string) => {
+    if (!confirm(`Tem certeza que deseja excluir a multa do veículo ${placa}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('multas').delete().eq('id', multaId);
+      
+      if (error) throw error;
+
+      toast.success('Multa excluída com sucesso');
+      refresh();
+    } catch (error) {
+      console.error('Erro ao excluir multa:', error);
+      toast.error('Erro ao excluir multa');
+    }
+  };
 
   const abrirModal = (tipo: 'frota' | 'individual') => {
     setTipoRastreamento(tipo);
@@ -637,22 +658,25 @@ export default function Rastreamento() {
                             <i className="ri-robot-line mr-1"></i>
                             Gerar Recurso IA
                           </button>
-                          <button className="px-4 py-2 bg-[#1E3A8A] text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors cursor-pointer whitespace-nowrap">
-                            <i className="ri-money-dollar-circle-line mr-1"></i>
-                            Pagar Multa
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMultaParaEditar(multa);
+                            }}
+                            className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                            title="Editar multa"
+                          >
+                            <i className="ri-pencil-line text-lg"></i>
                           </button>
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              setMultaSelecionada(multa);
+                              handleDeleteMulta(multa.id, multa.placa);
                             }}
-                            className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#1E3A8A] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                            title="Ver detalhes"
+                            className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            title="Excluir multa"
                           >
-                            <i className="ri-eye-line text-lg"></i>
-                          </button>
-                          <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#1E3A8A] transition-colors cursor-pointer">
-                            <i className="ri-more-2-fill text-lg"></i>
+                            <i className="ri-delete-bin-line text-lg"></i>
                           </button>
                         </div>
                       </td>

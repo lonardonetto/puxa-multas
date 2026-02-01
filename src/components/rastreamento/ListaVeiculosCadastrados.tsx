@@ -30,6 +30,7 @@ interface PlanoPrecos {
 
 interface Props {
   onRefreshMultas: () => void;
+  onEditVeiculo?: (veiculo: VeiculoCadastrado) => void;
 }
 
 const formatCurrency = (value: number) => {
@@ -47,12 +48,13 @@ const formatDate = (dateString: string | null) => {
   });
 };
 
-export default function ListaVeiculosCadastrados({ onRefreshMultas }: Props) {
+export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeiculo }: Props) {
   const { currentOrganization } = useOrganization();
   const { balance, checkBalance, deductCredits } = useWallet();
   const [veiculos, setVeiculos] = useState<VeiculoCadastrado[]>([]);
   const [loading, setLoading] = useState(true);
   const [rastreando, setRastreando] = useState<string | null>(null);
+  const [deletando, setDeletando] = useState<string | null>(null);
   const [precos, setPrecos] = useState<PlanoPrecos>({
     preco_rastreamento: 50,
     rastreamento_pf_preco: 50,
@@ -95,6 +97,32 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas }: Props) {
       fetchVeiculos();
     }
   }, [currentOrganization?.id]);
+
+  const handleDeleteVeiculo = async (veiculoId: string, placa: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o veículo ${placa}? Esta ação também excluirá todas as multas associadas.`)) {
+      return;
+    }
+
+    setDeletando(veiculoId);
+    try {
+      // Primeiro excluir multas do veículo
+      await supabase.from('multas').delete().eq('veiculo_id', veiculoId);
+      
+      // Depois excluir o veículo
+      const { error } = await supabase.from('veiculos').delete().eq('id', veiculoId);
+      
+      if (error) throw error;
+
+      toast.success(`Veículo ${placa} excluído com sucesso`);
+      await fetchVeiculos();
+      onRefreshMultas();
+    } catch (error) {
+      console.error('Erro ao excluir veículo:', error);
+      toast.error('Erro ao excluir veículo');
+    } finally {
+      setDeletando(null);
+    }
+  };
 
   const fetchVeiculos = async () => {
     if (!currentOrganization?.id) return;
@@ -340,23 +368,39 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas }: Props) {
                   <p className="text-sm text-gray-600">{formatDate(veiculo.ultima_consulta)}</p>
                 </td>
                 <td className="py-4 px-4">
-                  <button
-                    onClick={() => rastrearMultas(veiculo)}
-                    disabled={rastreando === veiculo.id}
-                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center whitespace-nowrap"
-                  >
-                    {rastreando === veiculo.id ? (
-                      <>
-                        <i className="ri-loader-4-line animate-spin mr-2"></i>
-                        Consultando...
-                      </>
-                    ) : (
-                      <>
-                        <i className="ri-search-line mr-2"></i>
-                        Rastrear Multas ({formatCurrency(getPrecoConsulta(veiculo.tipo_pessoa))})
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => rastrearMultas(veiculo)}
+                      disabled={rastreando === veiculo.id}
+                      className="px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-xs font-medium hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center whitespace-nowrap"
+                    >
+                      {rastreando === veiculo.id ? (
+                        <>
+                          <i className="ri-loader-4-line animate-spin mr-1"></i>
+                          Consultando...
+                        </>
+                      ) : (
+                        <>
+                          <i className="ri-search-line mr-1"></i>
+                          Rastrear ({formatCurrency(getPrecoConsulta(veiculo.tipo_pessoa))})
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => onEditVeiculo?.(veiculo)}
+                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Editar veículo"
+                    >
+                      <i className="ri-pencil-line text-lg"></i>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteVeiculo(veiculo.id, veiculo.placa)}
+                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Excluir veículo"
+                    >
+                      <i className="ri-delete-bin-line text-lg"></i>
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
