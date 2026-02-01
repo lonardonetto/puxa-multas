@@ -491,7 +491,12 @@ export default function Rastreamento() {
       )}
 
       {/* Lista de Veículos Cadastrados com opção de Rastrear Multas */}
-      <ListaVeiculosCadastrados onRefreshMultas={refresh} />
+      <ListaVeiculosCadastrados 
+        onRefreshMultas={refresh} 
+        onEditVeiculo={(veiculo) => {
+          toast.info(`Edição do veículo ${veiculo.placa} - funcionalidade em desenvolvimento`);
+        }}
+      />
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
