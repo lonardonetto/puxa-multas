@@ -6,6 +6,7 @@ interface FormularioRecursoProps {
   onSubmit: (dados: DadosRecurso) => Promise<void>;
   gerando: boolean;
   organizationId: string;
+  dadosIniciais?: Partial<DadosRecurso>;
 }
 
 export interface DadosRecurso {
@@ -72,7 +73,7 @@ interface VeiculoEncontrado {
   } | null;
 }
 
-export default function FormularioRecurso({ onSubmit, gerando, organizationId }: FormularioRecursoProps) {
+export default function FormularioRecurso({ onSubmit, gerando, organizationId, dadosIniciais }: FormularioRecursoProps) {
   // Estados do formulário
   const [dados, setDados] = useState<DadosRecurso>({
     nomeRecorrente: '',
@@ -100,6 +101,7 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId }:
     detranId: null,
     detranNome: null,
     estadoDetran: null,
+    ...dadosIniciais, // Aplicar dados iniciais se fornecidos
   });
 
   // Estados auxiliares
