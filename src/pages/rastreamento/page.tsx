@@ -1,8 +1,21 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMultasRastreamento, MultaRastreada } from '../../hooks/useMultasRastreamento';
+
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+};
+
+const formatDate = (dateString: string) => {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('pt-BR');
+};
 
 export default function Rastreamento() {
   const navigate = useNavigate();
+  const { multas: multasReais, loading, contadores, refresh } = useMultasRastreamento();
+  
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [filtroTipo, setFiltroTipo] = useState('todos');
   const [busca, setBusca] = useState('');
@@ -18,18 +31,13 @@ export default function Rastreamento() {
     numeroVeiculos: '',
   });
 
-  const multas = [
-    { id: 1, placa: 'ABC-1234', tipo: '5169 - Dirigir sob efeito de substância que cause dependência', status: 'suspensiva', data: '15/12/2024', valor: 'R$ 2.934,70', pontos: 7 },
-    { id: 2, placa: 'DEF-5678', tipo: '5797 - Estacionar em desacordo com a regulamentação', status: 'analise', data: '14/12/2024', valor: 'R$ 130,16', pontos: 3 },
-    { id: 3, placa: 'GHI-9012', tipo: '5274 - Manobras perigosas (arrancada brusca, derrapagem ou frenagem)', status: 'suspensiva', data: '13/12/2024', valor: 'R$ 2.934,70', pontos: 7 },
-    { id: 4, placa: 'JKL-3456', tipo: '5240 - Disputar corrida (racha)', status: 'concluido', data: '12/12/2024', valor: 'R$ 2.934,70', pontos: 7 },
-    { id: 5, placa: 'MNO-7890', tipo: '5266 - Participar em competição ou evento sem permissão', status: 'analise', data: '11/12/2024', valor: 'R$ 2.934,70', pontos: 7 },
-    { id: 6, placa: 'PQR-2345', tipo: '5290 - Deixar de adotar providências para evitar perigo no trânsito', status: 'suspensiva', data: '10/12/2024', valor: 'R$ 957,70', pontos: 7 },
-    { id: 7, placa: 'STU-6789', tipo: '7617 - Interromper ou perturbar a circulação da via sem autorização', status: 'concluido', data: '09/12/2024', valor: 'R$ 5.746,20', pontos: 7 },
-    { id: 8, placa: 'VWX-0123', tipo: '7579 - Forçar passagem entre veículos em sentidos opostos', status: 'analise', data: '08/12/2024', valor: 'R$ 2.934,70', pontos: 7 },
-    { id: 9, placa: 'YZA-4567', tipo: '7471 - Transitar em velocidade superior à máxima em mais de 50%', status: 'concluido', data: '07/12/2024', valor: 'R$ 880,41', pontos: 7 },
-    { id: 10, placa: 'BCD-8901', tipo: '5029 - Dirigir veículo com CNH ou PPD cassada', status: 'suspensiva', data: '06/12/2024', valor: 'R$ 880,41', pontos: 7 },
-  ];
+  // Filtrar multas
+  const multasFiltradas = multasReais.filter(multa => {
+    const matchBusca = !busca || multa.placa.toLowerCase().includes(busca.toLowerCase());
+    const matchStatus = filtroStatus === 'todos' || multa.status === filtroStatus;
+    const matchTipo = filtroTipo === 'todos' || multa.codigoInfracao.includes(filtroTipo);
+    return matchBusca && matchStatus && matchTipo;
+  });
 
   const abrirModal = (tipo: 'frota' | 'individual') => {
     setTipoRastreamento(tipo);
@@ -342,7 +350,7 @@ export default function Rastreamento() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Suspensivas</p>
-                <p className="text-2xl font-bold text-gray-800 mt-1">3</p>
+                <p className="text-2xl font-bold text-gray-800 mt-1">{contadores.suspensivas}</p>
               </div>
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
                 <i className="ri-alert-line text-2xl text-[#EF4444]"></i>
@@ -354,7 +362,7 @@ export default function Rastreamento() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Em Análise</p>
-                <p className="text-2xl font-bold text-gray-800 mt-1">4</p>
+                <p className="text-2xl font-bold text-gray-800 mt-1">{contadores.emAnalise}</p>
               </div>
               <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
                 <i className="ri-time-line text-2xl text-[#F59E0B]"></i>
@@ -366,7 +374,7 @@ export default function Rastreamento() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Concluídos</p>
-                <p className="text-2xl font-bold text-gray-800 mt-1">3</p>
+                <p className="text-2xl font-bold text-gray-800 mt-1">{contadores.concluidos}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                 <i className="ri-check-line text-2xl text-[#10B981]"></i>
@@ -375,106 +383,118 @@ export default function Rastreamento() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Placa</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Tipo de Multa</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Data</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Valor</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Pontos</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {multas.map((multa) => (
-                <tr key={multa.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                  <td className="py-4 px-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-[#1E3A8A] rounded-lg flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">{multa.placa.substring(0, 3)}</span>
-                      </div>
-                      <span className="text-sm font-semibold text-gray-800">{multa.placa}</span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 text-sm text-gray-700">{multa.tipo}</td>
-                  <td className="py-4 px-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${multa.status === 'suspensiva' ? 'bg-red-100 text-[#EF4444]' :
-                      multa.status === 'analise' ? 'bg-yellow-100 text-[#F59E0B]' :
-                        'bg-green-100 text-[#10B981]'
-                      }`}>
-                      {multa.status === 'suspensiva' ? 'Suspensiva' :
-                        multa.status === 'analise' ? 'Em Análise' :
-                          'Concluído'}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 text-sm text-gray-700">{multa.data}</td>
-                  <td className="py-4 px-4 text-sm font-semibold text-gray-800">{multa.valor}</td>
-                  <td className="py-4 px-4">
-                    <span className="px-2 py-1 bg-gray-100 rounded text-xs font-medium text-gray-700">
-                      {multa.pontos} pts
-                    </span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Extrair código da infração do tipo (ex: "5169 - Dirigir...")
-                          const codigoInfracao = multa.tipo.split(' - ')[0];
-                          const descricaoInfracao = multa.tipo.split(' - ').slice(1).join(' - ');
-                          
-                          // Navegar para recursos-ia com dados pré-preenchidos
-                          const params = new URLSearchParams({
-                            placa: multa.placa,
-                            codigoInfracao,
-                            descricaoInfracao,
-                            valorMulta: multa.valor.replace('R$ ', '').replace('.', '').replace(',', '.'),
-                            pontos: String(multa.pontos),
-                            dataInfracao: multa.data.split('/').reverse().join('-'), // Converte DD/MM/YYYY para YYYY-MM-DD
-                          });
-                          
-                          navigate(`/recursos-ia?${params.toString()}`);
-                        }}
-                        className="px-4 py-2 bg-[#10B981] text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors cursor-pointer whitespace-nowrap"
-                      >
-                        <i className="ri-robot-line mr-1"></i>
-                        Gerar Recurso IA
-                      </button>
-                      <button className="px-4 py-2 bg-[#1E3A8A] text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors cursor-pointer whitespace-nowrap">
-                        <i className="ri-money-dollar-circle-line mr-1"></i>
-                        Pagar Multa
-                      </button>
-                      <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#1E3A8A] transition-colors cursor-pointer">
-                        <i className="ri-eye-line text-lg"></i>
-                      </button>
-                      <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#1E3A8A] transition-colors cursor-pointer">
-                        <i className="ri-more-2-fill text-lg"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex items-center justify-between mt-6">
-          <p className="text-sm text-gray-600">Mostrando 10 de 1.247 multas</p>
-          <div className="flex items-center space-x-2">
-            <button className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap">
-              Anterior
-            </button>
-            <button className="px-3 py-2 bg-[#1E3A8A] text-white rounded-lg text-sm font-medium cursor-pointer">1</button>
-            <button className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">2</button>
-            <button className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">3</button>
-            <button className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap">
-              Próximo
-            </button>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-gray-600">Carregando multas...</span>
           </div>
-        </div>
+        ) : multasFiltradas.length === 0 ? (
+          <div className="text-center py-12">
+            <i className="ri-file-list-3-line text-5xl text-gray-300 mb-4"></i>
+            <p className="text-gray-500">Nenhuma multa encontrada</p>
+            <p className="text-sm text-gray-400 mt-1">
+              Cadastre veículos e multas para visualizá-los aqui
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Placa</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Tipo de Multa</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Data</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Valor</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Pontos</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {multasFiltradas.map((multa) => (
+                    <tr key={multa.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <td className="py-4 px-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-[#1E3A8A] rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">{multa.placa.substring(0, 3)}</span>
+                          </div>
+                          <div>
+                            <span className="text-sm font-semibold text-gray-800">{multa.placa}</span>
+                            {multa.clienteNome && (
+                              <p className="text-xs text-gray-500">{multa.clienteNome}</p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-gray-700">
+                        {multa.codigoInfracao} - {multa.descricaoInfracao.substring(0, 50)}{multa.descricaoInfracao.length > 50 ? '...' : ''}
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                          multa.status === 'suspensiva' ? 'bg-red-100 text-[#EF4444]' :
+                          multa.status === 'analise' ? 'bg-yellow-100 text-[#F59E0B]' :
+                          multa.status === 'pendente' ? 'bg-gray-100 text-gray-600' :
+                          'bg-green-100 text-[#10B981]'
+                        }`}>
+                          {multa.status === 'suspensiva' ? 'Suspensiva' :
+                           multa.status === 'analise' ? 'Em Análise' :
+                           multa.status === 'pendente' ? 'Pendente' :
+                           'Concluído'}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-gray-700">{formatDate(multa.dataMulta)}</td>
+                      <td className="py-4 px-4 text-sm font-semibold text-gray-800">{formatCurrency(multa.valor)}</td>
+                      <td className="py-4 px-4">
+                        <span className="px-2 py-1 bg-gray-100 rounded text-xs font-medium text-gray-700">
+                          {multa.pontos} pts
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center space-x-2">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Navegar para recursos-ia com dados pré-preenchidos
+                              const params = new URLSearchParams({
+                                placa: multa.placa,
+                                codigoInfracao: multa.codigoInfracao,
+                                descricaoInfracao: multa.descricaoInfracao,
+                                valorMulta: String(multa.valor),
+                                pontos: String(multa.pontos),
+                                dataInfracao: multa.dataMulta,
+                              });
+                              
+                              navigate(`/recursos-ia?${params.toString()}`);
+                            }}
+                            className="px-4 py-2 bg-[#10B981] text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors cursor-pointer whitespace-nowrap"
+                          >
+                            <i className="ri-robot-line mr-1"></i>
+                            Gerar Recurso IA
+                          </button>
+                          <button className="px-4 py-2 bg-[#1E3A8A] text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors cursor-pointer whitespace-nowrap">
+                            <i className="ri-money-dollar-circle-line mr-1"></i>
+                            Pagar Multa
+                          </button>
+                          <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#1E3A8A] transition-colors cursor-pointer">
+                            <i className="ri-eye-line text-lg"></i>
+                          </button>
+                          <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#1E3A8A] transition-colors cursor-pointer">
+                            <i className="ri-more-2-fill text-lg"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex items-center justify-between mt-6">
+              <p className="text-sm text-gray-600">Mostrando {multasFiltradas.length} de {contadores.total} multas</p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
