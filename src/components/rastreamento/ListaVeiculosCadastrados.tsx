@@ -366,3 +366,5 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas }: Props) {
     </div>
   );
 }
+
+export { ListaVeiculosCadastrados };
