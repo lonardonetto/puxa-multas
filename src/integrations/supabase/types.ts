@@ -1402,7 +1402,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_organization_ids: {
+        Args: { p_user_id: string }
+        Returns: string[]
+      }
+      user_belongs_to_organization: {
+        Args: { p_org_id: string; p_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       billing_status: "pending" | "paid" | "overdue" | "cancelled"
