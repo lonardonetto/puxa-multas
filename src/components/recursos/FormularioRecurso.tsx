@@ -150,17 +150,38 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
   // Mas PRESERVAR os valores vindos do rastreamento (valorMulta, pontos, gravidade reais)
   useEffect(() => {
     if (dadosIniciais?.codigoInfracao && infracoes.length > 0) {
-      const infracao = infracoes.find(i => i.codigo === dadosIniciais.codigoInfracao);
+      const codigoBuscado = String(dadosIniciais.codigoInfracao).trim();
+      
+      // Buscar por código exato ou parcial (alguns DETRANs adicionam zeros à esquerda)
+      const infracao = infracoes.find(i => {
+        const codigoTabela = String(i.codigo).trim();
+        return codigoTabela === codigoBuscado || 
+               codigoTabela.replace(/^0+/, '') === codigoBuscado.replace(/^0+/, '');
+      });
+      
+      console.log('Buscando infração:', codigoBuscado, 'Encontrada:', infracao?.codigo);
+      
       if (infracao) {
         setDados(prev => ({
           ...prev,
-          codigoInfracao: infracao.codigo,
+          codigoInfracao: infracao.codigo, // Usar o código exato da tabela para o select funcionar
           // Usar descrição da tabela se não veio do rastreamento
           descricaoInfracao: dadosIniciais.descricaoInfracao || infracao.descricao,
           // PRESERVAR valores vindos do rastreamento, usar da tabela apenas como fallback
           valorMulta: dadosIniciais.valorMulta || infracao.valor,
           pontos: dadosIniciais.pontos || infracao.pontos,
           gravidade: dadosIniciais.gravidade || infracao.gravidade,
+        }));
+      } else {
+        // Se não encontrar na lista, ainda assim setar o código para exibição
+        console.log('Infração não encontrada na tabela, usando código direto:', codigoBuscado);
+        setDados(prev => ({
+          ...prev,
+          codigoInfracao: codigoBuscado,
+          descricaoInfracao: dadosIniciais.descricaoInfracao || prev.descricaoInfracao,
+          valorMulta: dadosIniciais.valorMulta || prev.valorMulta,
+          pontos: dadosIniciais.pontos ?? prev.pontos,
+          gravidade: dadosIniciais.gravidade || prev.gravidade,
         }));
       }
     }
