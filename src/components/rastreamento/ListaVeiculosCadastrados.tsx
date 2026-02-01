@@ -31,6 +31,7 @@ interface PlanoPrecos {
 interface Props {
   onRefreshMultas: () => void;
   onEditVeiculo?: (veiculo: VeiculoCadastrado) => void;
+  onViewHistorico?: (veiculo: VeiculoCadastrado) => void;
 }
 
 const formatCurrency = (value: number) => {
@@ -48,7 +49,7 @@ const formatDate = (dateString: string | null) => {
   });
 };
 
-export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeiculo }: Props) {
+export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeiculo, onViewHistorico }: Props) {
   const { currentOrganization } = useOrganization();
   const { balance, checkBalance, deductCredits } = useWallet();
   const [veiculos, setVeiculos] = useState<VeiculoCadastrado[]>([]);
@@ -243,6 +244,8 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
       const dados = response.data;
       console.log('Dados recebidos da CertaDoc:', dados);
 
+      let multasEncontradas = 0;
+
       // 3. Processar e salvar multas no banco
       if (dados && dados.multas && Array.isArray(dados.multas)) {
         const multasParaSalvar = dados.multas.map((multa: any) => ({
@@ -264,6 +267,8 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
           status: 'pendente',
         }));
 
+        multasEncontradas = multasParaSalvar.length;
+
         if (multasParaSalvar.length > 0) {
           const { error: insertError } = await supabase
             .from('multas')
@@ -283,7 +288,33 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
         toast.info('Consulta realizada. Nenhuma multa pendente encontrada.');
       }
 
-      // 4. Atualizar lista de veículos e multas
+      // 4. Salvar histórico da consulta
+      if (currentOrganization?.id) {
+        const historicoData = {
+          veiculo_id: veiculo.id,
+          organization_id: currentOrganization.id,
+          placa: veiculo.placa,
+          cliente_nome: veiculo.cliente_nome,
+          cliente_documento: veiculo.cliente_cpf || veiculo.cliente_cnpj,
+          modelo_veiculo: veiculo.modelo,
+          ano_veiculo: veiculo.ano,
+          valor_cobrado: precoConsulta,
+          resposta_api: dados,
+          multas_encontradas: multasEncontradas,
+          status: 'sucesso',
+        };
+
+        const { error: historicoError } = await supabase
+          .from('consultas_rastreamento')
+          .insert(historicoData);
+
+        if (historicoError) {
+          console.error('Erro ao salvar histórico:', historicoError);
+          // Não bloquear o fluxo por erro no histórico
+        }
+      }
+
+      // 5. Atualizar lista de veículos e multas
       await fetchVeiculos();
       onRefreshMultas();
 
@@ -388,6 +419,13 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
                       )}
                     </button>
                     <button
+                      onClick={() => onViewHistorico?.(veiculo)}
+                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                      title="Ver histórico de consultas"
+                    >
+                      <i className="ri-history-line text-lg"></i>
+                    </button>
+                    <button
                       onClick={() => onEditVeiculo?.(veiculo)}
                       className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Editar veículo"
@@ -396,10 +434,15 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
                     </button>
                     <button
                       onClick={() => handleDeleteVeiculo(veiculo.id, veiculo.placa)}
-                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      disabled={deletando === veiculo.id}
+                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                       title="Excluir veículo"
                     >
-                      <i className="ri-delete-bin-line text-lg"></i>
+                      {deletando === veiculo.id ? (
+                        <i className="ri-loader-4-line animate-spin text-lg"></i>
+                      ) : (
+                        <i className="ri-delete-bin-line text-lg"></i>
+                      )}
                     </button>
                   </div>
                 </td>

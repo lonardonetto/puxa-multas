@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMultasRastreamento, MultaRastreada } from '../../hooks/useMultasRastreamento';
 import ModalDetalhesMulta from '../../components/rastreamento/ModalDetalhesMulta';
+import ModalHistoricoConsultas from '../../components/rastreamento/ModalHistoricoConsultas';
 import ListaVeiculosCadastrados from '../../components/rastreamento/ListaVeiculosCadastrados';
 import { useClientes } from '../../hooks/useClientes';
 import { useVeiculos } from '../../hooks/useVeiculos';
@@ -36,6 +37,15 @@ export default function Rastreamento() {
   const [multaSelecionada, setMultaSelecionada] = useState<MultaRastreada | null>(null);
   const [multaParaEditar, setMultaParaEditar] = useState<MultaRastreada | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [historicoModalAberto, setHistoricoModalAberto] = useState(false);
+  const [veiculoParaHistorico, setVeiculoParaHistorico] = useState<{
+    id: string;
+    placa: string;
+    modelo: string;
+    ano: string | null;
+    cliente_nome: string;
+    cliente_documento: string | null;
+  } | null>(null);
   const [formData, setFormData] = useState({
     nomeCliente: '',
     cpfCnpj: '',
@@ -495,6 +505,27 @@ export default function Rastreamento() {
         onRefreshMultas={refresh} 
         onEditVeiculo={(veiculo) => {
           toast.info(`Edição do veículo ${veiculo.placa} - funcionalidade em desenvolvimento`);
+        }}
+        onViewHistorico={(veiculo) => {
+          setVeiculoParaHistorico({
+            id: veiculo.id,
+            placa: veiculo.placa,
+            modelo: veiculo.modelo,
+            ano: veiculo.ano,
+            cliente_nome: veiculo.cliente_nome,
+            cliente_documento: veiculo.cliente_cpf || veiculo.cliente_cnpj,
+          });
+          setHistoricoModalAberto(true);
+        }}
+      />
+      
+      {/* Modal de Histórico de Consultas */}
+      <ModalHistoricoConsultas
+        veiculo={veiculoParaHistorico}
+        isOpen={historicoModalAberto}
+        onClose={() => {
+          setHistoricoModalAberto(false);
+          setVeiculoParaHistorico(null);
         }}
       />
 
