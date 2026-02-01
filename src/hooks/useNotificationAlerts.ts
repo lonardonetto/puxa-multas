@@ -29,21 +29,27 @@ export function useNotificationAlerts() {
         setError(null);
 
         try {
-            // 1. Identify and activate new alerts based on scheduled dates
-            const now = new Date().toISOString();
-            await supabase
-                .from('contratos')
-                .update({ alerta_ativo: true, lido: false })
-                .eq('organization_id', currentOrganization.id)
-                .eq('lembrete_ativado', true)
-                .eq('alerta_ativo', false)
-                .lte('data_proximo_lembrete', now)
-                .filter('cliente_id', 'in',
-                    supabase
-                        .from('clientes')
-                        .select('id')
-                        .eq('ativo', true)
-                );
+            // 1. Fetch active client IDs first
+            const { data: activeClients } = await supabase
+                .from('clientes')
+                .select('id')
+                .eq('ativo', true)
+                .eq('organization_id', currentOrganization.id);
+
+            const activeClientIds = (activeClients || []).map((c: any) => c.id);
+
+            // 2. Identify and activate new alerts based on scheduled dates (only for active clients)
+            if (activeClientIds.length > 0) {
+                const now = new Date().toISOString();
+                await supabase
+                    .from('contratos')
+                    .update({ alerta_ativo: true, lido: false })
+                    .eq('organization_id', currentOrganization.id)
+                    .eq('lembrete_ativado', true)
+                    .eq('alerta_ativo', false)
+                    .lte('data_proximo_lembrete', now)
+                    .in('cliente_id', activeClientIds);
+            }
 
             // 2. Fetch all currently active alerts for ACTIVE clients
             const { data, error: fetchError } = await supabase
