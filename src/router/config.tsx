@@ -3,11 +3,12 @@ import { lazy, Suspense } from 'react';
 import { RouteObject } from 'react-router-dom';
 import { ProtectedRoute } from '../components/guards/ProtectedRoute';
 import { SuperAdminRoute } from '../components/guards/SuperAdminRoute';
+import PageLoader from '../components/ui/PageLoader';
 
 // Add loading fallback component for better UX
 const LoadingFallback = () => (
-  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-    Loading...
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <PageLoader message="Carregando página..." />
   </div>
 );
 
