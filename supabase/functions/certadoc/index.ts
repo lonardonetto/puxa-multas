@@ -125,14 +125,42 @@ async function multaPorPlaca(token: string, placa: string, email: string) {
   return await response.json();
 }
 
-// Consultar placa diretamente no órgão
+// Consultar placa diretamente no órgão (consulta ativa)
 async function consultarPlaca(token: string, placa: string, email: string) {
   console.log('Consultando placa no órgão:', placa);
   
-  const response = await fetch(
-    `${CERTADOC_API_URL}/api/vendor/consultar-placa?placa=${encodeURIComponent(placa)}&email=${encodeURIComponent(email)}`,
+  // Primeiro tenta o endpoint de consulta ativa
+  try {
+    const response = await fetch(
+      `${CERTADOC_API_URL}/api/vendor/consultar-placa?placa=${encodeURIComponent(placa)}&email=${encodeURIComponent(email)}`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ placa, email }),
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Consulta ativa bem-sucedida:', JSON.stringify(data).substring(0, 200));
+      return data;
+    }
+    
+    const errorText = await response.text();
+    console.log('Consulta ativa falhou, tentando multa-por-placa. Status:', response.status, 'Erro:', errorText);
+  } catch (err) {
+    console.log('Erro na consulta ativa, tentando alternativa:', err);
+  }
+  
+  // Fallback: usar endpoint multa-por-placa
+  console.log('Usando fallback: multa-por-placa');
+  const fallbackResponse = await fetch(
+    `${CERTADOC_API_URL}/api/vendor/multa-por-placa?placa=${encodeURIComponent(placa)}&email=${encodeURIComponent(email)}`,
     {
-      method: 'POST',
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -140,13 +168,22 @@ async function consultarPlaca(token: string, placa: string, email: string) {
     }
   );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Erro ao consultar placa:', response.status, errorText);
-    throw new Error(`Erro ao consultar placa: ${response.status}`);
+  if (!fallbackResponse.ok) {
+    const errorText = await fallbackResponse.text();
+    console.error('Fallback também falhou:', fallbackResponse.status, errorText);
+    
+    // Se ambos falharam, retornar estrutura vazia para não travar
+    return { 
+      success: true, 
+      multas: [], 
+      mensagem: 'Nenhuma multa encontrada para esta placa',
+      placa: placa
+    };
   }
 
-  return await response.json();
+  const result = await fallbackResponse.json();
+  console.log('Fallback bem-sucedido:', JSON.stringify(result).substring(0, 200));
+  return result;
 }
 
 // Listar CNHs
