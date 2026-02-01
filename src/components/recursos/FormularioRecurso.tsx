@@ -135,6 +135,25 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
     carregarInfracoes();
   }, []);
 
+  // Pré-selecionar infração quando dados iniciais são fornecidos
+  useEffect(() => {
+    if (dadosIniciais?.codigoInfracao && infracoes.length > 0 && !dados.descricaoInfracao) {
+      const infracao = infracoes.find(i => i.codigo === dadosIniciais.codigoInfracao);
+      if (infracao) {
+        setDados(prev => ({
+          ...prev,
+          codigoInfracao: infracao.codigo,
+          descricaoInfracao: infracao.descricao,
+          valorMulta: infracao.valor,
+          pontos: infracao.pontos,
+          gravidade: infracao.gravidade,
+          // Manter data se veio dos dados iniciais
+          dataInfracao: dadosIniciais.dataInfracao || prev.dataInfracao,
+        }));
+      }
+    }
+  }, [dadosIniciais, infracoes]);
+
   // Estado para fonte dos dados
   const [fonteVeiculo, setFonteVeiculo] = useState<'interno' | 'api' | null>(null);
 
