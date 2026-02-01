@@ -74,8 +74,8 @@ export default function AddCreditsModal({ organization, onClose, onSuccess }: Ad
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-card rounded-xl shadow-xl w-full max-w-md border border-border">
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md border border-border">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div>
