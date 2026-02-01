@@ -19,6 +19,13 @@ interface VeiculoCadastrado {
   cliente_cnpj: string | null;
   multas_count: number;
   ultima_consulta: string | null;
+  tipo_pessoa: 'fisica' | 'juridica';
+}
+
+interface PlanoPrecos {
+  preco_rastreamento: number;
+  rastreamento_pf_preco: number;
+  rastreamento_frota_preco: number;
 }
 
 interface Props {
@@ -46,9 +53,42 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas }: Props) {
   const [veiculos, setVeiculos] = useState<VeiculoCadastrado[]>([]);
   const [loading, setLoading] = useState(true);
   const [rastreando, setRastreando] = useState<string | null>(null);
+  const [precos, setPrecos] = useState<PlanoPrecos>({
+    preco_rastreamento: 50,
+    rastreamento_pf_preco: 50,
+    rastreamento_frota_preco: 50,
+  });
 
-  // Preço por consulta de rastreamento
-  const PRECO_CONSULTA = 5.00;
+  // Buscar preços do plano da organização
+  useEffect(() => {
+    const fetchPrecos = async () => {
+      if (!currentOrganization?.plano) return;
+      
+      const { data: plano } = await supabase
+        .from('planos')
+        .select('preco_rastreamento, rastreamento_pf_preco, rastreamento_frota_preco')
+        .eq('slug', currentOrganization.plano)
+        .eq('ativo', true)
+        .single();
+
+      if (plano) {
+        setPrecos({
+          preco_rastreamento: plano.preco_rastreamento || 50,
+          rastreamento_pf_preco: plano.rastreamento_pf_preco || 50,
+          rastreamento_frota_preco: plano.rastreamento_frota_preco || 50,
+        });
+      }
+    };
+
+    fetchPrecos();
+  }, [currentOrganization?.plano]);
+
+  // Calcular preço baseado no tipo (PF ou Frota/PJ)
+  const getPrecoConsulta = (tipoPessoa: 'fisica' | 'juridica') => {
+    return tipoPessoa === 'juridica' 
+      ? precos.rastreamento_frota_preco 
+      : precos.rastreamento_pf_preco;
+  };
 
   useEffect(() => {
     if (currentOrganization?.id) {
@@ -64,7 +104,7 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas }: Props) {
       // Buscar veículos com rastreamento ativo junto com dados do cliente
       const { data: clientes, error: clientesError } = await supabase
         .from('clientes')
-        .select('id, nome_completo, cpf, cnpj')
+        .select('id, nome_completo, cpf, cnpj, tipo_pessoa')
         .eq('organization_id', currentOrganization.id);
 
       if (clientesError) throw clientesError;
@@ -120,6 +160,7 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas }: Props) {
             cliente_cnpj: cliente?.cnpj || null,
             multas_count: count || 0,
             ultima_consulta: ultimaMulta?.created_at || null,
+            tipo_pessoa: (cliente?.tipo_pessoa as 'fisica' | 'juridica') || 'fisica',
           };
         })
       );
@@ -134,9 +175,11 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas }: Props) {
   };
 
   const rastrearMultas = async (veiculo: VeiculoCadastrado) => {
+    const precoConsulta = getPrecoConsulta(veiculo.tipo_pessoa);
+    
     // Verificar saldo
-    if (!checkBalance(PRECO_CONSULTA)) {
-      toast.error(`Saldo insuficiente. Você precisa de ${formatCurrency(PRECO_CONSULTA)} para rastrear multas.`);
+    if (!checkBalance(precoConsulta)) {
+      toast.error(`Saldo insuficiente. Você precisa de ${formatCurrency(precoConsulta)} para rastrear multas.`);
       return;
     }
 
@@ -145,12 +188,12 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas }: Props) {
     try {
       // 1. Deduzir créditos primeiro
       await deductCredits(
-        PRECO_CONSULTA,
+        precoConsulta,
         `Consulta de multas - Placa ${veiculo.placa}`,
         'rastreamento'
       );
 
-      toast.success(`Cobrança de ${formatCurrency(PRECO_CONSULTA)} realizada. Consultando multas...`);
+      toast.success(`Cobrança de ${formatCurrency(precoConsulta)} realizada. Consultando multas...`);
 
       // 2. Consultar API CertaDoc
       const { data: response, error: funcError } = await supabase.functions.invoke('certadoc', {
@@ -244,7 +287,7 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas }: Props) {
         <div>
           <h3 className="text-lg font-bold text-gray-800">Veículos Cadastrados para Rastreamento</h3>
           <p className="text-sm text-gray-500 mt-1">
-            Consulte multas dos veículos cadastrados. Cada consulta custa {formatCurrency(PRECO_CONSULTA)}
+            Consulte multas dos veículos cadastrados. Preço por consulta varia conforme seu plano.
           </p>
         </div>
         <div className="flex items-center space-x-2 bg-blue-50 px-4 py-2 rounded-lg">
@@ -310,7 +353,7 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas }: Props) {
                     ) : (
                       <>
                         <i className="ri-search-line mr-2"></i>
-                        Rastrear Multas ({formatCurrency(PRECO_CONSULTA)})
+                        Rastrear Multas ({formatCurrency(getPrecoConsulta(veiculo.tipo_pessoa))})
                       </>
                     )}
                   </button>
