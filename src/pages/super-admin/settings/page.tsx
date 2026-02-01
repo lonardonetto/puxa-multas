@@ -21,16 +21,23 @@ export default function SystemSettings() {
     const [anthropicApiKey, setAnthropicApiKey] = useState('');
     const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
     const [savingAi, setSavingAi] = useState(false);
+    const [initialLoaded, setInitialLoaded] = useState(false);
 
-    // Load API settings from database
+    // Load API settings from database - only once when first loaded
     useEffect(() => {
-        if (dbSettings.length > 0) {
-            setAiProvider(getSetting('ai_provider') || 'google');
-            setGoogleApiKey(getSetting('google_ai_api_key') || '');
-            setOpenaiApiKey(getSetting('openai_api_key') || '');
-            setAnthropicApiKey(getSetting('anthropic_api_key') || '');
+        if (dbSettings.length > 0 && !initialLoaded) {
+            const provider = dbSettings.find(s => s.key === 'ai_provider')?.value || 'google';
+            const googleKey = dbSettings.find(s => s.key === 'google_ai_api_key')?.value || '';
+            const openaiKey = dbSettings.find(s => s.key === 'openai_api_key')?.value || '';
+            const anthropicKey = dbSettings.find(s => s.key === 'anthropic_api_key')?.value || '';
+            
+            setAiProvider(provider);
+            setGoogleApiKey(googleKey);
+            setOpenaiApiKey(openaiKey);
+            setAnthropicApiKey(anthropicKey);
+            setInitialLoaded(true);
         }
-    }, [dbSettings, getSetting]);
+    }, [dbSettings, initialLoaded]);
 
     const handleToggle = (key: keyof typeof settings) => {
         if (typeof settings[key] === 'boolean') {
