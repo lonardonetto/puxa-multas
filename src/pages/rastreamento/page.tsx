@@ -2,6 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMultasRastreamento, MultaRastreada } from '../../hooks/useMultasRastreamento';
 import ModalDetalhesMulta from '../../components/rastreamento/ModalDetalhesMulta';
+import { useClientes } from '../../hooks/useClientes';
+import { useVeiculos } from '../../hooks/useVeiculos';
+import { useOrganization } from '../../contexts/OrganizationContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'sonner';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -16,6 +21,10 @@ const formatDate = (dateString: string) => {
 export default function Rastreamento() {
   const navigate = useNavigate();
   const { multas: multasReais, loading, contadores, refresh } = useMultasRastreamento();
+  const { createCliente } = useClientes();
+  const { createVeiculo, createVeiculosBatch } = useVeiculos();
+  const { currentOrganization } = useOrganization();
+  const { user } = useAuth();
   
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [filtroTipo, setFiltroTipo] = useState('todos');
@@ -23,12 +32,13 @@ export default function Rastreamento() {
   const [modalAberto, setModalAberto] = useState(false);
   const [tipoRastreamento, setTipoRastreamento] = useState<'frota' | 'individual' | null>(null);
   const [multaSelecionada, setMultaSelecionada] = useState<MultaRastreada | null>(null);
+  const [salvando, setSalvando] = useState(false);
   const [formData, setFormData] = useState({
     nomeCliente: '',
     cpfCnpj: '',
     email: '',
     telefone: '',
-    placas: [''],
+    placas: [{ placa: '', modelo: '', ano: '', renavam: '' }],
     nomeEmpresa: '',
     numeroVeiculos: '',
   });
@@ -88,14 +98,17 @@ export default function Rastreamento() {
       cpfCnpj: '',
       email: '',
       telefone: '',
-      placas: [''],
+      placas: [{ placa: '', modelo: '', ano: '', renavam: '' }],
       nomeEmpresa: '',
       numeroVeiculos: '',
     });
   };
 
   const adicionarPlaca = () => {
-    setFormData({ ...formData, placas: [...formData.placas, ''] });
+    setFormData({ 
+      ...formData, 
+      placas: [...formData.placas, { placa: '', modelo: '', ano: '', renavam: '' }] 
+    });
   };
 
   const removerPlaca = (index: number) => {
@@ -103,16 +116,86 @@ export default function Rastreamento() {
     setFormData({ ...formData, placas: novasPlacas });
   };
 
-  const atualizarPlaca = (index: number, valor: string) => {
+  const atualizarPlaca = (index: number, campo: 'placa' | 'modelo' | 'ano' | 'renavam', valor: string) => {
     const novasPlacas = [...formData.placas];
-    novasPlacas[index] = valor;
+    novasPlacas[index] = { ...novasPlacas[index], [campo]: valor };
     setFormData({ ...formData, placas: novasPlacas });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Dados do formulário:', formData);
-    fecharModal();
+    
+    if (!currentOrganization) {
+      toast.error('Organização não encontrada');
+      return;
+    }
+
+    if (!user) {
+      toast.error('Usuário não autenticado');
+      return;
+    }
+
+    // Validar que tem pelo menos uma placa preenchida
+    const placasValidas = formData.placas.filter(p => p.placa.trim() !== '');
+    if (placasValidas.length === 0) {
+      toast.error('Informe pelo menos uma placa');
+      return;
+    }
+
+    setSalvando(true);
+    
+    try {
+      // 1. Criar o cliente
+      const tipoPessoa = tipoRastreamento === 'frota' ? 'juridica' : 'fisica';
+      const clienteData = {
+        user_id: user.id,
+        nome_completo: formData.nomeCliente,
+        tipo_pessoa: tipoPessoa as 'fisica' | 'juridica',
+        cpf: tipoPessoa === 'fisica' ? formData.cpfCnpj : null,
+        cnpj: tipoPessoa === 'juridica' ? formData.cpfCnpj : null,
+        razao_social: tipoRastreamento === 'frota' ? formData.nomeEmpresa : null,
+        nome_fantasia: tipoRastreamento === 'frota' ? formData.nomeEmpresa : null,
+        email: formData.email,
+        celular: formData.telefone,
+        organization_id: currentOrganization.id,
+        ativo: true,
+      };
+
+      const cliente = await createCliente(clienteData);
+      
+      if (!cliente) {
+        throw new Error('Falha ao criar cliente');
+      }
+
+      // 2. Criar os veículos com rastreamento ativo
+      const veiculosData = placasValidas.map(p => ({
+        placa: p.placa.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+        modelo: p.modelo || 'Não informado',
+        ano: p.ano || null,
+        renavam: p.renavam || null,
+        cliente_id: cliente.id,
+        rastreamento_ativo: true,
+        rastreamento_inicio: new Date().toISOString(),
+        rastreamento_valor: tipoRastreamento === 'frota' ? 50 : 60,
+        ativo: true,
+      }));
+
+      if (veiculosData.length === 1) {
+        await createVeiculo(veiculosData[0]);
+      } else {
+        await createVeiculosBatch(veiculosData);
+      }
+
+      toast.success(`${placasValidas.length} veículo(s) cadastrado(s) com sucesso!`);
+      fecharModal();
+      refresh(); // Atualizar lista de multas
+      
+    } catch (error) {
+      console.error('Erro ao cadastrar:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao cadastrar rastreamento');
+    } finally {
+      setSalvando(false);
+    }
   };
 
   return (
@@ -287,26 +370,67 @@ export default function Rastreamento() {
                     Adicionar Placa
                   </button>
                 </div>
-                <div className="space-y-3">
-                  {formData.placas.map((placa, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <input
-                        type="text"
-                        required
-                        value={placa}
-                        onChange={(e) => atualizarPlaca(index, e.target.value)}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
-                        placeholder="ABC-1234"
-                      />
-                      {formData.placas.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removerPlaca(index)}
-                          className="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <i className="ri-delete-bin-line text-lg"></i>
-                        </button>
-                      )}
+                <div className="space-y-4">
+                  {formData.placas.map((veiculoData, index) => (
+                    <div key={index} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-medium text-gray-700">Veículo {index + 1}</span>
+                        {formData.placas.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removerPlaca(index)}
+                            className="text-red-500 hover:text-red-700 text-sm cursor-pointer"
+                          >
+                            <i className="ri-delete-bin-line mr-1"></i>
+                            Remover
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Placa *</label>
+                          <input
+                            type="text"
+                            required
+                            value={veiculoData.placa}
+                            onChange={(e) => atualizarPlaca(index, 'placa', e.target.value.toUpperCase())}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                            placeholder="ABC1D23"
+                            maxLength={7}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Modelo</label>
+                          <input
+                            type="text"
+                            value={veiculoData.modelo}
+                            onChange={(e) => atualizarPlaca(index, 'modelo', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                            placeholder="Ex: Fiat Uno"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Ano</label>
+                          <input
+                            type="text"
+                            value={veiculoData.ano}
+                            onChange={(e) => atualizarPlaca(index, 'ano', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                            placeholder="2024"
+                            maxLength={4}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">RENAVAM</label>
+                          <input
+                            type="text"
+                            value={veiculoData.renavam}
+                            onChange={(e) => atualizarPlaca(index, 'renavam', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                            placeholder="00000000000"
+                          />
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -316,16 +440,27 @@ export default function Rastreamento() {
                 <button
                   type="button"
                   onClick={fecharModal}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap"
+                  disabled={salvando}
+                  className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-[#10B981] text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors cursor-pointer whitespace-nowrap"
+                  disabled={salvando}
+                  className="px-6 py-2 bg-[#10B981] text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50 flex items-center"
                 >
-                  <i className="ri-check-line mr-2"></i>
-                  Cadastrar Rastreamento
+                  {salvando ? (
+                    <>
+                      <i className="ri-loader-4-line animate-spin mr-2"></i>
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <i className="ri-check-line mr-2"></i>
+                      Cadastrar Rastreamento
+                    </>
+                  )}
                 </button>
               </div>
             </form>
