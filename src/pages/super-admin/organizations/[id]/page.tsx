@@ -163,7 +163,7 @@ export default function OrganizationDetailsPage() {
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
               <i className="ri-wallet-3-line text-xl text-green-600"></i>
             </div>
-            <p className="text-sm text-muted-foreground">Saldo Sacável</p>
+            <p className="text-sm text-muted-foreground">Saldo Disponível</p>
           </div>
           <p className="text-2xl font-black text-green-600">{formatCurrency(org.saldo_sacavel)}</p>
         </div>
@@ -173,7 +173,7 @@ export default function OrganizationDetailsPage() {
             <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
               <i className="ri-gift-line text-xl text-purple-600"></i>
             </div>
-            <p className="text-sm text-muted-foreground">Saldo Bônus</p>
+            <p className="text-sm text-muted-foreground">Bônus</p>
           </div>
           <p className="text-2xl font-black text-purple-600">{formatCurrency(org.saldo_bonus)}</p>
         </div>

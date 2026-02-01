@@ -14,7 +14,7 @@ interface AddCreditsModalProps {
 
 export default function AddCreditsModal({ organization, onClose, onSuccess }: AddCreditsModalProps) {
   const [valor, setValor] = useState('');
-  const [tipo, setTipo] = useState<'sacavel' | 'bonus'>('sacavel');
+  const [tipo, setTipo] = useState<'saldo' | 'bonus'>('saldo');
   const [descricao, setDescricao] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -22,6 +22,11 @@ export default function AddCreditsModal({ organization, onClose, onSuccess }: Ad
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
+
+  // Calcular saldo total (saldo_sacavel = saldo disponível, saldo_bonus = bônus)
+  const saldoDisponivel = organization.saldo_sacavel || 0;
+  const saldoBonus = organization.saldo_bonus || 0;
+  const saldoTotal = saldoDisponivel + saldoBonus;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,8 +42,10 @@ export default function AddCreditsModal({ organization, onClose, onSuccess }: Ad
 
     try {
       // Atualizar saldo da organização
-      const campoSaldo = tipo === 'sacavel' ? 'saldo_sacavel' : 'saldo_bonus';
-      const saldoAtual = tipo === 'sacavel' ? organization.saldo_sacavel : organization.saldo_bonus;
+      // tipo 'saldo' -> saldo_sacavel (saldo disponível para uso)
+      // tipo 'bonus' -> saldo_bonus (créditos bônus)
+      const campoSaldo = tipo === 'saldo' ? 'saldo_sacavel' : 'saldo_bonus';
+      const saldoAtual = tipo === 'saldo' ? saldoDisponivel : saldoBonus;
       const novoSaldo = saldoAtual + valorNumerico;
 
       const { error: updateError } = await supabase
@@ -56,7 +63,7 @@ export default function AddCreditsModal({ organization, onClose, onSuccess }: Ad
           valor: valorNumerico,
           tipo: 'adjustment',
           status: 'paid',
-          descricao: descricao || `Crédito ${tipo === 'bonus' ? 'bônus' : 'sacável'} adicionado pelo Super Admin`,
+          descricao: descricao || `Crédito ${tipo === 'bonus' ? 'bônus' : ''} adicionado pelo Super Admin`,
           is_bonus: tipo === 'bonus',
           data_pagamento: new Date().toISOString().split('T')[0]
         });
@@ -93,14 +100,18 @@ export default function AddCreditsModal({ organization, onClose, onSuccess }: Ad
         {/* Saldos Atuais */}
         <div className="p-5 bg-muted/30 border-b border-border">
           <p className="text-xs text-muted-foreground mb-2">Saldos Atuais</p>
-          <div className="flex gap-4">
+          <div className="flex gap-6">
             <div>
-              <p className="text-xs text-muted-foreground">Sacável</p>
-              <p className="font-bold text-green-600">{formatCurrency(organization.saldo_sacavel)}</p>
+              <p className="text-xs text-muted-foreground">Saldo Disponível</p>
+              <p className="font-bold text-green-600">{formatCurrency(saldoDisponivel)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Bônus</p>
-              <p className="font-bold text-purple-600">{formatCurrency(organization.saldo_bonus)}</p>
+              <p className="font-bold text-purple-600">{formatCurrency(saldoBonus)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total</p>
+              <p className="font-bold text-foreground">{formatCurrency(saldoTotal)}</p>
             </div>
           </div>
         </div>
@@ -120,15 +131,15 @@ export default function AddCreditsModal({ organization, onClose, onSuccess }: Ad
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setTipo('sacavel')}
+                onClick={() => setTipo('saldo')}
                 className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-colors ${
-                  tipo === 'sacavel'
+                  tipo === 'saldo'
                     ? 'bg-green-100 border-green-300 text-green-700'
                     : 'bg-muted border-border text-muted-foreground hover:bg-muted/80'
                 }`}
               >
                 <i className="ri-money-dollar-circle-line mr-2"></i>
-                Sacável
+                Saldo
               </button>
               <button
                 type="button"
