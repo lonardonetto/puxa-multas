@@ -119,6 +119,69 @@ export type Database = {
           },
         ]
       }
+      consultas_rastreamento: {
+        Row: {
+          ano_veiculo: string | null
+          cliente_documento: string | null
+          cliente_nome: string | null
+          created_at: string
+          id: string
+          modelo_veiculo: string | null
+          multas_encontradas: number
+          organization_id: string
+          placa: string
+          resposta_api: Json | null
+          status: string
+          valor_cobrado: number
+          veiculo_id: string
+        }
+        Insert: {
+          ano_veiculo?: string | null
+          cliente_documento?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          id?: string
+          modelo_veiculo?: string | null
+          multas_encontradas?: number
+          organization_id: string
+          placa: string
+          resposta_api?: Json | null
+          status?: string
+          valor_cobrado?: number
+          veiculo_id: string
+        }
+        Update: {
+          ano_veiculo?: string | null
+          cliente_documento?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          id?: string
+          modelo_veiculo?: string | null
+          multas_encontradas?: number
+          organization_id?: string
+          placa?: string
+          resposta_api?: Json | null
+          status?: string
+          valor_cobrado?: number
+          veiculo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultas_rastreamento_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultas_rastreamento_veiculo_id_fkey"
+            columns: ["veiculo_id"]
+            isOneToOne: false
+            referencedRelation: "veiculos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contratos: {
         Row: {
           alerta_ativo: boolean | null
