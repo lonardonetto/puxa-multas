@@ -5,6 +5,7 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import { supabase } from '../../lib/supabase';
 import { useWallet } from '../../hooks/useWallet';
 import { useNavigate } from 'react-router-dom';
+import { getEstadoFromPlaca, getNomeEstado } from '../../utils/placaUtils';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -46,6 +47,32 @@ export default function RecursosIA() {
   const [infracoes, setInfracoes] = useState<Infracao[]>([]);
   const [tiposRecurso, setTiposRecurso] = useState<string[]>([]);
   const [loadingDados, setLoadingDados] = useState(true);
+  const [estadoDetectado, setEstadoDetectado] = useState<string | null>(null);
+  const [detranSelecionado, setDetranSelecionado] = useState<any | null>(null);
+
+  // Detectar estado pela placa
+  useEffect(() => {
+    if (placa && placa.length >= 3) {
+      const estado = getEstadoFromPlaca(placa);
+      setEstadoDetectado(estado);
+      
+      // Buscar o DETRAN do estado
+      if (estado) {
+        supabase
+          .from('orgaos_transito')
+          .select('*')
+          .eq('sigla_estado', estado)
+          .eq('tipo', 'DETRAN')
+          .single()
+          .then(({ data }) => {
+            setDetranSelecionado(data);
+          });
+      }
+    } else {
+      setEstadoDetectado(null);
+      setDetranSelecionado(null);
+    }
+  }, [placa]);
 
   // Carregar infrações e tipos de recurso do banco
   useEffect(() => {
@@ -115,17 +142,24 @@ export default function RecursosIA() {
       // Simular delay da IA
       await new Promise(resolve => setTimeout(resolve, 2000));
 
+      // Determinar a instância baseado no tipo selecionado
+      const instanciaMap: Record<string, 'defesa_previa' | 'jari' | 'cetran'> = {
+        'defesa_previa': 'defesa_previa',
+        'jari': 'jari', 
+        'cetran': 'cetran'
+      };
+      const instancia = instanciaMap[tipoRecurso] || 'defesa_previa';
+
       const { error } = await supabase
-        .from('recursos' as any)
+        .from('recursos')
         .insert({
-          tipo: tipoRecurso || 'Recurso IA',
           status: 'rascunho',
-          instancia: 'defesa_previa',
-          conteudo: `Recurso gerado via IA para a placa ${placa}. Situação: ${descricao}`,
+          instancia: instancia,
+          conteudo: `Recurso gerado via IA para a placa ${placa}. ${estadoDetectado ? `Estado: ${getNomeEstado(estadoDetectado)}` : ''}. Infração: ${tipoMulta}. Situação: ${descricao}`,
           organization_id: currentOrganization.id,
-          is_ia: true,
-          multa_id: '00000000-0000-0000-0000-000000000000' // Placeholder se não houver multa vinculada
-        } as any);
+          is_ia: true
+          // Não enviamos multa_id pois é opcional e não temos uma multa vinculada
+        });
 
       if (error) throw error;
 
@@ -301,9 +335,30 @@ export default function RecursosIA() {
                 type="text"
                 placeholder="Ex: ABC-1234"
                 value={placa}
-                onChange={(e) => setPlaca(e.target.value)}
+                onChange={(e) => setPlaca(e.target.value.toUpperCase())}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                maxLength={8}
               />
+              {/* Exibir DETRAN detectado pela placa */}
+              {estadoDetectado && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <i className="ri-map-pin-line text-blue-600"></i>
+                    <span className="text-sm font-medium text-blue-800">
+                      DETRAN detectado: {detranSelecionado?.nome || `DETRAN-${estadoDetectado}`}
+                    </span>
+                  </div>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Estado: {getNomeEstado(estadoDetectado)}
+                    {detranSelecionado?.prazo_defesa_previa && (
+                      <> • Prazo Defesa: {detranSelecionado.prazo_defesa_previa} dias</>
+                    )}
+                    {detranSelecionado?.prazo_jari && (
+                      <> • Prazo JARI: {detranSelecionado.prazo_jari} dias</>
+                    )}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>

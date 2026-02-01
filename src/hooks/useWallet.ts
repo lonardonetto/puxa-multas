@@ -13,7 +13,7 @@ export function useWallet() {
         return totalBalance >= amount;
     }, [currentOrganization]);
 
-    const deductCredits = useCallback(async (amount: number, description: string, category: string = 'consumo') => {
+    const deductCredits = useCallback(async (amount: number, description: string, _category: string = 'consumo') => {
         if (!currentOrganization || !user) throw new Error('Organização ou usuário não identificado');
 
         const saldoSacavel = currentOrganization.saldo_sacavel || 0;
@@ -45,23 +45,22 @@ export function useWallet() {
 
         if (updateError) throw updateError;
 
-        // Registrar no faturamento (extrato)
-        const { error: billingError } = await (supabase
-            .from('faturamento') as any)
+        // Registrar no faturamento (extrato) - usando apenas colunas que existem
+        const { error: billingError } = await supabase
+            .from('faturamento')
             .insert({
                 organization_id: currentOrganization.id,
-                user_id: user.id,
                 descricao: description,
-                valor: -amount,
+                valor: amount, // Valor positivo, representa o custo
                 status: 'paid',
-                categoria: category,
-                metodo_pagamento: 'saldo_interno'
+                tipo: 'system_usage',
+                metodo_pagamento: 'balance',
+                data_pagamento: new Date().toISOString().split('T')[0]
             });
 
         if (billingError) {
             console.error('Erro ao registrar extrato:', billingError);
-            // Não lançamos erro aqui para não travar a experiência do usuário se a dedução já ocorreu, 
-            // mas o log é importante para auditoria.
+            // Não lançamos erro aqui para não travar a experiência do usuário
         }
 
         await refreshOrganizations();
