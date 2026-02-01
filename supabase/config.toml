@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.consultar-veiculo]
 verify_jwt = false
+
+[functions.certadoc]
+verify_jwt = false
