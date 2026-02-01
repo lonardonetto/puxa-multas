@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Rastreamento() {
+  const navigate = useNavigate();
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [filtroTipo, setFiltroTipo] = useState('todos');
   const [busca, setBusca] = useState('');
@@ -417,9 +419,29 @@ export default function Rastreamento() {
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center space-x-2">
-                      <button className="px-4 py-2 bg-[#10B981] text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors cursor-pointer whitespace-nowrap">
-                        <i className="ri-file-text-line mr-1"></i>
-                        Criar Recurso
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Extrair código da infração do tipo (ex: "5169 - Dirigir...")
+                          const codigoInfracao = multa.tipo.split(' - ')[0];
+                          const descricaoInfracao = multa.tipo.split(' - ').slice(1).join(' - ');
+                          
+                          // Navegar para recursos-ia com dados pré-preenchidos
+                          const params = new URLSearchParams({
+                            placa: multa.placa,
+                            codigoInfracao,
+                            descricaoInfracao,
+                            valorMulta: multa.valor.replace('R$ ', '').replace('.', '').replace(',', '.'),
+                            pontos: String(multa.pontos),
+                            dataInfracao: multa.data.split('/').reverse().join('-'), // Converte DD/MM/YYYY para YYYY-MM-DD
+                          });
+                          
+                          navigate(`/recursos-ia?${params.toString()}`);
+                        }}
+                        className="px-4 py-2 bg-[#10B981] text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors cursor-pointer whitespace-nowrap"
+                      >
+                        <i className="ri-robot-line mr-1"></i>
+                        Gerar Recurso IA
                       </button>
                       <button className="px-4 py-2 bg-[#1E3A8A] text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors cursor-pointer whitespace-nowrap">
                         <i className="ri-money-dollar-circle-line mr-1"></i>

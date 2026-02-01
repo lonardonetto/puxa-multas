@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useCurrentPlan } from '../../hooks/useCurrentPlan';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { supabase } from '../../lib/supabase';
 import { useWallet } from '../../hooks/useWallet';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import FormularioRecurso, { DadosRecurso } from '../../components/recursos/FormularioRecurso';
 import VisualizadorRecurso from '../../components/recursos/VisualizadorRecurso';
 
@@ -18,6 +18,28 @@ export default function RecursosIA() {
   const { plan, prices, usage, refresh } = useCurrentPlan();
   const { balance, deductCredits } = useWallet();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Extrair dados pré-preenchidos da URL (vindos da página de rastreamento)
+  const dadosIniciais = useMemo(() => {
+    const placa = searchParams.get('placa');
+    const codigoInfracao = searchParams.get('codigoInfracao');
+    const descricaoInfracao = searchParams.get('descricaoInfracao');
+    const valorMulta = searchParams.get('valorMulta');
+    const pontos = searchParams.get('pontos');
+    const dataInfracao = searchParams.get('dataInfracao');
+    
+    if (!placa && !codigoInfracao) return undefined;
+    
+    return {
+      placa: placa || '',
+      codigoInfracao: codigoInfracao || '',
+      descricaoInfracao: descricaoInfracao || '',
+      valorMulta: valorMulta ? parseFloat(valorMulta) : 0,
+      pontos: pontos ? parseInt(pontos) : 0,
+      dataInfracao: dataInfracao || '',
+    };
+  }, [searchParams]);
   
   const [gerando, setGerando] = useState(false);
   const [recursoGerado, setRecursoGerado] = useState<string | null>(null);
@@ -229,6 +251,25 @@ export default function RecursosIA() {
       {/* Formulário */}
       {!recursoGerado && (
         <div className="bg-white rounded-lg shadow-md p-6">
+          {/* Banner indicando dados pré-preenchidos */}
+          {dadosIniciais && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <i className="ri-flashlight-line text-xl text-blue-600"></i>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-blue-800">
+                    Dados importados do Rastreamento de Multas
+                  </p>
+                  <p className="text-xs text-blue-600">
+                    Placa: <strong>{dadosIniciais.placa}</strong> | Infração: <strong>{dadosIniciais.codigoInfracao}</strong>
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="flex items-center space-x-3 mb-6">
             <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
               <i className="ri-robot-line text-2xl text-white"></i>
@@ -243,6 +284,7 @@ export default function RecursosIA() {
             onSubmit={handleGerarRecurso}
             gerando={gerando}
             organizationId={currentOrganization?.id || ''}
+            dadosIniciais={dadosIniciais}
           />
         </div>
       )}
