@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMultasRastreamento, MultaRastreada } from '../../hooks/useMultasRastreamento';
 import ModalDetalhesMulta from '../../components/rastreamento/ModalDetalhesMulta';
+import ListaVeiculosCadastrados from '../../components/rastreamento/ListaVeiculosCadastrados';
 import { useClientes } from '../../hooks/useClientes';
 import { useVeiculos } from '../../hooks/useVeiculos';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -467,6 +468,9 @@ export default function Rastreamento() {
           </div>
         </div>
       )}
+
+      {/* Lista de Veículos Cadastrados com opção de Rastrear Multas */}
+      <ListaVeiculosCadastrados onRefreshMultas={refresh} />
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
