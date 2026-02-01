@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMultasRastreamento, MultaRastreada } from '../../hooks/useMultasRastreamento';
 import ModalDetalhesMulta from '../../components/rastreamento/ModalDetalhesMulta';
 import ModalHistoricoConsultas from '../../components/rastreamento/ModalHistoricoConsultas';
+import ModalEditarVeiculo from '../../components/rastreamento/ModalEditarVeiculo';
 import ListaVeiculosCadastrados from '../../components/rastreamento/ListaVeiculosCadastrados';
 import { useClientes } from '../../hooks/useClientes';
 import { useVeiculos } from '../../hooks/useVeiculos';
@@ -38,6 +39,18 @@ export default function Rastreamento() {
   const [multaParaEditar, setMultaParaEditar] = useState<MultaRastreada | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [historicoModalAberto, setHistoricoModalAberto] = useState(false);
+  const [editarVeiculoModalAberto, setEditarVeiculoModalAberto] = useState(false);
+  const [veiculoParaEditar, setVeiculoParaEditar] = useState<{
+    id: string;
+    placa: string;
+    modelo: string;
+    ano: string | null;
+    renavam: string | null;
+    rastreamento_ativo: boolean;
+    rastreamento_valor: number;
+    cliente_id: string;
+    cliente_nome: string;
+  } | null>(null);
   const [veiculoParaHistorico, setVeiculoParaHistorico] = useState<{
     id: string;
     placa: string;
@@ -504,7 +517,18 @@ export default function Rastreamento() {
       <ListaVeiculosCadastrados 
         onRefreshMultas={refresh} 
         onEditVeiculo={(veiculo) => {
-          toast.info(`Edição do veículo ${veiculo.placa} - funcionalidade em desenvolvimento`);
+          setVeiculoParaEditar({
+            id: veiculo.id,
+            placa: veiculo.placa,
+            modelo: veiculo.modelo,
+            ano: veiculo.ano,
+            renavam: veiculo.renavam,
+            rastreamento_ativo: veiculo.rastreamento_ativo,
+            rastreamento_valor: veiculo.rastreamento_valor,
+            cliente_id: veiculo.cliente_id,
+            cliente_nome: veiculo.cliente_nome,
+          });
+          setEditarVeiculoModalAberto(true);
         }}
         onViewHistorico={(veiculo) => {
           setVeiculoParaHistorico({
@@ -516,6 +540,19 @@ export default function Rastreamento() {
             cliente_documento: veiculo.cliente_cpf || veiculo.cliente_cnpj,
           });
           setHistoricoModalAberto(true);
+        }}
+      />
+
+      {/* Modal de Editar Veículo */}
+      <ModalEditarVeiculo
+        veiculo={veiculoParaEditar}
+        isOpen={editarVeiculoModalAberto}
+        onClose={() => {
+          setEditarVeiculoModalAberto(false);
+          setVeiculoParaEditar(null);
+        }}
+        onSave={() => {
+          refresh();
         }}
       />
       
