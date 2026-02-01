@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSuperAdminStats } from '../../../hooks/useSuperAdminStats';
+import { useSuperAdminStats, OrganizationDetail } from '../../../hooks/useSuperAdminStats';
+import AddCreditsModal from '../../../components/super-admin/AddCreditsModal';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -8,7 +9,8 @@ const formatCurrency = (value: number) => {
 
 export default function SuperAdminClientes() {
   const navigate = useNavigate();
-  const { stats, loading } = useSuperAdminStats();
+  const { stats, loading, refresh } = useSuperAdminStats();
+  const [selectedOrg, setSelectedOrg] = useState<OrganizationDetail | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPlan, setFilterPlan] = useState('todos');
   const [sortBy, setSortBy] = useState<'nome' | 'gasto' | 'saldo' | 'recursos'>('nome');
@@ -214,7 +216,7 @@ export default function SuperAdminClientes() {
                         <i className="ri-eye-line text-primary"></i>
                       </button>
                       <button
-                        onClick={() => {/* TODO: Adicionar créditos */}}
+                        onClick={() => setSelectedOrg(org)}
                         className="p-2 hover:bg-green-100 rounded-lg transition-colors"
                         title="Adicionar créditos"
                       >
@@ -235,6 +237,15 @@ export default function SuperAdminClientes() {
           </div>
         )}
       </div>
+
+      {/* Modal de Adicionar Créditos */}
+      {selectedOrg && (
+        <AddCreditsModal
+          organization={selectedOrg}
+          onClose={() => setSelectedOrg(null)}
+          onSuccess={() => refresh()}
+        />
+      )}
     </div>
   );
 }
