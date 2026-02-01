@@ -55,7 +55,7 @@ export function useRecursos(): UseRecursosReturn {
                 .order('created_at', { ascending: false });
 
             if (fetchError) throw fetchError;
-            return data || [];
+            return (data || []) as any;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao buscar recursos'));
             return [];
@@ -75,7 +75,7 @@ export function useRecursos(): UseRecursosReturn {
                 .order('data_ultima_notificacao', { ascending: true });
 
             if (fetchError) throw fetchError;
-            return data || [];
+            return (data || []) as any;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao buscar recursos para notificação'));
             return [];
@@ -91,7 +91,7 @@ export function useRecursos(): UseRecursosReturn {
                 .single();
 
             if (fetchError) throw fetchError;
-            return data;
+            return data as any;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao buscar recurso'));
             return null;

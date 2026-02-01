@@ -46,8 +46,8 @@ export function useWallet() {
         if (updateError) throw updateError;
 
         // Registrar no faturamento (extrato)
-        const { error: billingError } = await supabase
-            .from('faturamento')
+        const { error: billingError } = await (supabase
+            .from('faturamento') as any)
             .insert({
                 organization_id: currentOrganization.id,
                 user_id: user.id,

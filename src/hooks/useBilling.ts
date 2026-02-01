@@ -27,7 +27,7 @@ export function useBilling(): UseBillingReturn {
                 .order('created_at', { ascending: false });
 
             if (fetchError) throw fetchError;
-            setBilling(data || []);
+            setBilling((data || []) as any);
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao buscar faturamento'));
         } finally {

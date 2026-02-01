@@ -86,7 +86,7 @@ export function useMultas(): UseMultasReturn {
 
             if (fetchError) throw fetchError;
 
-            const multasList = data || [];
+            const multasList = (data || []) as any;
             setMultas(multasList);
             setStats(calculateStats(multasList));
         } catch (err) {
@@ -105,7 +105,7 @@ export function useMultas(): UseMultasReturn {
                 .order('data_multa', { ascending: false });
 
             if (fetchError) throw fetchError;
-            return data || [];
+            return (data || []) as any;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao buscar multas'));
             return [];
@@ -121,7 +121,7 @@ export function useMultas(): UseMultasReturn {
                 .single();
 
             if (fetchError) throw fetchError;
-            return data;
+            return data as any;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao buscar multa'));
             return null;
@@ -218,7 +218,7 @@ export function useMultas(): UseMultasReturn {
                 .order('data_multa', { ascending: false });
 
             if (searchError) throw searchError;
-            return data || [];
+            return (data || []) as any;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao buscar multas'));
             return [];

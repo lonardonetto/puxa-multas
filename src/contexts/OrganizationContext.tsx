@@ -46,7 +46,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
                 return;
             }
 
-            setUserOrganizations(memberships || []);
+            setUserOrganizations((memberships || []) as any);
 
             // If user has organizations, fetch the first one (or from localStorage)
             if (memberships && memberships.length > 0) {
@@ -67,12 +67,12 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
                         .eq('id', (memberships[0] as any).organization_id)
                         .maybeSingle();
 
-                    setCurrentOrganization(firstOrg);
+                    setCurrentOrganization(firstOrg as any);
                     if (firstOrg) {
                         localStorage.setItem('currentOrganizationId', (firstOrg as any).id);
                     }
                 } else {
-                    setCurrentOrganization(org);
+                    setCurrentOrganization(org as any);
                 }
             }
         } catch (error) {
@@ -122,7 +122,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
 
             if (error) throw error;
 
-            setCurrentOrganization(org);
+            setCurrentOrganization(org as any);
             localStorage.setItem('currentOrganizationId', organizationId);
         } catch (error) {
             console.error('Error switching organization:', error);

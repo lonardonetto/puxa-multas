@@ -28,7 +28,7 @@ export function useOrganizations(): UseOrganizationsReturn {
                 .order('nome');
 
             if (fetchError) throw fetchError;
-            setOrganizations(data || []);
+            setOrganizations((data || []) as any);
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao buscar organizações'));
         } finally {
@@ -45,7 +45,7 @@ export function useOrganizations(): UseOrganizationsReturn {
                 .single();
 
             if (fetchError) throw fetchError;
-            return data;
+            return data as any;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao buscar organização'));
             return null;
@@ -69,7 +69,7 @@ export function useOrganizations(): UseOrganizationsReturn {
                 setOrganizations(prev => [result, ...prev]);
             }
 
-            return data;
+            return data as any;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao criar organização'));
             return null;
@@ -96,7 +96,7 @@ export function useOrganizations(): UseOrganizationsReturn {
                 setOrganizations(prev => prev.map(o => o.id === id ? result : o));
             }
 
-            return data;
+            return data as any;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao atualizar organização'));
             return null;

@@ -1,21 +1,10 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+// Re-export the supabase client from integrations to ensure a single instance
+import { supabase } from '@/integrations/supabase/client';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn('Supabase environment variables not configured. Some features may not work.');
-}
-
-// Create an untyped client to avoid strict type checking issues
-// Type safety is handled at the application level via type assertions
-export const supabase: SupabaseClient = createClient(
-    supabaseUrl || '',
-    supabaseAnonKey || ''
-);
+export { supabase };
 
 // Storage bucket name for documents
-export const STORAGE_BUCKET = import.meta.env.VITE_SUPABASE_STORAGE_BUCKET || 'documentos';
+export const STORAGE_BUCKET = 'documentos';
 
 // Helper function to get public URL for stored files
 export const getPublicUrl = (path: string) => {

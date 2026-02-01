@@ -54,7 +54,7 @@ export default function EditaisManagement() {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setEditais(data || []);
+            setEditais((data || []) as any);
         } catch (err) {
             console.error('Erro ao buscar editais:', err);
         } finally {
