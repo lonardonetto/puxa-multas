@@ -24,7 +24,7 @@ export function useWallet() {
             throw new Error('Saldo insuficiente para realizar esta operação');
         }
 
-        // Lógica de dedução: Primeiro usa o bônus, depois o sacável
+        // Lógica de dedução: Primeiro usa o bônus, depois o saldo disponível
         let deductionFromBonus = 0;
         let deductionFromSacavel = 0;
 
@@ -69,7 +69,7 @@ export function useWallet() {
 
     return {
         balance: (currentOrganization?.saldo_sacavel || 0) + (currentOrganization?.saldo_bonus || 0),
-        saldoSacavel: currentOrganization?.saldo_sacavel || 0,
+        saldoDisponivel: currentOrganization?.saldo_sacavel || 0,
         saldoBonus: currentOrganization?.saldo_bonus || 0,
         checkBalance,
         deductCredits

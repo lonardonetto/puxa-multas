@@ -152,9 +152,9 @@ export default function SuperAdminClientes() {
                 <th className="text-center py-4 px-4 font-medium text-muted-foreground">Recursos IA</th>
                 <th className="text-center py-4 px-4 font-medium text-muted-foreground">Contratos</th>
                 <th className="text-center py-4 px-4 font-medium text-muted-foreground">Veículos</th>
-                <th className="text-right py-4 px-4 font-medium text-muted-foreground">Saldo Sacável</th>
-                <th className="text-right py-4 px-4 font-medium text-muted-foreground">Saldo Bônus</th>
-                <th className="text-right py-4 px-4 font-medium text-muted-foreground">Gasto Total</th>
+                <th className="text-right py-4 px-4 font-medium text-muted-foreground">Saldo</th>
+                <th className="text-right py-4 px-4 font-medium text-muted-foreground">Bônus</th>
+                <th className="text-right py-4 px-4 font-medium text-muted-foreground">Consumido</th>
                 <th className="text-center py-4 px-4 font-medium text-muted-foreground">Ações</th>
               </tr>
             </thead>
