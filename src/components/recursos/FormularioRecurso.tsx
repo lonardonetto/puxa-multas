@@ -133,16 +133,21 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId }:
     carregarInfracoes();
   }, []);
 
+  // Estado para fonte dos dados
+  const [fonteVeiculo, setFonteVeiculo] = useState<'interno' | 'api' | null>(null);
+
   // Detectar estado pela placa e buscar dados do veículo
   useEffect(() => {
     const buscarDadosPorPlaca = async () => {
       if (!dados.placa || dados.placa.length < 7) {
         setDetranDetectado(null);
         setVeiculoEncontrado(null);
+        setFonteVeiculo(null);
         return;
       }
 
       setBuscandoPlaca(true);
+      setFonteVeiculo(null);
       
       try {
         // 1. Detectar estado pela placa
@@ -166,13 +171,14 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId }:
           }
         }
 
-        // 2. Buscar veículo no banco interno
+        // 2. Buscar veículo no banco interno PRIMEIRO
         const { data: veiculo, error } = await supabase
           .from('veiculos')
           .select(`
             id,
             placa,
             modelo,
+            ano,
             renavam,
             clientes!inner (
               id,
@@ -189,6 +195,7 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId }:
           .single();
 
         if (!error && veiculo) {
+          // Veículo encontrado no banco interno
           const cliente = (veiculo as any).clientes;
           setVeiculoEncontrado({
             id: veiculo.id,
@@ -206,6 +213,7 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId }:
               endereco: cliente.endereco,
             } : null,
           });
+          setFonteVeiculo('interno');
 
           // Preencher automaticamente os dados
           if (cliente) {
@@ -225,7 +233,32 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId }:
             }));
           }
         } else {
+          // Veículo NÃO encontrado no banco - consultar API externa
           setVeiculoEncontrado(null);
+          
+          try {
+            console.log('Veículo não encontrado no banco, consultando API externa...');
+            const { data: apiData, error: apiError } = await supabase.functions.invoke('consultar-veiculo', {
+              body: { placa: dados.placa },
+            });
+
+            if (!apiError && apiData?.success && apiData?.dados) {
+              const veiculoAPI = apiData.dados;
+              setFonteVeiculo('api');
+              
+              // Preencher dados do veículo obtidos da API
+              setDados(prev => ({
+                ...prev,
+                modelo: veiculoAPI.modelo ? `${veiculoAPI.marca} ${veiculoAPI.modelo}`.trim() : prev.modelo,
+                estado: veiculoAPI.uf || prev.estado,
+                cidade: veiculoAPI.cidade || prev.cidade,
+              }));
+
+              console.log('Dados obtidos da API:', veiculoAPI);
+            }
+          } catch (apiErr) {
+            console.error('Erro ao consultar API externa:', apiErr);
+          }
         }
       } catch (err) {
         console.error('Erro ao buscar dados:', err);
@@ -344,12 +377,32 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId }:
           </div>
         )}
 
-        {/* Indicador de veículo encontrado */}
-        {veiculoEncontrado && (
+        {/* Indicador de veículo encontrado - banco interno */}
+        {veiculoEncontrado && fonteVeiculo === 'interno' && (
           <div className="mt-3 p-3 bg-green-100 border border-green-300 rounded-lg flex items-center gap-2">
             <i className="ri-checkbox-circle-line text-green-600"></i>
             <span className="text-sm text-green-800">
-              Veículo encontrado no sistema! Dados do cliente preenchidos automaticamente.
+              <strong>Veículo cadastrado!</strong> Dados do cliente preenchidos automaticamente.
+            </span>
+          </div>
+        )}
+
+        {/* Indicador de dados obtidos via API externa */}
+        {fonteVeiculo === 'api' && !veiculoEncontrado && (
+          <div className="mt-3 p-3 bg-yellow-100 border border-yellow-300 rounded-lg flex items-center gap-2">
+            <i className="ri-global-line text-yellow-600"></i>
+            <span className="text-sm text-yellow-800">
+              <strong>Veículo não cadastrado.</strong> Dados básicos obtidos via consulta externa.
+            </span>
+          </div>
+        )}
+
+        {/* Indicador de veículo não encontrado */}
+        {!buscandoPlaca && dados.placa.length >= 7 && !veiculoEncontrado && fonteVeiculo !== 'api' && (
+          <div className="mt-3 p-3 bg-gray-100 border border-gray-300 rounded-lg flex items-center gap-2">
+            <i className="ri-information-line text-gray-600"></i>
+            <span className="text-sm text-gray-700">
+              Veículo não encontrado. Preencha os dados manualmente.
             </span>
           </div>
         )}

@@ -2,3 +2,6 @@ project_id = "acyqrpkdsxddkqfaakty"
 
 [functions.generate-recurso]
 verify_jwt = false
+
+[functions.consultar-veiculo]
+verify_jwt = false
