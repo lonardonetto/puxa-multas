@@ -1,0 +1,290 @@
+{
+	"info": {
+		"_postman_id": "e6138ae4-ceb8-4b98-86c0-2884056af15d",
+		"name": "CERTADOC COLLECTION V1.026.0 Copy 3",
+		"description": "Autenticação: POST /api/Login\n\n---\n\nEsta rota é usada para autenticar usuários na API. Ela retorna um token de acesso que deve ser usado nas chamadas subsequentes.\n\n---\n\nCorpo da Requisição  \n{\n\n\"EmailBase64\": \"aW50ZWdyYWNhb0BncnVwb3ZhbW9zLmNv......\",\n\n\"PasswordBase64\": \"VmFtb3NJbnRlZ3JhY2FvQ.......\"\n\n}",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "17702075"
+	},
+	"item": [
+		{
+			"name": "autenticar",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"EmailBase64\": \"dGVzdGVpbWFnZWNuaEBjZXJ0YWRvYy5jb20=\", \"PasswordBase64\": \"QE11ZGFyMjAyNUltZ0NOSGM=\"}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://dev-app-certadoc-api.azurewebsites.net/api/Login",
+					"protocol": "https",
+					"host": [
+						"dev-app-certadoc-api",
+						"azurewebsites",
+						"net"
+					],
+					"path": [
+						"api",
+						"Login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "todas-multas",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImJlZTk3ZDNlLTI1ZGUtNDNjZS04MWU3LTkwMjgxOTgzOGY3NyIsInJvbGUiOiJVc2VyIiwiZW1haWwiOiJ0ZXN0ZWltYWdlY25oQGNlcnRhZG9jLmNvbSIsImp0aSI6ImM3NDhlMTU2LTIzZGEtNDg2Yy1hODEyLWE0NWE5MDQxZTY4OSIsIklzVmVuZG9yIjoidHJ1ZSIsIm5iZiI6MTc2MjI1Mzc4OSwiZXhwIjoxNzYyMjk2OTg5LCJpYXQiOjE3NjIyNTM3ODksImlzcyI6Imlzc3VlciIsImF1ZCI6ImNlcnRhbWFpbCJ9.yfYnx5IWOQDBdqIYaV_j79b2GiuV2hNCrcTkiamdCGs",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://dev-app-certadoc-api.azurewebsites.net/api/vendor/todas-multas?email=testeimagecnh@certadoc.com",
+					"protocol": "https",
+					"host": [
+						"dev-app-certadoc-api",
+						"azurewebsites",
+						"net"
+					],
+					"path": [
+						"api",
+						"vendor",
+						"todas-multas"
+					],
+					"query": [
+						{
+							"key": "email",
+							"value": "testeimagecnh@certadoc.com",
+							"description": "mesmo email utilizado para fazer o login"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "multa-por-placa",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImJlZTk3ZDNlLTI1ZGUtNDNjZS04MWU3LTkwMjgxOTgzOGY3NyIsInJvbGUiOiJVc2VyIiwiZW1haWwiOiJ0ZXN0ZWltYWdlY25oQGNlcnRhZG9jLmNvbSIsImp0aSI6ImM3NDhlMTU2LTIzZGEtNDg2Yy1hODEyLWE0NWE5MDQxZTY4OSIsIklzVmVuZG9yIjoidHJ1ZSIsIm5iZiI6MTc2MjI1Mzc4OSwiZXhwIjoxNzYyMjk2OTg5LCJpYXQiOjE3NjIyNTM3ODksImlzcyI6Imlzc3VlciIsImF1ZCI6ImNlcnRhbWFpbCJ9.yfYnx5IWOQDBdqIYaV_j79b2GiuV2hNCrcTkiamdCGs",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://dev-app-certadoc-api.azurewebsites.net/api/vendor/multa-por-placa?placa=AXE8E35&email=testeimagecnh@certadoc.com",
+					"protocol": "https",
+					"host": [
+						"dev-app-certadoc-api",
+						"azurewebsites",
+						"net"
+					],
+					"path": [
+						"api",
+						"vendor",
+						"multa-por-placa"
+					],
+					"query": [
+						{
+							"key": "placa",
+							"value": "AXE8E35",
+							"description": "listar multas dessa placa que deve existir na base"
+						},
+						{
+							"key": "email",
+							"value": "testeimagecnh@certadoc.com",
+							"description": "mesmo email utilizado para login"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "consultar-placa",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImJlZTk3ZDNlLTI1ZGUtNDNjZS04MWU3LTkwMjgxOTgzOGY3NyIsInJvbGUiOiJVc2VyIiwiZW1haWwiOiJ0ZXN0ZWltYWdlY25oQGNlcnRhZG9jLmNvbSIsImp0aSI6ImM3NDhlMTU2LTIzZGEtNDg2Yy1hODEyLWE0NWE5MDQxZTY4OSIsIklzVmVuZG9yIjoidHJ1ZSIsIm5iZiI6MTc2MjI1Mzc4OSwiZXhwIjoxNzYyMjk2OTg5LCJpYXQiOjE3NjIyNTM3ODksImlzcyI6Imlzc3VlciIsImF1ZCI6ImNlcnRhbWFpbCJ9.yfYnx5IWOQDBdqIYaV_j79b2GiuV2hNCrcTkiamdCGs",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "https://dev-app-certadoc-api.azurewebsites.net/api/vendor/consultar-placa?placa=LZA4D56&email=testeimagecnh@certadoc.com",
+					"protocol": "https",
+					"host": [
+						"dev-app-certadoc-api",
+						"azurewebsites",
+						"net"
+					],
+					"path": [
+						"api",
+						"vendor",
+						"consultar-placa"
+					],
+					"query": [
+						{
+							"key": "placa",
+							"value": "LZA4D56",
+							"description": "placa a ser consultada diretamente no orgão"
+						},
+						{
+							"key": "email",
+							"value": "testeimagecnh@certadoc.com",
+							"description": "mesmo email utilizado para login"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "listagem-cnh",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImJlZTk3ZDNlLTI1ZGUtNDNjZS04MWU3LTkwMjgxOTgzOGY3NyIsInJvbGUiOiJVc2VyIiwiZW1haWwiOiJ0ZXN0ZWltYWdlY25oQGNlcnRhZG9jLmNvbSIsImp0aSI6ImM3NDhlMTU2LTIzZGEtNDg2Yy1hODEyLWE0NWE5MDQxZTY4OSIsIklzVmVuZG9yIjoidHJ1ZSIsIm5iZiI6MTc2MjI1Mzc4OSwiZXhwIjoxNzYyMjk2OTg5LCJpYXQiOjE3NjIyNTM3ODksImlzcyI6Imlzc3VlciIsImF1ZCI6ImNlcnRhbWFpbCJ9.yfYnx5IWOQDBdqIYaV_j79b2GiuV2hNCrcTkiamdCGs",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://dev-app-certadoc-api.azurewebsites.net/api/vendor/listagem-cnh?email=testeimagecnh@certadoc.com",
+					"protocol": "https",
+					"host": [
+						"dev-app-certadoc-api",
+						"azurewebsites",
+						"net"
+					],
+					"path": [
+						"api",
+						"vendor",
+						"listagem-cnh"
+					],
+					"query": [
+						{
+							"key": "email",
+							"value": "testeimagecnh@certadoc.com",
+							"description": "mesmo email utilizado para login"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "consultar-cnh",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImJlZTk3ZDNlLTI1ZGUtNDNjZS04MWU3LTkwMjgxOTgzOGY3NyIsInJvbGUiOiJVc2VyIiwiZW1haWwiOiJ0ZXN0ZWltYWdlY25oQGNlcnRhZG9jLmNvbSIsImp0aSI6ImM3NDhlMTU2LTIzZGEtNDg2Yy1hODEyLWE0NWE5MDQxZTY4OSIsIklzVmVuZG9yIjoidHJ1ZSIsIm5iZiI6MTc2MjI1Mzc4OSwiZXhwIjoxNzYyMjk2OTg5LCJpYXQiOjE3NjIyNTM3ODksImlzcyI6Imlzc3VlciIsImF1ZCI6ImNlcnRhbWFpbCJ9.yfYnx5IWOQDBdqIYaV_j79b2GiuV2hNCrcTkiamdCGs",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://dev-app-certadoc-api.azurewebsites.net/api/vendor/consultar-cnh?cpf=07837719832&email=testeimagecnh@certadoc.com",
+					"protocol": "https",
+					"host": [
+						"dev-app-certadoc-api",
+						"azurewebsites",
+						"net"
+					],
+					"path": [
+						"api",
+						"vendor",
+						"consultar-cnh"
+					],
+					"query": [
+						{
+							"key": "cpf",
+							"value": "07837719832",
+							"description": "cpf a ser consultado"
+						},
+						{
+							"key": "email",
+							"value": "testeimagecnh@certadoc.com",
+							"description": "mesmo email utilizado para login"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "listagem-documento",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImJlZTk3ZDNlLTI1ZGUtNDNjZS04MWU3LTkwMjgxOTgzOGY3NyIsInJvbGUiOiJVc2VyIiwiZW1haWwiOiJ0ZXN0ZWltYWdlY25oQGNlcnRhZG9jLmNvbSIsImp0aSI6ImM3NDhlMTU2LTIzZGEtNDg2Yy1hODEyLWE0NWE5MDQxZTY4OSIsIklzVmVuZG9yIjoidHJ1ZSIsIm5iZiI6MTc2MjI1Mzc4OSwiZXhwIjoxNzYyMjk2OTg5LCJpYXQiOjE3NjIyNTM3ODksImlzcyI6Imlzc3VlciIsImF1ZCI6ImNlcnRhbWFpbCJ9.yfYnx5IWOQDBdqIYaV_j79b2GiuV2hNCrcTkiamdCGs",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://dev-app-certadoc-api.azurewebsites.net/api/vendor/listagem-documentos?email=testeimagecnh@certadoc.com",
+					"protocol": "https",
+					"host": [
+						"dev-app-certadoc-api",
+						"azurewebsites",
+						"net"
+					],
+					"path": [
+						"api",
+						"vendor",
+						"listagem-documentos"
+					],
+					"query": [
+						{
+							"key": "email",
+							"value": "testeimagecnh@certadoc.com",
+							"description": "mesmo email utilizado para login"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
