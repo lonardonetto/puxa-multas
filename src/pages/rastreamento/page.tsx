@@ -4,6 +4,7 @@ import { useMultasRastreamento, MultaRastreada } from '../../hooks/useMultasRast
 import ModalDetalhesMulta from '../../components/rastreamento/ModalDetalhesMulta';
 import ModalHistoricoConsultas from '../../components/rastreamento/ModalHistoricoConsultas';
 import ModalEditarVeiculo from '../../components/rastreamento/ModalEditarVeiculo';
+import ModalEditarMulta from '../../components/rastreamento/ModalEditarMulta';
 import ListaVeiculosCadastrados from '../../components/rastreamento/ListaVeiculosCadastrados';
 import { useClientes } from '../../hooks/useClientes';
 import { useVeiculos } from '../../hooks/useVeiculos';
@@ -777,6 +778,16 @@ export default function Rastreamento() {
           }}
         />
       )}
+
+      {/* Modal de Edição de Multa */}
+      <ModalEditarMulta
+        multa={multaParaEditar}
+        isOpen={!!multaParaEditar}
+        onClose={() => setMultaParaEditar(null)}
+        onSave={() => {
+          refresh();
+        }}
+      />
     </div>
   );
 }
