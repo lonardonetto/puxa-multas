@@ -3,6 +3,11 @@ import { useBilling } from '../../hooks/useBilling';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCurrentPlan } from '../../hooks/useCurrentPlan';
+import { FinancialSummaryCards } from '../../components/checkout/FinancialSummaryCards';
+import { ExtractFilters, type ExtractFiltersState } from '../../components/checkout/ExtractFilters';
+import { ExtractTable } from '../../components/checkout/ExtractTable';
+import { ExtractExport } from '../../components/checkout/ExtractExport';
+import { FinancialChart } from '../../components/checkout/FinancialChart';
 
 export default function Checkout() {
   const { user } = useAuth();
@@ -11,7 +16,15 @@ export default function Checkout() {
   const { plan: planDetails } = useCurrentPlan();
   const [abaSelecionada, setAbaSelecionada] = useState<'extrato' | 'assinatura'>('extrato');
   const [mostrarModalCobranca, setMostrarModalCobranca] = useState(false);
-  const [filtroTipo, setFiltroTipo] = useState<'todos' | 'entrada' | 'saida'>('todos');
+  
+  const [filters, setFilters] = useState<ExtractFiltersState>({
+    tipo: 'todos',
+    status: 'todos',
+    categoria: '',
+    busca: '',
+    dateRange: { from: null, to: null },
+    agrupamento: 'nenhum'
+  });
 
   useEffect(() => {
     if (currentOrganization?.id) {
@@ -20,13 +33,14 @@ export default function Checkout() {
   }, [currentOrganization?.id, fetchBilling]);
 
   const transacoes = billing || [];
-
-  const transacoesFiltradas = useMemo(() => {
-    let filtradas = transacoes;
-    if (filtroTipo === 'entrada') filtradas = transacoes.filter(t => t.valor > 0);
-    if (filtroTipo === 'saida') filtradas = transacoes.filter(t => t.valor < 0);
-    return filtradas;
-  }, [transacoes, filtroTipo]);
+  
+  const categorias = useMemo(() => {
+    const cats = new Set<string>();
+    transacoes.forEach(t => {
+      if ((t as any).categoria) cats.add((t as any).categoria);
+    });
+    return Array.from(cats);
+  }, [transacoes]);
 
   const saldoDisponivel = currentOrganization?.saldo_sacavel || 0;
   const saldoBloqueado = currentOrganization?.saldo_bonus || 0;
@@ -127,88 +141,30 @@ export default function Checkout() {
         <div className="p-8">
           {abaSelecionada === 'extrato' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-4">
-                  {[
-                    { id: 'todos', label: 'Tudo' },
-                    { id: 'entrada', label: 'Recargas' },
-                    { id: 'saida', label: 'Consumo' }
-                  ].map(filtro => (
-                    <button
-                      key={filtro.id}
-                      onClick={() => setFiltroTipo(filtro.id as any)}
-                      className={`text-xs font-black uppercase tracking-widest py-1 border-b-2 transition-all cursor-pointer ${filtroTipo === filtro.id ? 'border-[#1E3A8A] text-[#1E3A8A]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-                    >
-                      {filtro.label}
-                    </button>
-                  ))}
+              {/* Cards de resumo */}
+              <FinancialSummaryCards billing={transacoes} dateRange={filters.dateRange} />
+              
+              {/* Gráfico de evolução */}
+              <FinancialChart billing={transacoes} />
+              
+              {/* Filtros e exportação */}
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                <div className="flex-1">
+                  <ExtractFilters 
+                    filters={filters} 
+                    onFiltersChange={setFilters}
+                    categorias={categorias}
+                  />
                 </div>
-                <button
-                  onClick={() => window.print()}
-                  className="flex items-center text-xs font-bold text-gray-500 hover:text-[#1E3A8A] transition-colors cursor-pointer"
-                >
-                  <i className="ri-printer-line mr-1 text-base"></i>
-                  Imprimir Extrato
-                </button>
+                <ExtractExport 
+                  transacoes={transacoes} 
+                  filters={filters}
+                  organizationName={currentOrganization?.nome}
+                />
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="py-4 px-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">Data</th>
-                      <th className="py-4 px-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">Descrição</th>
-                      <th className="py-4 px-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">Categoria</th>
-                      <th className="py-4 px-2 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Valor</th>
-                      <th className="py-4 px-2 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {transacoesFiltradas.length > 0 ? (
-                      transacoesFiltradas.map((transacao) => (
-                        <tr key={transacao.id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="py-4 px-2">
-                            <p className="text-sm font-bold text-gray-700">
-                              {new Date(transacao.created_at).toLocaleDateString('pt-BR')}
-                            </p>
-                            <p className="text-[10px] text-gray-400 font-mono">
-                              {new Date(transacao.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                          </td>
-                          <td className="py-4 px-2">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${transacao.valor > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                                <i className={transacao.valor > 0 ? 'ri-arrow-left-down-line' : 'ri-arrow-right-up-line'}></i>
-                              </div>
-                              <span className="text-sm text-gray-800 font-bold">{transacao.descricao}</span>
-                            </div>
-                          </td>
-                          <td className="py-4 px-2">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-gray-100 text-gray-600">
-                              {transacao.categoria || 'Outros'}
-                            </span>
-                          </td>
-                          <td className={`py-4 px-2 text-right text-sm font-black ${transacao.valor > 0 ? 'text-[#10B981]' : 'text-red-500'}`}>
-                            {transacao.valor > 0 ? '+' : ''} R$ {transacao.valor.toFixed(2).replace('.', ',')}
-                          </td>
-                          <td className="py-4 px-2 text-center">
-                            <span className={`inline-block w-2 h-2 rounded-full ${transacao.status === 'paid' ? 'bg-[#10B981]' : 'bg-yellow-400'} mr-2`}></span>
-                            <span className={`text-[11px] font-bold uppercase tracking-wider ${transacao.status === 'paid' ? 'text-[#10B981]' : 'text-yellow-700'}`}>
-                              {transacao.status === 'paid' ? 'concluído' : 'pendente'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={5} className="py-12 text-center text-gray-400 italic">
-                          Nenhuma transação encontrada no período.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              {/* Tabela com agrupamento */}
+              <ExtractTable transacoes={transacoes} filters={filters} />
             </div>
           )}
 
