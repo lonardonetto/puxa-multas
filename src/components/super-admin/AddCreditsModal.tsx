@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 
 interface AddCreditsModalProps {
@@ -15,6 +16,7 @@ interface AddCreditsModalProps {
 const PRESET_VALUES = [50, 100, 200, 500];
 
 export default function AddCreditsModal({ organization, onClose, onSuccess }: AddCreditsModalProps) {
+  const navigate = useNavigate();
   const [selectedValue, setSelectedValue] = useState<number | null>(null);
   const [customValue, setCustomValue] = useState('');
   const [tipo, setTipo] = useState<'saldo' | 'bonus'>('saldo');
@@ -89,6 +91,7 @@ export default function AddCreditsModal({ organization, onClose, onSuccess }: Ad
 
       onSuccess();
       onClose();
+      navigate('/super-admin/dashboard');
     } catch (err) {
       console.error('Erro ao adicionar créditos:', err);
       setError('Erro ao adicionar créditos. Tente novamente.');
