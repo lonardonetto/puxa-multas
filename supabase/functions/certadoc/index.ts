@@ -125,12 +125,16 @@ async function multaPorPlaca(token: string, placa: string, email: string) {
   return await response.json();
 }
 
-// Consultar placa - retorna dados do veículo + multas
+// Consultar placa - retorna dados do veículo + multas + restrições
 async function consultarPlaca(token: string, placa: string, email: string) {
   console.log('=== INICIANDO CONSULTA COMPLETA PARA PLACA:', placa, '===');
   
   // PASSO 1: Buscar dados do veículo via consultar-placa
   let dadosVeiculo = null;
+  let restricoesImpedimentos = null;
+  let informacoesTecnicas = null;
+  let respostaCompleta = null;
+  
   try {
     console.log('PASSO 1: Buscando dados do veículo...');
     const veiculoResponse = await fetch(
@@ -146,10 +150,24 @@ async function consultarPlaca(token: string, placa: string, email: string) {
 
     if (veiculoResponse.ok) {
       const veiculoData = await veiculoResponse.json();
-      dadosVeiculo = veiculoData.result?.dados_do_veiculo || veiculoData.dados_do_veiculo || null;
-      console.log('Dados do veículo obtidos:', JSON.stringify(dadosVeiculo).substring(0, 300));
+      respostaCompleta = veiculoData;
+      
+      // Log completo para debug
+      console.log('RESPOSTA COMPLETA consultar-placa:', JSON.stringify(veiculoData).substring(0, 1500));
+      
+      // Extrair dados de diferentes estruturas possíveis
+      const result = veiculoData.result || veiculoData;
+      dadosVeiculo = result.dados_do_veiculo || null;
+      restricoesImpedimentos = result.restricoes_e_impedimentos || null;
+      informacoesTecnicas = result.informacoes_tecnicas_e_adicionais || null;
+      
+      console.log('Dados do veículo:', JSON.stringify(dadosVeiculo)?.substring(0, 300));
+      console.log('Restrições:', JSON.stringify(restricoesImpedimentos)?.substring(0, 300));
+      console.log('Info técnicas:', JSON.stringify(informacoesTecnicas)?.substring(0, 300));
     } else {
       console.log('Consulta de veículo retornou status:', veiculoResponse.status);
+      const errText = await veiculoResponse.text();
+      console.log('Erro:', errText.substring(0, 500));
     }
   } catch (err) {
     console.log('Erro ao buscar dados do veículo (não crítico):', err);
@@ -234,11 +252,19 @@ async function consultarPlaca(token: string, placa: string, email: string) {
 
   console.log('=== TOTAL DE MULTAS CONSOLIDADAS:', todasMultas.length, '===');
 
-  // Retornar estrutura completa
+  // Retornar estrutura completa com TODOS os dados
   return {
     success: true,
     placa: placa,
+    // Dados básicos do veículo
     dados_veiculo: dadosVeiculo,
+    // Dados completos para o modal de preview
+    dados_do_veiculo: dadosVeiculo,
+    restricoes_e_impedimentos: restricoesImpedimentos,
+    informacoes_tecnicas_e_adicionais: informacoesTecnicas,
+    // Resposta bruta para debug
+    resposta_completa: respostaCompleta,
+    // Multas consolidadas
     multas: todasMultas,
     multas_detalhadas: multasData, // Dados brutos categorizados
     total_multas: todasMultas.length,
