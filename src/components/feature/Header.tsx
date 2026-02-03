@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { useNotificationAlerts } from '../../hooks/useNotificationAlerts';
+import { useNotificacoesMultas } from '../../hooks/useNotificacoesMultas';
 import logoCentralMulta from '@/assets/logo-central-multa.png';
 
 interface HeaderProps {
@@ -16,12 +17,16 @@ export default function Header({ darkMode, isSidebarCollapsed, toggleSidebar }: 
   const { signOut, user } = useAuth();
   const { currentOrganization } = useOrganization();
   const { alerts, markAsCheckedIn, clearNotifications } = useNotificationAlerts();
+  const { notificacoes: multasNotif, naoLidas: multasNaoLidas, marcarComoLido: marcarMultaLida, limparNotificacoes: limparMultas } = useNotificacoesMultas();
   const navigate = useNavigate();
   const location = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [notifTab, setNotifTab] = useState<'processos' | 'multas'>('multas');
   const notificationRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  
+  const totalNaoLidas = alerts.filter(a => !a.lido).length + multasNaoLidas.length;
 
   // Cores do tema Central da Multa
   const bgHeader = darkMode ? 'bg-[#1A1A1A]' : 'bg-white';
@@ -93,31 +98,110 @@ export default function Header({ darkMode, isSidebarCollapsed, toggleSidebar }: 
               className={`relative p-2 ${textSecondary} hover:text-primary transition-colors cursor-pointer`}
             >
               <i className="ri-notification-3-line text-xl"></i>
-              {alerts.filter(a => !a.lido).length > 0 && (
+              {totalNaoLidas > 0 && (
                 <span className="absolute top-1 right-1 w-4 h-4 bg-destructive text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {alerts.filter(a => !a.lido).length}
+                  {totalNaoLidas}
                 </span>
               )}
             </button>
 
             {showNotifications && (
               <div
-                className={`absolute right-0 mt-2 w-80 ${dropdownBg} ${borderColor} rounded-lg shadow-xl border py-0 overflow-hidden z-50`}
+                className={`absolute right-0 mt-2 w-96 ${dropdownBg} ${borderColor} rounded-lg shadow-xl border py-0 overflow-hidden z-50`}
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className={`px-4 py-3 border-b ${borderColor} flex justify-between items-center bg-muted`}>
                   <h3 className={`font-bold text-xs uppercase tracking-wider ${textSecondary}`}>Notificações</h3>
-                  <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold uppercase">{alerts.filter(a => !a.lido).length} pendentes</span>
+                  <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold uppercase">{totalNaoLidas} pendentes</span>
                 </div>
-                <div className="max-h-96 overflow-y-auto">
-                  {alerts.length === 0 ? (
-                    <div className={`px-4 py-12 text-center ${textSecondary} text-sm`}>
-                      <i className="ri-notification-off-line text-3xl block mb-2 opacity-10"></i>
-                      Nenhuma notificação no momento
-                    </div>
+                
+                {/* Tabs */}
+                <div className={`flex border-b ${borderColor}`}>
+                  <button
+                    onClick={() => setNotifTab('multas')}
+                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-wide transition-all ${
+                      notifTab === 'multas' 
+                        ? 'text-destructive border-b-2 border-destructive bg-destructive/5' 
+                        : `${textSecondary} hover:bg-muted`
+                    }`}
+                  >
+                    <i className="ri-car-line mr-1"></i>
+                    Multas {multasNaoLidas.length > 0 && <span className="ml-1 bg-destructive text-white text-[9px] px-1.5 py-0.5 rounded-full">{multasNaoLidas.length}</span>}
+                  </button>
+                  <button
+                    onClick={() => setNotifTab('processos')}
+                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-wide transition-all ${
+                      notifTab === 'processos' 
+                        ? 'text-warning border-b-2 border-warning bg-warning/5' 
+                        : `${textSecondary} hover:bg-muted`
+                    }`}
+                  >
+                    <i className="ri-file-list-line mr-1"></i>
+                    Processos {alerts.filter(a => !a.lido).length > 0 && <span className="ml-1 bg-warning text-black text-[9px] px-1.5 py-0.5 rounded-full">{alerts.filter(a => !a.lido).length}</span>}
+                  </button>
+                </div>
+                
+                <div className="max-h-80 overflow-y-auto">
+                  {notifTab === 'multas' ? (
+                    /* Notificações de Multas */
+                    multasNotif.length === 0 ? (
+                      <div className={`px-4 py-12 text-center ${textSecondary} text-sm`}>
+                        <i className="ri-car-line text-3xl block mb-2 opacity-10"></i>
+                        Nenhuma multa nova encontrada
+                      </div>
+                    ) : (
+                      multasNotif.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={`px-4 py-3 ${hoverBg} border-l-4 border-destructive border-b border-muted last:border-b-0 group ${notif.lido ? 'opacity-50' : ''}`}
+                        >
+                          <div className="flex justify-between items-start mb-1">
+                            <p className={`text-xs font-bold ${textPrimary} flex items-center gap-2`}>
+                              <i className="ri-alarm-warning-line text-destructive"></i>
+                              Nova Multa Detectada
+                            </p>
+                            {!notif.lido && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await marcarMultaLida(notif.id);
+                                }}
+                                className="text-[9px] text-primary hover:text-primary/80 font-bold uppercase tracking-tighter transition-all opacity-0 group-hover:opacity-100"
+                              >
+                                MARCAR LIDO
+                              </button>
+                            )}
+                          </div>
+                          <p className={`text-[11px] leading-tight ${textSecondary}`}>
+                            <strong className="text-foreground">{notif.placa}</strong> • {notif.descricao}
+                          </p>
+                          <div className="flex items-center justify-between mt-2">
+                            <p className="text-[10px] text-destructive font-bold flex items-center gap-1">
+                              <i className="ri-money-dollar-circle-line"></i>
+                              R$ {notif.valor?.toFixed(2) || '0,00'}
+                            </p>
+                            <button
+                              onClick={() => {
+                                navigate('/rastreamento');
+                                setShowNotifications(false);
+                              }}
+                              className={`text-[9px] ${textSecondary} font-bold hover:text-primary uppercase flex items-center gap-1`}
+                            >
+                              VER MULTAS <i className="ri-arrow-right-s-line"></i>
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )
                   ) : (
-                    <>
-                      {alerts.map((alert) => (
+                    /* Notificações de Processos */
+                    alerts.length === 0 ? (
+                      <div className={`px-4 py-12 text-center ${textSecondary} text-sm`}>
+                        <i className="ri-notification-off-line text-3xl block mb-2 opacity-10"></i>
+                        Nenhuma notificação de processo
+                      </div>
+                    ) : (
+                      alerts.map((alert) => (
                         <div
                           key={alert.id}
                           className={`px-4 py-4 ${hoverBg} border-l-4 ${alert.tipo === 'urgente' ? 'border-destructive' : 'border-warning'} border-b border-muted last:border-b-0 group ${alert.lido ? 'opacity-50' : ''}`}
@@ -160,21 +244,26 @@ export default function Header({ darkMode, isSidebarCollapsed, toggleSidebar }: 
                             </button>
                           </div>
                         </div>
-                      ))}
-                      <div className={`p-2 border-t ${borderColor} bg-muted`}>
-                        <button
-                          onClick={async () => {
-                            await clearNotifications();
-                            setShowNotifications(false);
-                          }}
-                          className={`w-full py-2 text-[10px] font-bold ${textSecondary} hover:text-destructive hover:bg-destructive/10 rounded-md transition-all uppercase tracking-widest flex items-center justify-center gap-2`}
-                        >
-                          <i className="ri-delete-bin-line text-xs"></i>
-                          Limpar Notificações
-                        </button>
-                      </div>
-                    </>
+                      ))
+                    )
                   )}
+                </div>
+                
+                <div className={`p-2 border-t ${borderColor} bg-muted`}>
+                  <button
+                    onClick={async () => {
+                      if (notifTab === 'multas') {
+                        await limparMultas();
+                      } else {
+                        await clearNotifications();
+                      }
+                      setShowNotifications(false);
+                    }}
+                    className={`w-full py-2 text-[10px] font-bold ${textSecondary} hover:text-destructive hover:bg-destructive/10 rounded-md transition-all uppercase tracking-widest flex items-center justify-center gap-2`}
+                  >
+                    <i className="ri-delete-bin-line text-xs"></i>
+                    Limpar {notifTab === 'multas' ? 'Multas' : 'Processos'}
+                  </button>
                 </div>
               </div>
             )}
