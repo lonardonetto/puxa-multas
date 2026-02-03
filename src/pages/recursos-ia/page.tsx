@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useCurrentPlan } from '../../hooks/useCurrentPlan';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -8,6 +8,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import FormularioRecurso, { DadosRecurso } from '../../components/recursos/FormularioRecurso';
 import VisualizadorRecurso from '../../components/recursos/VisualizadorRecurso';
 import AnimacaoGeracaoRecurso from '../../components/recursos/AnimacaoGeracaoRecurso';
+
+// Chave para persistir recurso em edição
+const RECURSO_SESSAO_KEY = 'recurso_em_edicao';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -89,6 +92,37 @@ export default function RecursosIA() {
   const [confirmacaoCompra, setConfirmacaoCompra] = useState<{ valor: number; dados: DadosRecurso } | null>(null);
   const [processandoCobranca, setProcessandoCobranca] = useState(false);
   const [etapaCobranca, setEtapaCobranca] = useState<'debitando' | 'confirmado'>('debitando');
+
+  // Recuperar recurso em edição do sessionStorage ao carregar a página
+  useEffect(() => {
+    const recursoSalvo = sessionStorage.getItem(RECURSO_SESSAO_KEY);
+    if (recursoSalvo) {
+      try {
+        const dados = JSON.parse(recursoSalvo);
+        if (dados.conteudo && dados.recursoId) {
+          console.log('✅ Recurso recuperado da sessão:', dados.recursoId);
+          setRecursoGerado(dados);
+        }
+      } catch (e) {
+        console.error('Erro ao recuperar recurso da sessão:', e);
+        sessionStorage.removeItem(RECURSO_SESSAO_KEY);
+      }
+    }
+  }, []);
+
+  // Salvar recurso em edição no sessionStorage sempre que mudar
+  useEffect(() => {
+    if (recursoGerado) {
+      sessionStorage.setItem(RECURSO_SESSAO_KEY, JSON.stringify(recursoGerado));
+    }
+  }, [recursoGerado]);
+
+  // Limpar sessão ao finalizar/fechar o visualizador
+  const handleFecharVisualizador = () => {
+    sessionStorage.removeItem(RECURSO_SESSAO_KEY);
+    setRecursoGerado(null);
+    navigate('/rastreamento');
+  };
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -272,11 +306,7 @@ export default function RecursosIA() {
           conteudo={recursoGerado.conteudo}
           recursoId={recursoGerado.recursoId}
           clienteId={idsVinculacao.clienteId || undefined}
-          onClose={() => {
-            setRecursoGerado(null);
-            // Voltar para rastreamento ao concluir
-            navigate('/rastreamento');
-          }}
+          onClose={handleFecharVisualizador}
         />
       )}
 
