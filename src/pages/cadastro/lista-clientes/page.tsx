@@ -1799,20 +1799,29 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                               </div>
 
                               <div className="flex items-center gap-2 ml-4">
-                                {/* Se tem PDF, mostrar botão de download */}
+                                {/* Se tem PDF, mostrar botões de ver e baixar */}
                                 {recurso.pdf_url ? (
-                                  <>
+                                  <div className="flex items-center gap-2">
                                     <a
                                       href={recurso.pdf_url}
                                       target="_blank"
                                       rel="noopener noreferrer"
+                                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                      title="Visualizar PDF no navegador"
+                                    >
+                                      <i className="ri-eye-line"></i>
+                                      Ver Recurso
+                                    </a>
+                                    <a
+                                      href={recurso.pdf_url}
+                                      download
                                       className="px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
                                       title="Baixar PDF"
                                     >
-                                      <i className="ri-file-pdf-line"></i>
-                                      Baixar PDF
+                                      <i className="ri-download-line"></i>
+                                      Baixar
                                     </a>
-                                  </>
+                                  </div>
                                 ) : (
                                   // Se não tem PDF, mostrar botões antigos de imprimir/copiar
                                   <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
