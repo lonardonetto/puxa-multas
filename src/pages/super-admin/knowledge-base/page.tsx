@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -20,6 +20,9 @@ interface RecursoConhecimento {
   status_aprovacao: string | null;
   recurso_origem_id: string | null;
   organization_id: string | null;
+  arquivo_ait_url: string | null;
+  arquivo_deferimento_url: string | null;
+  dados_extraidos_ia: any | null;
 }
 
 const TIPOS_RECURSO = [
@@ -43,6 +46,14 @@ export default function KnowledgeBasePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTipo, setFilterTipo] = useState<string>('all');
   const [filterEstado, setFilterEstado] = useState<string>('all');
+  
+  // Upload states
+  const [uploadingAit, setUploadingAit] = useState(false);
+  const [uploadingDeferimento, setUploadingDeferimento] = useState(false);
+  const [analisandoAit, setAnalisandoAit] = useState(false);
+  const [analisandoDeferimento, setAnalisandoDeferimento] = useState(false);
+  const aitInputRef = useRef<HTMLInputElement>(null);
+  const deferimentoInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -55,6 +66,9 @@ export default function KnowledgeBasePage() {
     data_deferimento: '',
     observacoes: '',
     is_global: true,
+    arquivo_ait_url: '',
+    arquivo_deferimento_url: '',
+    dados_extraidos_ia: null as any,
   });
 
   // Fetch recursos conhecimento
@@ -70,6 +84,112 @@ export default function KnowledgeBasePage() {
       return data as RecursoConhecimento[];
     },
   });
+
+  // Upload file to storage
+  const uploadFile = async (file: File, tipo: 'ait' | 'deferimento'): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${tipo}_${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('conhecimento-ia')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      console.error('Erro no upload:', uploadError);
+      toast.error('Erro ao fazer upload do arquivo');
+      return null;
+    }
+
+    const { data } = supabase.storage
+      .from('conhecimento-ia')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  };
+
+  // Analisar documento com IA
+  const analisarDocumento = async (fileUrl: string, fileType: 'ait' | 'deferimento') => {
+    try {
+      const { data, error } = await supabase.functions.invoke('analisar-documento-conhecimento', {
+        body: { fileUrl, fileType }
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Erro na análise:', error);
+      toast.error('Erro ao analisar documento com IA');
+      return null;
+    }
+  };
+
+  // Handle AIT upload
+  const handleAitUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAit(true);
+    const url = await uploadFile(file, 'ait');
+    setUploadingAit(false);
+
+    if (url) {
+      setFormData(prev => ({ ...prev, arquivo_ait_url: url }));
+      toast.success('AIT enviado! Analisando com IA...');
+      
+      setAnalisandoAit(true);
+      const resultado = await analisarDocumento(url, 'ait');
+      setAnalisandoAit(false);
+
+      if (resultado?.dados) {
+        // Preencher campos automaticamente
+        const dados = resultado.dados;
+        setFormData(prev => ({
+          ...prev,
+          codigo_infracao: dados.codigo_infracao || dados.Código_da_Infração || prev.codigo_infracao,
+          dados_extraidos_ia: {
+            ...prev.dados_extraidos_ia,
+            ait: dados
+          }
+        }));
+        toast.success('Dados do AIT extraídos com sucesso!');
+      }
+    }
+  };
+
+  // Handle Deferimento upload
+  const handleDeferimentoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingDeferimento(true);
+    const url = await uploadFile(file, 'deferimento');
+    setUploadingDeferimento(false);
+
+    if (url) {
+      setFormData(prev => ({ ...prev, arquivo_deferimento_url: url }));
+      toast.success('Deferimento enviado! Analisando com IA...');
+      
+      setAnalisandoDeferimento(true);
+      const resultado = await analisarDocumento(url, 'deferimento');
+      setAnalisandoDeferimento(false);
+
+      if (resultado?.dados) {
+        const dados = resultado.dados;
+        // Extrair argumentos
+        const args = dados.argumentos_aceitos || dados.Argumentos_aceitos || [];
+        setFormData(prev => ({
+          ...prev,
+          argumentos_chave: Array.isArray(args) ? args.join(', ') : prev.argumentos_chave,
+          dados_extraidos_ia: {
+            ...prev.dados_extraidos_ia,
+            deferimento: dados
+          }
+        }));
+        toast.success('Dados do deferimento extraídos com sucesso!');
+      }
+    }
+  };
 
   // Aprovar/Rejeitar mutation
   const aprovarMutation = useMutation({
@@ -107,6 +227,9 @@ export default function KnowledgeBasePage() {
         observacoes: data.observacoes || null,
         is_global: data.is_global,
         status_aprovacao: 'aprovado',
+        arquivo_ait_url: data.arquivo_ait_url || null,
+        arquivo_deferimento_url: data.arquivo_deferimento_url || null,
+        dados_extraidos_ia: data.dados_extraidos_ia || null,
       };
 
       if (data.id) {
@@ -162,6 +285,9 @@ export default function KnowledgeBasePage() {
       data_deferimento: '',
       observacoes: '',
       is_global: true,
+      arquivo_ait_url: '',
+      arquivo_deferimento_url: '',
+      dados_extraidos_ia: null,
     });
     setEditingId(null);
   };
@@ -177,6 +303,9 @@ export default function KnowledgeBasePage() {
       data_deferimento: recurso.data_deferimento || '',
       observacoes: recurso.observacoes || '',
       is_global: recurso.is_global ?? true,
+      arquivo_ait_url: recurso.arquivo_ait_url || '',
+      arquivo_deferimento_url: recurso.arquivo_deferimento_url || '',
+      dados_extraidos_ia: recurso.dados_extraidos_ia || null,
     });
     setEditingId(recurso.id);
     setShowModal(true);
@@ -288,11 +417,11 @@ export default function KnowledgeBasePage() {
             <i className="ri-lightbulb-line text-xl text-purple-600"></i>
           </div>
           <div>
-            <h3 className="font-bold text-purple-900">Fluxo Automático de Recursos Deferidos</h3>
+            <h3 className="font-bold text-purple-900">Upload Inteligente com IA</h3>
             <p className="text-sm text-purple-700 mt-1">
-              Quando um cliente marca um recurso como <strong>"Deferido"</strong>, ele é automaticamente enviado para esta área de análise.
-              Você pode revisar o conteúdo, adicionar argumentos-chave e aprovar para que a IA use como referência.
-              Apenas recursos <strong>aprovados</strong> são utilizados pela IA para gerar novas defesas.
+              Agora você pode <strong>anexar imagens do AIT e do deferimento</strong>. A IA irá analisar automaticamente
+              os documentos, extrair informações relevantes e preencher os campos. Quanto mais exemplos de sucesso, melhor
+              a IA gerará novos recursos!
             </p>
           </div>
         </div>
@@ -369,7 +498,7 @@ export default function KnowledgeBasePage() {
                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Código</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Tipo</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Estado</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Argumentos</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Anexos</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Data</th>
                 <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Ações</th>
               </tr>
@@ -391,16 +520,21 @@ export default function KnowledgeBasePage() {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1">
-                      {recurso.argumentos_chave?.slice(0, 2).map((arg, i) => (
-                        <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
-                          {arg}
-                        </span>
-                      ))}
-                      {(recurso.argumentos_chave?.length || 0) > 2 && (
-                        <span className="text-xs text-gray-400">
-                          +{(recurso.argumentos_chave?.length || 0) - 2}
-                        </span>
+                    <div className="flex gap-2">
+                      {recurso.arquivo_ait_url && (
+                        <a href={recurso.arquivo_ait_url} target="_blank" rel="noopener noreferrer"
+                          className="px-2 py-1 bg-red-50 text-red-600 text-xs rounded flex items-center gap-1 hover:bg-red-100">
+                          <i className="ri-file-text-line"></i> AIT
+                        </a>
+                      )}
+                      {recurso.arquivo_deferimento_url && (
+                        <a href={recurso.arquivo_deferimento_url} target="_blank" rel="noopener noreferrer"
+                          className="px-2 py-1 bg-green-50 text-green-600 text-xs rounded flex items-center gap-1 hover:bg-green-100">
+                          <i className="ri-file-check-line"></i> Defer.
+                        </a>
+                      )}
+                      {!recurso.arquivo_ait_url && !recurso.arquivo_deferimento_url && (
+                        <span className="text-gray-400 text-xs">-</span>
                       )}
                     </div>
                   </td>
@@ -472,14 +606,14 @@ export default function KnowledgeBasePage() {
       {/* Modal Adicionar/Editar */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl max-h-[90vh] flex flex-col">
+          <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">
                   {editingId ? 'Editar Recurso' : 'Adicionar Recurso à Base'}
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  Adicione recursos deferidos para que a IA aprenda padrões de sucesso
+                  Anexe documentos para análise automática com IA
                 </p>
               </div>
               <button
@@ -491,6 +625,147 @@ export default function KnowledgeBasePage() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
+              {/* Upload de Arquivos */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Upload AIT */}
+                <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 hover:border-purple-400 transition-colors">
+                  <input
+                    ref={aitInputRef}
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={handleAitUpload}
+                    className="hidden"
+                  />
+                  <div className="text-center">
+                    <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center mb-3 ${
+                      formData.arquivo_ait_url ? 'bg-green-100' : 'bg-red-50'
+                    }`}>
+                      {uploadingAit || analisandoAit ? (
+                        <i className="ri-loader-4-line text-2xl text-purple-600 animate-spin"></i>
+                      ) : formData.arquivo_ait_url ? (
+                        <i className="ri-check-line text-2xl text-green-600"></i>
+                      ) : (
+                        <i className="ri-file-warning-line text-2xl text-red-500"></i>
+                      )}
+                    </div>
+                    <p className="font-bold text-gray-700 mb-1">Auto de Infração (AIT)</p>
+                    <p className="text-xs text-gray-500 mb-3">
+                      {analisandoAit ? 'Analisando com IA...' : 
+                       uploadingAit ? 'Enviando...' :
+                       formData.arquivo_ait_url ? 'Arquivo anexado' : 'Imagem ou PDF do AIT'}
+                    </p>
+                    {formData.arquivo_ait_url ? (
+                      <div className="flex gap-2 justify-center">
+                        <a href={formData.arquivo_ait_url} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline">
+                          Ver arquivo
+                        </a>
+                        <button type="button" onClick={() => setFormData(prev => ({ ...prev, arquivo_ait_url: '' }))}
+                          className="text-xs text-red-500 hover:underline">
+                          Remover
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => aitInputRef.current?.click()}
+                        disabled={uploadingAit || analisandoAit}
+                        className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 disabled:opacity-50"
+                      >
+                        <i className="ri-upload-2-line mr-1"></i> Anexar AIT
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Upload Deferimento */}
+                <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 hover:border-purple-400 transition-colors">
+                  <input
+                    ref={deferimentoInputRef}
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={handleDeferimentoUpload}
+                    className="hidden"
+                  />
+                  <div className="text-center">
+                    <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center mb-3 ${
+                      formData.arquivo_deferimento_url ? 'bg-green-100' : 'bg-green-50'
+                    }`}>
+                      {uploadingDeferimento || analisandoDeferimento ? (
+                        <i className="ri-loader-4-line text-2xl text-purple-600 animate-spin"></i>
+                      ) : formData.arquivo_deferimento_url ? (
+                        <i className="ri-check-line text-2xl text-green-600"></i>
+                      ) : (
+                        <i className="ri-file-check-line text-2xl text-green-600"></i>
+                      )}
+                    </div>
+                    <p className="font-bold text-gray-700 mb-1">Decisão de Deferimento</p>
+                    <p className="text-xs text-gray-500 mb-3">
+                      {analisandoDeferimento ? 'Analisando com IA...' : 
+                       uploadingDeferimento ? 'Enviando...' :
+                       formData.arquivo_deferimento_url ? 'Arquivo anexado' : 'Comprovante do deferimento'}
+                    </p>
+                    {formData.arquivo_deferimento_url ? (
+                      <div className="flex gap-2 justify-center">
+                        <a href={formData.arquivo_deferimento_url} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline">
+                          Ver arquivo
+                        </a>
+                        <button type="button" onClick={() => setFormData(prev => ({ ...prev, arquivo_deferimento_url: '' }))}
+                          className="text-xs text-red-500 hover:underline">
+                          Remover
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => deferimentoInputRef.current?.click()}
+                        disabled={uploadingDeferimento || analisandoDeferimento}
+                        className="px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 disabled:opacity-50"
+                      >
+                        <i className="ri-upload-2-line mr-1"></i> Anexar Deferimento
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Dados extraídos pela IA */}
+              {formData.dados_extraidos_ia && (
+                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <i className="ri-robot-line text-purple-600"></i>
+                    <span className="font-bold text-purple-800">Dados Extraídos pela IA</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {formData.dados_extraidos_ia.ait && (
+                      <div>
+                        <p className="text-purple-600 font-medium mb-1">Do AIT:</p>
+                        <ul className="text-purple-700 space-y-1">
+                          {Object.entries(formData.dados_extraidos_ia.ait).slice(0, 5).map(([key, value]) => (
+                            <li key={key} className="truncate">
+                              <span className="font-medium">{key}:</span> {String(value)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {formData.dados_extraidos_ia.deferimento && (
+                      <div>
+                        <p className="text-purple-600 font-medium mb-1">Do Deferimento:</p>
+                        <ul className="text-purple-700 space-y-1">
+                          {Object.entries(formData.dados_extraidos_ia.deferimento).slice(0, 5).map(([key, value]) => (
+                            <li key={key} className="truncate">
+                              <span className="font-medium">{key}:</span> {String(value)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Primeira linha */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -592,7 +867,7 @@ export default function KnowledgeBasePage() {
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={saveMutation.isPending}
+                disabled={saveMutation.isPending || uploadingAit || uploadingDeferimento || analisandoAit || analisandoDeferimento}
                 className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-bold disabled:opacity-50 flex items-center gap-2"
               >
                 {saveMutation.isPending ? (
@@ -656,6 +931,31 @@ export default function KnowledgeBasePage() {
                 </div>
               </div>
 
+              {/* Arquivos anexados */}
+              {(viewingRecurso.arquivo_ait_url || viewingRecurso.arquivo_deferimento_url) && (
+                <div>
+                  <p className="text-sm font-bold text-gray-700 mb-2">Arquivos Anexados</p>
+                  <div className="flex gap-3">
+                    {viewingRecurso.arquivo_ait_url && (
+                      <a href={viewingRecurso.arquivo_ait_url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100">
+                        <i className="ri-file-text-line"></i>
+                        Ver AIT
+                        <i className="ri-external-link-line text-sm"></i>
+                      </a>
+                    )}
+                    {viewingRecurso.arquivo_deferimento_url && (
+                      <a href={viewingRecurso.arquivo_deferimento_url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100">
+                        <i className="ri-file-check-line"></i>
+                        Ver Deferimento
+                        <i className="ri-external-link-line text-sm"></i>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {viewingRecurso.argumentos_chave && viewingRecurso.argumentos_chave.length > 0 && (
                 <div>
                   <p className="text-sm font-bold text-gray-700 mb-2">Argumentos-Chave</p>
@@ -687,7 +987,7 @@ export default function KnowledgeBasePage() {
             </div>
 
             <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
-              {viewingRecurso.status_aprovacao === 'pendente' && (
+              {(viewingRecurso.status_aprovacao === 'pendente' || !viewingRecurso.status_aprovacao) && (
                 <>
                   <button
                     onClick={() => {
