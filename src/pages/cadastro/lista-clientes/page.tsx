@@ -1799,82 +1799,132 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                               </div>
 
                               <div className="flex items-center gap-2 ml-4">
-                                {/* Se tem PDF, mostrar botões de ver e baixar */}
-                                {recurso.pdf_url ? (
-                                  <div className="flex items-center gap-2">
-                                    <a
-                                      href={recurso.pdf_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
-                                      title="Visualizar PDF no navegador"
-                                    >
-                                      <i className="ri-eye-line"></i>
-                                      Ver Recurso
-                                    </a>
-                                    <a
-                                      href={recurso.pdf_url}
-                                      download
-                                      className="px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
-                                      title="Baixar PDF"
-                                    >
-                                      <i className="ri-download-line"></i>
-                                      Baixar
-                                    </a>
-                                  </div>
-                                ) : (
-                                  // Se não tem PDF, mostrar botões antigos de imprimir/copiar
-                                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button
-                                      onClick={() => {
-                                        if (recurso.conteudo) {
-                                          const printWindow = window.open('', '_blank');
-                                          if (printWindow) {
-                                            printWindow.document.write(`
-                                              <html>
-                                                <head>
-                                                  <title>Recurso - ${recurso.numero_protocolo || recurso.id}</title>
-                                                  <style>
-                                                    body { font-family: Georgia, serif; padding: 40px; line-height: 1.6; }
-                                                    h1 { font-size: 18px; margin-bottom: 20px; }
-                                                    pre { white-space: pre-wrap; font-family: inherit; }
-                                                  </style>
-                                                </head>
-                                                <body>
-                                                  <pre>${recurso.conteudo}</pre>
-                                                </body>
-                                              </html>
-                                            `);
-                                            printWindow.document.close();
-                                            printWindow.print();
+                                {/* Botão de abrir recurso (sempre visível) */}
+                                <button
+                                  onClick={() => {
+                                    if (recurso.pdf_url) {
+                                      // Se tem PDF, abrir em nova aba
+                                      window.open(recurso.pdf_url, '_blank');
+                                    } else if (recurso.conteudo) {
+                                      // Se não tem PDF mas tem conteúdo, abrir em janela para visualização
+                                      const printWindow = window.open('', '_blank');
+                                      if (printWindow) {
+                                        printWindow.document.write(`
+                                          <!DOCTYPE html>
+                                          <html>
+                                            <head>
+                                              <meta charset="utf-8">
+                                              <title>Recurso - ${recurso.numero_protocolo || recurso.id}</title>
+                                              <style>
+                                                * { box-sizing: border-box; }
+                                                body {
+                                                  font-family: 'Georgia', 'Times New Roman', serif;
+                                                  font-size: 12pt;
+                                                  line-height: 1.8;
+                                                  padding: 40px 60px;
+                                                  max-width: 800px;
+                                                  margin: 0 auto;
+                                                  color: #000;
+                                                }
+                                                p { margin-bottom: 1em; text-align: justify; }
+                                                strong, b { font-weight: bold; }
+                                                hr { margin: 24px 0; border: none; border-top: 1px solid #ccc; }
+                                              </style>
+                                            </head>
+                                            <body>
+                                              ${recurso.conteudo}
+                                            </body>
+                                          </html>
+                                        `);
+                                        printWindow.document.close();
+                                      }
+                                    } else {
+                                      showConfirm({
+                                        title: 'Recurso sem conteúdo',
+                                        message: 'Este recurso ainda não possui conteúdo ou PDF gerado.',
+                                        type: 'info',
+                                        confirmLabel: 'OK',
+                                        onConfirm: () => { }
+                                      });
+                                    }
+                                  }}
+                                  className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                  title="Abrir Recurso"
+                                >
+                                  <i className="ri-eye-line"></i>
+                                  Abrir
+                                </button>
+
+                                {/* Botão de baixar PDF (se existir) */}
+                                {recurso.pdf_url && (
+                                  <a
+                                    href={recurso.pdf_url}
+                                    download
+                                    className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
+                                    title="Baixar PDF"
+                                  >
+                                    <i className="ri-download-line"></i>
+                                    Baixar
+                                  </a>
+                                )}
+
+                                {/* Botão de excluir recurso */}
+                                <button
+                                  onClick={() => {
+                                    showConfirm({
+                                      title: 'Excluir Recurso',
+                                      message: `Deseja realmente excluir este recurso? ${recurso.finalizado ? 'Este recurso já foi finalizado e possui PDF salvo.' : ''} Esta ação não pode ser desfeita.`,
+                                      type: 'danger',
+                                      confirmLabel: 'Excluir',
+                                      cancelLabel: 'Cancelar',
+                                      onConfirm: async () => {
+                                        try {
+                                          // Se tem PDF no storage, tentar excluir também
+                                          if (recurso.pdf_url) {
+                                            const urlParts = recurso.pdf_url.split('/');
+                                            const fileName = urlParts.slice(-2).join('/'); // recursos/clienteId/arquivo.pdf
+                                            await supabase.storage
+                                              .from('documentos')
+                                              .remove([fileName]);
                                           }
-                                        }
-                                      }}
-                                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#1E3A8A] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                                      title="Imprimir Recurso"
-                                    >
-                                      <i className="ri-printer-line"></i>
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        if (recurso.conteudo) {
-                                          navigator.clipboard.writeText(recurso.conteudo);
+
+                                          // Excluir o recurso do banco
+                                          const { error } = await supabase
+                                            .from('recursos')
+                                            .delete()
+                                            .eq('id', recurso.id);
+
+                                          if (error) throw error;
+
+                                          // Atualizar lista local
+                                          setRecursosCliente(prev => prev.filter(r => r.id !== recurso.id));
+
                                           showConfirm({
-                                            title: 'Copiado!',
-                                            message: 'Conteúdo do recurso copiado para a área de transferência.',
+                                            title: 'Sucesso!',
+                                            message: 'Recurso excluído com sucesso.',
                                             type: 'success',
                                             confirmLabel: 'OK',
                                             onConfirm: () => { }
                                           });
+                                        } catch (err) {
+                                          console.error('Erro ao excluir recurso:', err);
+                                          showConfirm({
+                                            title: 'Erro',
+                                            message: 'Não foi possível excluir o recurso. Tente novamente.',
+                                            type: 'danger',
+                                            confirmLabel: 'OK',
+                                            onConfirm: () => { }
+                                          });
                                         }
-                                      }}
-                                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#10B981] hover:bg-green-50 rounded-lg transition-colors cursor-pointer"
-                                      title="Copiar Conteúdo"
-                                    >
-                                      <i className="ri-file-copy-line"></i>
-                                    </button>
-                                  </div>
-                                )}
+                                      }
+                                    });
+                                  }}
+                                  className="px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
+                                  title="Excluir Recurso"
+                                >
+                                  <i className="ri-delete-bin-line"></i>
+                                  Excluir
+                                </button>
                               </div>
                             </div>
                           </div>
