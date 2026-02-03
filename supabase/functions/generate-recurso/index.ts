@@ -123,7 +123,7 @@ Retorne um JSON com:
   }
 }
 
-// Template base estruturado para o recurso com formatação HTML
+// Template base estruturado para o recurso com formatação HTML profissional
 function getTemplateBase(tipo: string, dados: DadosRecurso, orgao: any): string {
   const tipoFormatado = tipo === 'defesa_previa' ? 'DEFESA PRÉVIA' : 
                         tipo === 'jari' ? 'RECURSO À JARI' : 
@@ -135,33 +135,45 @@ function getTemplateBase(tipo: string, dados: DadosRecurso, orgao: any): string 
 
   const dataFormatada = dados.dataInfracao ? new Date(dados.dataInfracao).toLocaleDateString('pt-BR') : '[DATA]';
   
-  // Template com formatação HTML profissional (negrito nos títulos e dados importantes)
-  return `<p style="text-align: center;"><strong>${tipoFormatado}</strong></p>
+  // Template com formatação HTML profissional
+  // Labels em NEGRITO, dados normais, com espaçamento adequado
+  return `<p style="text-align: center; margin-bottom: 24px;"><strong>${tipoFormatado}</strong></p>
 
-<p><strong>${destinatario}</strong><br>
+<p style="margin-bottom: 16px;"><strong>${destinatario}</strong><br>
 <strong>${orgao?.nome || dados.detranNome || 'DETRAN'}</strong><br>
 ${orgao?.estado || dados.estadoDetran || ''}</p>
 
-<p><strong>RECORRENTE:</strong> ${dados.nomeRecorrente}<br>
-<strong>CPF/CNPJ:</strong> ${dados.cpfCnpj}<br>
-${dados.endereco ? `<strong>ENDEREÇO:</strong> ${dados.endereco}${dados.cidade ? `, ${dados.cidade}` : ''}${dados.estado ? ` - ${dados.estado}` : ''}${dados.cep ? ` CEP: ${dados.cep}` : ''}<br>` : ''}
-${dados.telefone ? `<strong>TELEFONE:</strong> ${dados.telefone}<br>` : ''}
-${dados.email ? `<strong>E-MAIL:</strong> ${dados.email}` : ''}</p>
+<p style="margin-bottom: 16px;"><strong>RECORRENTE:</strong> ${dados.nomeRecorrente}</p>
 
-<p><strong>VEÍCULO:</strong> ${dados.modelo || ''} - Placa <strong>${dados.placa}</strong><br>
-${dados.renavam ? `<strong>RENAVAM:</strong> ${dados.renavam}` : ''}</p>
+<p style="margin-bottom: 16px;"><strong>CPF/CNPJ:</strong> ${dados.cpfCnpj}</p>
 
-<p><strong>AUTO DE INFRAÇÃO Nº:</strong> ${dados.numeroAuto}<br>
-<strong>DATA DA INFRAÇÃO:</strong> ${dataFormatada}${dados.horaInfracao ? ` às ${dados.horaInfracao}` : ''}<br>
-${dados.localInfracao ? `<strong>LOCAL:</strong> ${dados.localInfracao}` : ''}</p>
+${dados.endereco ? `<p style="margin-bottom: 16px;"><strong>ENDEREÇO:</strong> ${dados.endereco}${dados.cidade ? `, ${dados.cidade}` : ''}${dados.estado ? ` - ${dados.estado}` : ''}${dados.cep ? ` CEP: ${dados.cep}` : ''}</p>` : ''}
 
-<p><strong>CÓDIGO DA INFRAÇÃO:</strong> ${dados.codigoInfracao}<br>
-<strong>DESCRIÇÃO:</strong> ${dados.descricaoInfracao}<br>
-<strong>VALOR DA MULTA:</strong> R$ ${dados.valorMulta.toFixed(2)}<br>
-<strong>PONTUAÇÃO:</strong> ${dados.pontos} pontos<br>
-<strong>GRAVIDADE:</strong> ${dados.gravidade}</p>
+${dados.telefone ? `<p style="margin-bottom: 16px;"><strong>TELEFONE:</strong> ${dados.telefone}</p>` : ''}
 
-<hr>
+${dados.email ? `<p style="margin-bottom: 16px;"><strong>E-MAIL:</strong> ${dados.email}</p>` : ''}
+
+<p style="margin-bottom: 16px;"><strong>VEÍCULO:</strong> ${dados.modelo || ''} - Placa ${dados.placa}</p>
+
+${dados.renavam ? `<p style="margin-bottom: 16px;"><strong>RENAVAM:</strong> ${dados.renavam}</p>` : ''}
+
+<p style="margin-bottom: 16px;"><strong>AUTO DE INFRAÇÃO Nº:</strong> ${dados.numeroAuto}</p>
+
+<p style="margin-bottom: 16px;"><strong>DATA DA INFRAÇÃO:</strong> ${dataFormatada}${dados.horaInfracao ? ` às ${dados.horaInfracao}` : ''}</p>
+
+${dados.localInfracao ? `<p style="margin-bottom: 16px;"><strong>LOCAL:</strong> ${dados.localInfracao}</p>` : ''}
+
+<p style="margin-bottom: 16px;"><strong>CÓDIGO DA INFRAÇÃO:</strong> ${dados.codigoInfracao}</p>
+
+<p style="margin-bottom: 16px;"><strong>DESCRIÇÃO:</strong> ${dados.descricaoInfracao}</p>
+
+<p style="margin-bottom: 16px;"><strong>VALOR DA MULTA:</strong> R$ ${dados.valorMulta.toFixed(2)}</p>
+
+<p style="margin-bottom: 16px;"><strong>PONTUAÇÃO:</strong> ${dados.pontos} pontos</p>
+
+<p style="margin-bottom: 24px;"><strong>GRAVIDADE:</strong> ${dados.gravidade}</p>
+
+<hr style="margin: 24px 0;">
 
 `;
 }
@@ -416,42 +428,57 @@ ${legislacaoBase && legislacaoBase.length > 0
 
 Por favor, CONTINUE o recurso acima gerando em FORMATO HTML com formatação profissional:
 
-IMPORTANTE - FORMATAÇÃO OBRIGATÓRIA:
-- Use tags HTML: <p> para parágrafos, <strong> para negrito, <br> para quebras de linha
-- TODOS os títulos de seção devem estar em <strong>NEGRITO</strong> (ex: <strong>1. DOS FATOS</strong>)
-- Subtítulos também devem estar em <strong>negrito</strong> (ex: <strong>2.1. Do Vício Formal</strong>)
-- Artigos de lei e referências legais devem estar em <strong>negrito</strong> (ex: <strong>Art. 280 do CTB</strong>)
-- Citações de jurisprudência devem estar em <strong>negrito</strong> (ex: <strong>STJ no REsp 1.325.487</strong>)
-- Cada parágrafo deve estar envolto em tags <p></p>
-- Use <hr> para separadores visuais quando necessário
+REGRAS DE FORMATAÇÃO HTML OBRIGATÓRIAS:
 
-ESTRUTURA ESPERADA:
+1. ESPAÇAMENTO: Use style="margin-bottom: 16px;" em cada <p> para criar espaçamento entre parágrafos
+2. TÍTULOS DE SEÇÃO: Em negrito com espaçamento maior (ex: <p style="margin-top: 24px; margin-bottom: 16px;"><strong>1. DOS FATOS</strong></p>)
+3. SUBTÍTULOS: Em negrito (ex: <p style="margin-bottom: 12px;"><strong>2.1. Do Vício Formal</strong></p>)
+4. REFERÊNCIAS LEGAIS: Artigos e leis em negrito dentro do texto (ex: conforme o <strong>Art. 280 do CTB</strong>)
+5. JURISPRUDÊNCIA: Citações em negrito (ex: <strong>STJ no REsp 1.325.487</strong>)
+6. CADA PARÁGRAFO: Deve estar em tags <p style="margin-bottom: 16px;"></p>
+7. LISTAS DE PEDIDOS: Use <p> separado para cada item com espaçamento
 
-<p><strong>1. DOS FATOS</strong></p>
-<p>Exposição detalhada dos fatos conforme descrição do cliente...</p>
+EXEMPLO DA ESTRUTURA CORRETA:
 
-<p><strong>2. DO DIREITO</strong></p>
-<p><strong>2.1. [Subtítulo do argumento]</strong></p>
-<p>Fundamentação jurídica robusta com:
-   - Artigos do CTB aplicáveis (use a base de legislação fornecida!)
-   - Resoluções do CONTRAN relevantes
-   - Jurisprudências (se aplicável)
-   - Argumentos técnicos sobre possíveis vícios formais ou materiais
-   ${analiseAit ? '- ERROS FORMAIS DO AIT (use os erros detectados acima como argumentação central!)' : ''}</p>
+<p style="margin-top: 24px; margin-bottom: 16px;"><strong>1. DOS FATOS</strong></p>
 
-<p><strong>3. DOS PEDIDOS</strong></p>
-<p>Pedidos claros e específicos (anulação do auto, cancelamento da multa, restituição de pontos)...</p>
+<p style="margin-bottom: 16px;">O Recorrente foi autuado em [data], na [local], sob a suposta infração capitulada no <strong>Art. 162, inciso I, do CTB</strong>...</p>
 
-<p>Nestes termos, pede deferimento.</p>
-<p>[Local], [Data].</p>
-<p>__________________________________________<br>
-<strong>${dados.nomeRecorrente}</strong><br>
-Recorrente</p>
+<p style="margin-bottom: 16px;">Ocorre que a referida autuação padece de vícios insanáveis...</p>
 
-Use linguagem jurídica formal, persuasiva e técnica. Seja detalhista na fundamentação.
-NÃO repita o cabeçalho - apenas continue de onde o template parou.
-Gere o conteúdo em HTML válido e bem formatado.
+<p style="margin-top: 24px; margin-bottom: 16px;"><strong>2. DO DIREITO</strong></p>
+
+<p style="margin-bottom: 12px;"><strong>2.1. Da Nulidade por Ausência de Abordagem</strong></p>
+
+<p style="margin-bottom: 16px;">Conforme determina o <strong>Art. 280 do CTB</strong> e a <strong>Resolução CONTRAN nº 168/2004</strong>, é indispensável...</p>
+
+<p style="margin-bottom: 16px;">A jurisprudência do <strong>STJ no REsp 1.325.487</strong> confirma que...</p>
+
+<p style="margin-top: 24px; margin-bottom: 16px;"><strong>3. DOS PEDIDOS</strong></p>
+
+<p style="margin-bottom: 12px;">Ante o exposto, requer-se:</p>
+
+<p style="margin-bottom: 12px;"><strong>I -</strong> O recebimento da presente Defesa Prévia;</p>
+
+<p style="margin-bottom: 12px;"><strong>II -</strong> O CANCELAMENTO do Auto de Infração;</p>
+
+<p style="margin-bottom: 12px;"><strong>III -</strong> A não aplicação da penalidade;</p>
+
+<p style="margin-top: 24px; margin-bottom: 16px;">Nestes termos, pede deferimento.</p>
+
+<p style="margin-bottom: 16px;">[Local], [Data].</p>
+
+<p style="margin-bottom: 8px;">__________________________________________</p>
+<p style="margin-bottom: 8px;"><strong>${dados.nomeRecorrente}</strong></p>
+<p>Recorrente</p>
+
+IMPORTANTE:
+- Use linguagem jurídica formal, persuasiva e técnica
+- NÃO repita o cabeçalho - apenas continue de onde o template parou
+- Gere HTML válido com espaçamento adequado entre TODOS os parágrafos
+- Cada parágrafo DEVE ter margin-bottom para criar espaço visual
 `;
+
 
     console.log('Using Lovable AI Gateway');
 
