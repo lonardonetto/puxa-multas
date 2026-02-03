@@ -762,6 +762,60 @@ export type Database = {
         }
         Relationships: []
       }
+      legislacao_base: {
+        Row: {
+          arquivo_url: string | null
+          artigos_relacionados: string[] | null
+          ativo: boolean | null
+          conteudo: string | null
+          created_at: string | null
+          data_publicacao: string | null
+          data_vigencia: string | null
+          descricao: string | null
+          id: string
+          is_global: boolean | null
+          numero_resolucao: string | null
+          palavras_chave: string[] | null
+          tipo: string
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          arquivo_url?: string | null
+          artigos_relacionados?: string[] | null
+          ativo?: boolean | null
+          conteudo?: string | null
+          created_at?: string | null
+          data_publicacao?: string | null
+          data_vigencia?: string | null
+          descricao?: string | null
+          id?: string
+          is_global?: boolean | null
+          numero_resolucao?: string | null
+          palavras_chave?: string[] | null
+          tipo: string
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          arquivo_url?: string | null
+          artigos_relacionados?: string[] | null
+          ativo?: boolean | null
+          conteudo?: string | null
+          created_at?: string | null
+          data_publicacao?: string | null
+          data_vigencia?: string | null
+          descricao?: string | null
+          id?: string
+          is_global?: boolean | null
+          numero_resolucao?: string | null
+          palavras_chave?: string[] | null
+          tipo?: string
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       multas: {
         Row: {
           agente_autuador: string | null
