@@ -1,17 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Brain, Plus, Trash2, Edit, Search, FileText, CheckCircle, Clock, XCircle, Check, X, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -47,7 +37,7 @@ const ESTADOS = [
 export default function KnowledgeBasePage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'pendentes' | 'aprovados'>('pendentes');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [viewingRecurso, setViewingRecurso] = useState<RecursoConhecimento | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -116,7 +106,7 @@ export default function KnowledgeBasePage() {
         data_deferimento: data.data_deferimento || null,
         observacoes: data.observacoes || null,
         is_global: data.is_global,
-        status_aprovacao: 'aprovado', // Quando super admin adiciona manualmente, já vai aprovado
+        status_aprovacao: 'aprovado',
       };
 
       if (data.id) {
@@ -136,7 +126,7 @@ export default function KnowledgeBasePage() {
       queryClient.invalidateQueries({ queryKey: ['recursos-conhecimento'] });
       toast.success(editingId ? 'Recurso atualizado!' : 'Recurso adicionado à base!');
       resetForm();
-      setIsDialogOpen(false);
+      setShowModal(false);
     },
     onError: (error) => {
       toast.error('Erro ao salvar: ' + error.message);
@@ -189,7 +179,7 @@ export default function KnowledgeBasePage() {
       is_global: recurso.is_global ?? true,
     });
     setEditingId(recurso.id);
-    setIsDialogOpen(true);
+    setShowModal(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -223,505 +213,514 @@ export default function KnowledgeBasePage() {
     total: recursos?.length || 0,
   };
 
+  const getTipoLabel = (value: string) => TIPOS_RECURSO.find(t => t.value === value)?.label || value;
+
   return (
-    <div className="space-y-6">
+    <div className="p-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
-            <Brain className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Base de Conhecimento IA</h1>
-            <p className="text-muted-foreground text-sm">
-              Analise recursos deferidos e aprove para treinar a IA
-            </p>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Base de Conhecimento IA</h1>
+          <p className="text-gray-600 mt-1">Gerencie recursos deferidos para treinar a IA</p>
+        </div>
+        <button
+          onClick={() => { resetForm(); setShowModal(true); }}
+          className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+        >
+          <i className="ri-add-line mr-2"></i>
+          Adicionar Manual
+        </button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div
+          onClick={() => setActiveTab('pendentes')}
+          className={`bg-white rounded-xl p-5 shadow-sm border-2 cursor-pointer transition-all ${
+            activeTab === 'pendentes' ? 'border-orange-500' : 'border-transparent hover:border-orange-200'
+          }`}
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+              <i className="ri-time-line text-2xl text-orange-600"></i>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-orange-600">{stats.pendentes}</p>
+              <p className="text-sm text-gray-500">Pendentes de Análise</p>
+            </div>
           </div>
         </div>
 
-        <Button 
-          onClick={() => setIsDialogOpen(true)} 
-          className="bg-purple-600 hover:bg-purple-700 shrink-0"
+        <div
+          onClick={() => setActiveTab('aprovados')}
+          className={`bg-white rounded-xl p-5 shadow-sm border-2 cursor-pointer transition-all ${
+            activeTab === 'aprovados' ? 'border-green-500' : 'border-transparent hover:border-green-200'
+          }`}
         >
-          <Plus className="h-4 w-4 mr-2" />
-          Adicionar Manual
-        </Button>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+              <i className="ri-check-double-line text-2xl text-green-600"></i>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-green-600">{stats.aprovados}</p>
+              <p className="text-sm text-gray-500">Aprovados na Base</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+              <i className="ri-brain-line text-2xl text-purple-600"></i>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-gray-800">{stats.total}</p>
+              <p className="text-sm text-gray-500">Total Geral</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Modal para adicionar/editar */}
-      <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Brain className="h-5 w-5 text-purple-600" />
-                {editingId ? 'Editar Recurso' : 'Adicionar Recurso à Base'}
-              </DialogTitle>
-              <DialogDescription>
-                Adicione recursos deferidos para que a IA aprenda padrões de sucesso
-              </DialogDescription>
-            </DialogHeader>
+      {/* Info Card */}
+      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-5 mb-6 border border-purple-100">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center shrink-0">
+            <i className="ri-lightbulb-line text-xl text-purple-600"></i>
+          </div>
+          <div>
+            <h3 className="font-bold text-purple-900">Fluxo Automático de Recursos Deferidos</h3>
+            <p className="text-sm text-purple-700 mt-1">
+              Quando um cliente marca um recurso como <strong>"Deferido"</strong>, ele é automaticamente enviado para esta área de análise.
+              Você pode revisar o conteúdo, adicionar argumentos-chave e aprovar para que a IA use como referência.
+              Apenas recursos <strong>aprovados</strong> são utilizados pela IA para gerar novas defesas.
+            </p>
+          </div>
+        </div>
+      </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Filters */}
+      <div className="bg-white rounded-xl p-4 mb-6 shadow-sm border border-gray-100">
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex-1 min-w-[200px]">
+            <div className="relative">
+              <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+              <input
+                type="text"
+                placeholder="Buscar por código ou conteúdo..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+              />
+            </div>
+          </div>
+          <select
+            value={filterTipo}
+            onChange={(e) => setFilterTipo(e.target.value)}
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-white"
+          >
+            <option value="all">Todos os tipos</option>
+            {TIPOS_RECURSO.map(t => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+          <select
+            value={filterEstado}
+            onChange={(e) => setFilterEstado(e.target.value)}
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-white"
+          >
+            <option value="all">Todos os estados</option>
+            {ESTADOS.map(e => (
+              <option key={e} value={e}>{e}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Tab Title */}
+      <div className="flex items-center gap-2 mb-4">
+        <i className={`text-xl ${activeTab === 'pendentes' ? 'ri-time-line text-orange-600' : 'ri-check-double-line text-green-600'}`}></i>
+        <h2 className="text-xl font-bold text-gray-800">
+          {activeTab === 'pendentes' ? 'Recursos Pendentes de Aprovação' : 'Recursos Aprovados'}
+        </h2>
+        <span className="px-2 py-1 bg-gray-100 rounded-full text-xs font-bold text-gray-600">
+          {filteredRecursos.length}
+        </span>
+      </div>
+
+      {/* Table */}
+      {isLoading ? (
+        <div className="flex justify-center py-10">
+          <i className="ri-loader-4-line text-4xl animate-spin text-purple-600"></i>
+        </div>
+      ) : filteredRecursos.length === 0 ? (
+        <div className="bg-white rounded-xl p-10 text-center border border-gray-100">
+          <i className="ri-inbox-line text-5xl text-gray-300"></i>
+          <p className="text-gray-500 mt-4">
+            {activeTab === 'pendentes' 
+              ? 'Nenhum recurso pendente de aprovação'
+              : 'Nenhum recurso aprovado ainda'}
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Código</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Tipo</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Estado</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Argumentos</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Data</th>
+                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredRecursos.map((recurso) => (
+                <tr key={recurso.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <span className="font-mono font-bold text-purple-600">{recurso.codigo_infracao}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded">
+                      {getTipoLabel(recurso.tipo_recurso)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-gray-600">
+                      {recurso.detran_estado || 'Nacional'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-1">
+                      {recurso.argumentos_chave?.slice(0, 2).map((arg, i) => (
+                        <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
+                          {arg}
+                        </span>
+                      ))}
+                      {(recurso.argumentos_chave?.length || 0) > 2 && (
+                        <span className="text-xs text-gray-400">
+                          +{(recurso.argumentos_chave?.length || 0) - 2}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {recurso.created_at 
+                      ? format(new Date(recurso.created_at), 'dd/MM/yyyy', { locale: ptBR })
+                      : '-'}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setViewingRecurso(recurso)}
+                        className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Visualizar"
+                      >
+                        <i className="ri-eye-line"></i>
+                      </button>
+                      
+                      {activeTab === 'pendentes' && (
+                        <>
+                          <button
+                            onClick={() => aprovarMutation.mutate({ id: recurso.id, status: 'aprovado', is_global: true })}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Aprovar"
+                          >
+                            <i className="ri-check-line"></i>
+                          </button>
+                          <button
+                            onClick={() => aprovarMutation.mutate({ id: recurso.id, status: 'rejeitado' })}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Rejeitar"
+                          >
+                            <i className="ri-close-line"></i>
+                          </button>
+                        </>
+                      )}
+                      
+                      {activeTab === 'aprovados' && (
+                        <>
+                          <button
+                            onClick={() => handleEdit(recurso)}
+                            className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                            title="Editar"
+                          >
+                            <i className="ri-edit-line"></i>
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm('Tem certeza que deseja remover este recurso da base?')) {
+                                deleteMutation.mutate(recurso.id);
+                              }
+                            }}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Excluir"
+                          >
+                            <i className="ri-delete-bin-line"></i>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Modal Adicionar/Editar */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">
+                  {editingId ? 'Editar Recurso' : 'Adicionar Recurso à Base'}
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Adicione recursos deferidos para que a IA aprenda padrões de sucesso
+                </p>
+              </div>
+              <button
+                onClick={() => { setShowModal(false); resetForm(); }}
+                className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                <i className="ri-close-line text-2xl"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
+              {/* Primeira linha */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Código da Infração *</Label>
-                  <Input
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Código da Infração *</label>
+                  <input
+                    type="text"
                     placeholder="Ex: 74550, 50100"
                     value={formData.codigo_infracao}
                     onChange={(e) => setFormData({ ...formData, codigo_infracao: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Tipo de Recurso</Label>
-                  <Select
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Tipo de Recurso</label>
+                  <select
                     value={formData.tipo_recurso}
-                    onValueChange={(v) => setFormData({ ...formData, tipo_recurso: v })}
+                    onChange={(e) => setFormData({ ...formData, tipo_recurso: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none bg-white"
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TIPOS_RECURSO.map(t => (
-                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    {TIPOS_RECURSO.map(t => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
+              {/* Segunda linha */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>DETRAN/Estado</Label>
-                  <Select
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">DETRAN/Estado</label>
+                  <select
                     value={formData.detran_estado}
-                    onValueChange={(v) => setFormData({ ...formData, detran_estado: v })}
+                    onChange={(e) => setFormData({ ...formData, detran_estado: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none bg-white"
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Nacional (todos)</SelectItem>
-                      {ESTADOS.map(e => (
-                        <SelectItem key={e} value={e}>{e}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <option value="">Nacional (todos)</option>
+                    {ESTADOS.map(e => (
+                      <option key={e} value={e}>{e}</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Data do Deferimento</Label>
-                  <Input
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Data do Deferimento</label>
+                  <input
                     type="date"
                     value={formData.data_deferimento}
                     onChange={(e) => setFormData({ ...formData, data_deferimento: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Argumentos-Chave (separados por vírgula)</Label>
-                <Input
+              {/* Argumentos */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Argumentos-Chave (separados por vírgula)</label>
+                <input
+                  type="text"
                   placeholder="Ex: erro de preenchimento, ausência de foto, local incorreto"
                   value={formData.argumentos_chave}
                   onChange={(e) => setFormData({ ...formData, argumentos_chave: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Liste os principais argumentos que levaram ao deferimento
-                </p>
+                <p className="text-xs text-gray-500 mt-1">Liste os principais argumentos que levaram ao deferimento</p>
               </div>
 
-              <div className="space-y-2">
-                <Label>Conteúdo do Recurso Deferido *</Label>
-                <Textarea
+              {/* Conteúdo */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Conteúdo do Recurso Deferido *</label>
+                <textarea
                   placeholder="Cole aqui o texto completo do recurso que foi deferido..."
                   value={formData.conteudo}
                   onChange={(e) => setFormData({ ...formData, conteudo: e.target.value })}
-                  rows={10}
-                  className="font-mono text-sm"
+                  rows={8}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none font-mono text-sm resize-none"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Este conteúdo será usado pela IA como referência para gerar novos recursos
-                </p>
+                <p className="text-xs text-gray-500 mt-1">Este conteúdo será usado pela IA como referência para gerar novos recursos</p>
               </div>
 
-              <div className="space-y-2">
-                <Label>Observações</Label>
-                <Textarea
+              {/* Observações */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Observações</label>
+                <textarea
                   placeholder="Anotações adicionais sobre este recurso..."
                   value={formData.observacoes}
                   onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
                   rows={2}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none resize-none"
                 />
               </div>
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={saveMutation.isPending} className="bg-purple-600 hover:bg-purple-700">
-                  {saveMutation.isPending ? 'Salvando...' : editingId ? 'Atualizar' : 'Adicionar à Base'}
-                </Button>
-              </DialogFooter>
             </form>
-          </DialogContent>
-      </Dialog>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className={`border-2 cursor-pointer transition-all ${activeTab === 'pendentes' ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20' : 'border-transparent hover:border-orange-300'}`}
-          onClick={() => setActiveTab('pendentes')}>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                <Clock className="h-5 w-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-orange-600">{stats.pendentes}</p>
-                <p className="text-xs text-muted-foreground">Pendentes de Análise</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className={`border-2 cursor-pointer transition-all ${activeTab === 'aprovados' ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-transparent hover:border-green-300'}`}
-          onClick={() => setActiveTab('aprovados')}>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-green-600">{stats.aprovados}</p>
-                <p className="text-xs text-muted-foreground">Aprovados na Base</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-purple-200 dark:border-purple-800">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <Brain className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.total}</p>
-                <p className="text-xs text-muted-foreground">Total Geral</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Info Card */}
-      <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 border-purple-200 dark:border-purple-800">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            <Brain className="h-6 w-6 text-purple-600 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-purple-900 dark:text-purple-100">Fluxo Automático de Recursos Deferidos</h3>
-              <p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
-                Quando um cliente marca um recurso como <strong>"Deferido"</strong>, ele é automaticamente enviado para esta área de análise.
-                Você pode revisar o conteúdo, adicionar argumentos-chave e aprovar para que a IA use como referência.
-                Apenas recursos <strong>aprovados</strong> são utilizados pela IA para gerar novas defesas.
-              </p>
+            <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => { setShowModal(false); resetForm(); }}
+                className="px-6 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={saveMutation.isPending}
+                className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-bold disabled:opacity-50 flex items-center gap-2"
+              >
+                {saveMutation.isPending ? (
+                  <>
+                    <i className="ri-loader-4-line animate-spin"></i>
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <i className="ri-check-line"></i>
+                    {editingId ? 'Atualizar' : 'Adicionar à Base'}
+                  </>
+                )}
+              </button>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por código ou conteúdo..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <Select value={filterTipo} onValueChange={setFilterTipo}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Tipo de Recurso" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os tipos</SelectItem>
-                {TIPOS_RECURSO.map(t => (
-                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterEstado} onValueChange={setFilterEstado}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos estados</SelectItem>
-                {ESTADOS.map(e => (
-                  <SelectItem key={e} value={e}>{e}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            {activeTab === 'pendentes' ? (
-              <>
-                <Clock className="h-5 w-5 text-orange-600" />
-                Recursos Pendentes de Aprovação ({filteredRecursos.length})
-              </>
-            ) : (
-              <>
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                Recursos Aprovados na Base ({filteredRecursos.length})
-              </>
-            )}
-          </CardTitle>
-          <CardDescription>
-            {activeTab === 'pendentes' 
-              ? 'Recursos deferidos pelos clientes aguardando sua análise'
-              : 'Recursos que a IA usa como referência para gerar defesas'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Carregando...</div>
-          ) : filteredRecursos.length === 0 ? (
-            <div className="text-center py-12">
-              {activeTab === 'pendentes' ? (
-                <>
-                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                  <h3 className="font-semibold text-lg mb-1">Nenhum recurso pendente</h3>
-                  <p className="text-muted-foreground">
-                    Recursos deferidos pelos clientes aparecerão aqui automaticamente
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                  <h3 className="font-semibold text-lg mb-1">Base de conhecimento vazia</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Aprove recursos pendentes ou adicione manualmente
-                  </p>
-                  <Button onClick={() => setIsDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar Manualmente
-                  </Button>
-                </>
-              )}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Código Infração</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Argumentos</TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRecursos.map((recurso) => (
-                  <TableRow key={recurso.id}>
-                    <TableCell>
-                      <Badge variant="outline" className="font-mono">
-                        {recurso.codigo_infracao}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={
-                        recurso.tipo_recurso === 'defesa_previa' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
-                        recurso.tipo_recurso === 'jari' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' :
-                        'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                      }>
-                        {TIPOS_RECURSO.find(t => t.value === recurso.tipo_recurso)?.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {recurso.detran_estado || <span className="text-muted-foreground">Nacional</span>}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {recurso.argumentos_chave?.slice(0, 2).map((arg, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">
-                            {arg}
-                          </Badge>
-                        ))}
-                        {(recurso.argumentos_chave?.length || 0) > 2 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{(recurso.argumentos_chave?.length || 0) - 2}
-                          </Badge>
-                        )}
-                        {!recurso.argumentos_chave?.length && (
-                          <span className="text-xs text-muted-foreground italic">Sem argumentos</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {recurso.created_at ? format(new Date(recurso.created_at), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        {/* Visualizar */}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setViewingRecurso(recurso)}
-                          title="Visualizar conteúdo"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        
-                        {activeTab === 'pendentes' ? (
-                          <>
-                            {/* Aprovar */}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                              onClick={() => aprovarMutation.mutate({ id: recurso.id, status: 'aprovado', is_global: true })}
-                              disabled={aprovarMutation.isPending}
-                              title="Aprovar e adicionar à base global"
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                            {/* Rejeitar */}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => {
-                                if (confirm('Rejeitar este recurso? Ele não será usado pela IA.')) {
-                                  aprovarMutation.mutate({ id: recurso.id, status: 'rejeitado' });
-                                }
-                              }}
-                              disabled={aprovarMutation.isPending}
-                              title="Rejeitar"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            {/* Editar */}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleEdit(recurso)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            {/* Remover */}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => {
-                                if (confirm('Remover este recurso da base?')) {
-                                  deleteMutation.mutate(recurso.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Modal de Visualização */}
-      <Dialog open={!!viewingRecurso} onOpenChange={(open) => !open && setViewingRecurso(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-purple-600" />
-              Visualizar Recurso - {viewingRecurso?.codigo_infracao}
-            </DialogTitle>
-            <DialogDescription>
-              {TIPOS_RECURSO.find(t => t.value === viewingRecurso?.tipo_recurso)?.label} | 
-              Estado: {viewingRecurso?.detran_estado || 'Nacional'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="bg-muted/50 p-4 rounded-lg">
-              <h4 className="font-semibold mb-2">Conteúdo do Recurso:</h4>
-              <pre className="whitespace-pre-wrap text-sm font-mono bg-background p-4 rounded border max-h-[400px] overflow-y-auto">
-                {viewingRecurso?.conteudo}
-              </pre>
-            </div>
-
-            {viewingRecurso?.argumentos_chave?.length ? (
+      {/* Modal Visualizar */}
+      {viewingRecurso && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
               <div>
-                <h4 className="font-semibold mb-2">Argumentos-Chave:</h4>
-                <div className="flex flex-wrap gap-2">
-                  {viewingRecurso.argumentos_chave.map((arg, i) => (
-                    <Badge key={i} variant="secondary">{arg}</Badge>
-                  ))}
+                <h2 className="text-2xl font-bold text-gray-800">Visualizar Recurso</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Código: <span className="font-mono font-bold text-purple-600">{viewingRecurso.codigo_infracao}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setViewingRecurso(null)}
+                className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                <i className="ri-close-line text-2xl"></i>
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase font-bold">Tipo</p>
+                  <p className="font-semibold text-gray-800 mt-1">{getTipoLabel(viewingRecurso.tipo_recurso)}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase font-bold">Estado</p>
+                  <p className="font-semibold text-gray-800 mt-1">{viewingRecurso.detran_estado || 'Nacional'}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase font-bold">Status</p>
+                  <span className={`inline-block px-2 py-1 rounded text-xs font-bold mt-1 ${
+                    viewingRecurso.status_aprovacao === 'aprovado' 
+                      ? 'bg-green-100 text-green-700' 
+                      : viewingRecurso.status_aprovacao === 'rejeitado'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-orange-100 text-orange-700'
+                  }`}>
+                    {viewingRecurso.status_aprovacao === 'aprovado' ? 'Aprovado' 
+                      : viewingRecurso.status_aprovacao === 'rejeitado' ? 'Rejeitado' : 'Pendente'}
+                  </span>
                 </div>
               </div>
-            ) : null}
 
-            {viewingRecurso?.observacoes && (
+              {viewingRecurso.argumentos_chave && viewingRecurso.argumentos_chave.length > 0 && (
+                <div>
+                  <p className="text-sm font-bold text-gray-700 mb-2">Argumentos-Chave</p>
+                  <div className="flex flex-wrap gap-2">
+                    {viewingRecurso.argumentos_chave.map((arg, i) => (
+                      <span key={i} className="px-3 py-1 bg-purple-50 text-purple-700 rounded-lg text-sm">
+                        {arg}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
-                <h4 className="font-semibold mb-2">Observações:</h4>
-                <p className="text-muted-foreground">{viewingRecurso.observacoes}</p>
+                <p className="text-sm font-bold text-gray-700 mb-2">Conteúdo do Recurso</p>
+                <div className="bg-gray-50 p-4 rounded-xl max-h-[300px] overflow-y-auto">
+                  <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono">
+                    {viewingRecurso.conteudo}
+                  </pre>
+                </div>
               </div>
-            )}
-          </div>
 
-          <DialogFooter>
-            {viewingRecurso?.status_aprovacao === 'pendente' && (
-              <>
-                <Button
-                  variant="outline"
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                  onClick={() => {
-                    aprovarMutation.mutate({ id: viewingRecurso.id, status: 'rejeitado' });
-                    setViewingRecurso(null);
-                  }}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Rejeitar
-                </Button>
-                <Button
-                  className="bg-green-600 hover:bg-green-700"
-                  onClick={() => {
-                    aprovarMutation.mutate({ id: viewingRecurso.id, status: 'aprovado', is_global: true });
-                    setViewingRecurso(null);
-                  }}
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Aprovar para Base Global
-                </Button>
-              </>
-            )}
-            {viewingRecurso?.status_aprovacao !== 'pendente' && (
-              <Button variant="outline" onClick={() => setViewingRecurso(null)}>
+              {viewingRecurso.observacoes && (
+                <div>
+                  <p className="text-sm font-bold text-gray-700 mb-2">Observações</p>
+                  <p className="text-gray-600 bg-gray-50 p-4 rounded-xl">{viewingRecurso.observacoes}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+              {viewingRecurso.status_aprovacao === 'pendente' && (
+                <>
+                  <button
+                    onClick={() => {
+                      aprovarMutation.mutate({ id: viewingRecurso.id, status: 'rejeitado' });
+                      setViewingRecurso(null);
+                    }}
+                    className="px-6 py-3 border border-red-200 text-red-600 rounded-xl hover:bg-red-50 font-medium flex items-center gap-2"
+                  >
+                    <i className="ri-close-line"></i>
+                    Rejeitar
+                  </button>
+                  <button
+                    onClick={() => {
+                      aprovarMutation.mutate({ id: viewingRecurso.id, status: 'aprovado', is_global: true });
+                      setViewingRecurso(null);
+                    }}
+                    className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 font-bold flex items-center gap-2"
+                  >
+                    <i className="ri-check-line"></i>
+                    Aprovar
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => setViewingRecurso(null)}
+                className="px-6 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 font-medium"
+              >
                 Fechar
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
