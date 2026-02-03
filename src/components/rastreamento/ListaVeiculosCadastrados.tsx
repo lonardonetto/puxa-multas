@@ -32,6 +32,7 @@ interface Props {
   onRefreshMultas: () => void;
   onEditVeiculo?: (veiculo: VeiculoCadastrado) => void;
   onViewHistorico?: (veiculo: VeiculoCadastrado) => void;
+  onDadosVeiculoRecebidos?: (dados: unknown, veiculoId: string, clienteId: string | null) => void;
 }
 
 const formatCurrency = (value: number) => {
@@ -49,7 +50,7 @@ const formatDate = (dateString: string | null) => {
   });
 };
 
-export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeiculo, onViewHistorico }: Props) {
+export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeiculo, onViewHistorico, onDadosVeiculoRecebidos }: Props) {
   const { currentOrganization } = useOrganization();
   const { balance, checkBalance, deductCredits } = useWallet();
   const [veiculos, setVeiculos] = useState<VeiculoCadastrado[]>([]);
@@ -284,8 +285,15 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
           toast.info('Nenhuma multa encontrada para este veículo');
         }
       } else if (dados && typeof dados === 'object') {
-        // API pode retornar dados do veículo sem multas
-        toast.info('Consulta realizada. Nenhuma multa pendente encontrada.');
+        // API retornou dados do veículo (consulta veicular completa)
+        // Verificar se tem dados_do_veiculo (estrutura de consulta veicular)
+        if ('dados_do_veiculo' in dados && dados.dados_do_veiculo) {
+          toast.success('Dados do veículo obtidos com sucesso!');
+          // Notificar o componente pai para exibir modal de preview
+          onDadosVeiculoRecebidos?.(dados, veiculo.id, veiculo.cliente_id);
+        } else {
+          toast.info('Consulta realizada. Nenhuma multa pendente encontrada.');
+        }
       }
 
       // 4. Salvar histórico da consulta
