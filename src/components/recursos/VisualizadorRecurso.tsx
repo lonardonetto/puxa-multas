@@ -16,17 +16,37 @@ export default function VisualizadorRecurso({
   clienteId,
   onClose
 }: VisualizadorRecursoProps) {
-  const [textoEditado, setTextoEditado] = useState(conteudo);
+  // Converter texto simples para HTML (preservar quebras de linha e parágrafos)
+  const converterParaHTML = (texto: string) => {
+    if (!texto) return '';
+    // Se já parece ser HTML, retornar como está
+    if (texto.includes('<p>') || texto.includes('<br>') || texto.includes('<div>')) {
+      return texto;
+    }
+    // Converter quebras de linha duplas em parágrafos
+    // Converter quebras de linha simples em <br>
+    return texto
+      .split(/\n\n+/)
+      .map(paragrafo => `<p>${paragrafo.replace(/\n/g, '<br>')}</p>`)
+      .join('');
+  };
+
+  const [textoEditado, setTextoEditado] = useState(() => converterParaHTML(conteudo));
   const [copiado, setCopiado] = useState(false);
   const [concluindo, setConcluindo] = useState(false);
   const [salvandoPDF, setSalvandoPDF] = useState(false);
   const [etapaConclusao, setEtapaConclusao] = useState<'gerando' | 'salvando' | 'concluido'>('gerando');
 
-  // Extrair texto puro do HTML para copiar
+  // Extrair texto puro do HTML para copiar e para o PDF
   const extrairTextoPuro = (html: string) => {
     const div = document.createElement('div');
     div.innerHTML = html;
-    return div.textContent || div.innerText || '';
+    // Substituir <br> e </p> por quebras de linha antes de extrair
+    div.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+    div.querySelectorAll('p').forEach(p => {
+      p.insertAdjacentText('afterend', '\n\n');
+    });
+    return (div.textContent || div.innerText || '').trim();
   };
 
   const handleCopiar = () => {
@@ -36,32 +56,50 @@ export default function VisualizadorRecurso({
   };
 
   const handleImprimir = () => {
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open('about:blank', '_blank');
     if (printWindow) {
-      printWindow.document.write(`
+      const htmlContent = `
+        <!DOCTYPE html>
         <html>
           <head>
+            <meta charset="utf-8">
             <title>Recurso de Trânsito</title>
             <style>
+              * { box-sizing: border-box; }
               body {
-                font-family: 'Georgia', serif;
+                font-family: 'Georgia', 'Times New Roman', serif;
                 font-size: 12pt;
                 line-height: 1.8;
                 padding: 40px 60px;
                 max-width: 800px;
                 margin: 0 auto;
+                color: #000;
               }
-              p { margin-bottom: 1em; }
+              p { 
+                margin-bottom: 1em; 
+                text-align: justify;
+              }
               ul, ol { margin-left: 20px; margin-bottom: 1em; }
+              strong, b { font-weight: bold; }
+              em, i { font-style: italic; }
+              u { text-decoration: underline; }
             </style>
           </head>
           <body>
             ${textoEditado}
           </body>
         </html>
-      `);
+      `;
+      
+      printWindow.document.open();
+      printWindow.document.write(htmlContent);
       printWindow.document.close();
-      printWindow.print();
+      
+      // Aguardar o documento carregar antes de imprimir
+      printWindow.onload = () => {
+        printWindow.focus();
+        printWindow.print();
+      };
     }
   };
 
