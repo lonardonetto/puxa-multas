@@ -7,6 +7,7 @@ import ModalEditarVeiculo from '../../components/rastreamento/ModalEditarVeiculo
 import ModalEditarMulta from '../../components/rastreamento/ModalEditarMulta';
 import ModalPreviewDadosVeiculo from '../../components/rastreamento/ModalPreviewDadosVeiculo';
 import ModalSelecionarPlanoRastreamento from '../../components/rastreamento/ModalSelecionarPlanoRastreamento';
+import AnimacaoRastreamento from '../../components/rastreamento/AnimacaoRastreamento';
 import ListaVeiculosCadastrados from '../../components/rastreamento/ListaVeiculosCadastrados';
 import { useClientes } from '../../hooks/useClientes';
 import { useVeiculos } from '../../hooks/useVeiculos';
@@ -77,6 +78,11 @@ export default function Rastreamento() {
     tipo: 'mensal' | 'anual';
     preco: number;
   } | null>(null);
+  
+  // Estado para animação de rastreamento
+  const [animacaoAberta, setAnimacaoAberta] = useState(false);
+  const [placaAnimacao, setPlacaAnimacao] = useState('');
+  const [tipoPlanoAnimacao, setTipoPlanoAnimacao] = useState<'mensal' | 'anual'>('mensal');
   
   // Estado para dados pendentes do formulário (aguardando seleção de plano)
   const [dadosPendentes, setDadosPendentes] = useState<{
@@ -320,6 +326,26 @@ export default function Rastreamento() {
       return;
     }
 
+    // Salvar dados do plano selecionado e iniciar animação
+    setPlanoRastreamentoSelecionado({ tipo, preco });
+    setPlacaAnimacao(placasValidas[0]?.placa || 'VEICULO');
+    setTipoPlanoAnimacao(tipo);
+    setModalPlanoAberto(false);
+    setAnimacaoAberta(true);
+  };
+
+  // Função chamada quando a animação termina
+  const handleAnimacaoComplete = async () => {
+    if (!dadosPendentes || !currentOrganization || !planoRastreamentoSelecionado) {
+      setAnimacaoAberta(false);
+      return;
+    }
+
+    const { clienteIdFinal, placasValidas } = dadosPendentes;
+    const { tipo, preco } = planoRastreamentoSelecionado;
+    const totalVeiculos = placasValidas.length;
+    const custoTotal = preco * totalVeiculos;
+
     try {
       // Deduzir créditos da carteira
       await deductCredits(
@@ -359,14 +385,16 @@ export default function Rastreamento() {
       }
 
       toast.success(`${totalVeiculos} veículo(s) cadastrado(s) com rastreamento ${tipo}!`);
-      setModalPlanoAberto(false);
+      setAnimacaoAberta(false);
       setDadosPendentes(null);
+      setPlanoRastreamentoSelecionado(null);
       fecharModal();
       refresh();
       
     } catch (error) {
       console.error('Erro ao ativar rastreamento:', error);
       toast.error(error instanceof Error ? error.message : 'Erro ao ativar rastreamento');
+      setAnimacaoAberta(false);
     } finally {
       setSalvando(false);
     }
@@ -769,7 +797,6 @@ export default function Rastreamento() {
           });
           setHistoricoModalAberto(true);
         }}
-        onDadosVeiculoRecebidos={handleDadosVeiculoRecebidos}
       />
 
       {/* Modal de Editar Veículo */}
@@ -1082,6 +1109,14 @@ export default function Rastreamento() {
         onConfirm={handlePlanoSelecionado}
         tipoVeiculo={tipoRastreamento === 'frota' ? 'frota' : 'individual'}
         loading={salvando}
+      />
+
+      {/* Animação de rastreamento após seleção do plano */}
+      <AnimacaoRastreamento
+        isOpen={animacaoAberta}
+        placa={placaAnimacao}
+        tipoPlano={tipoPlanoAnimacao}
+        onComplete={handleAnimacaoComplete}
       />
     </div>
   );

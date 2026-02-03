@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useOrganization } from '../../contexts/OrganizationContext';
-import { useWallet } from '../../hooks/useWallet';
 import { toast } from 'sonner';
 
 interface VeiculoCadastrado {
@@ -24,24 +23,11 @@ interface VeiculoCadastrado {
   tipo_pessoa: 'fisica' | 'juridica';
 }
 
-interface PlanoPrecos {
-  preco_rastreamento: number;
-  rastreamento_mensal_pf_preco: number;
-  rastreamento_anual_pf_preco: number;
-  rastreamento_mensal_frota_preco: number;
-  rastreamento_anual_frota_preco: number;
-}
-
 interface Props {
   onRefreshMultas: () => void;
   onEditVeiculo?: (veiculo: VeiculoCadastrado) => void;
   onViewHistorico?: (veiculo: VeiculoCadastrado) => void;
-  onDadosVeiculoRecebidos?: (dados: unknown, veiculoId: string, clienteId: string | null) => void;
 }
-
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-};
 
 const formatDate = (dateString: string | null) => {
   if (!dateString) return 'Nunca';
@@ -54,53 +40,11 @@ const formatDate = (dateString: string | null) => {
   });
 };
 
-export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeiculo, onViewHistorico, onDadosVeiculoRecebidos }: Props) {
+export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeiculo, onViewHistorico }: Props) {
   const { currentOrganization } = useOrganization();
-  const { balance, checkBalance, deductCredits } = useWallet();
   const [veiculos, setVeiculos] = useState<VeiculoCadastrado[]>([]);
   const [loading, setLoading] = useState(true);
-  const [rastreando, setRastreando] = useState<string | null>(null);
   const [deletando, setDeletando] = useState<string | null>(null);
-  const [precos, setPrecos] = useState<PlanoPrecos>({
-    preco_rastreamento: 50,
-    rastreamento_mensal_pf_preco: 25,
-    rastreamento_anual_pf_preco: 250,
-    rastreamento_mensal_frota_preco: 20,
-    rastreamento_anual_frota_preco: 200,
-  });
-
-  // Buscar preços do plano da organização
-  useEffect(() => {
-    const fetchPrecos = async () => {
-      if (!currentOrganization?.plano) return;
-      
-      const { data: plano } = await supabase
-        .from('planos')
-        .select('preco_rastreamento, rastreamento_mensal_pf_preco, rastreamento_anual_pf_preco, rastreamento_mensal_frota_preco, rastreamento_anual_frota_preco')
-        .eq('slug', currentOrganization.plano)
-        .eq('ativo', true)
-        .single();
-
-      if (plano) {
-        setPrecos({
-          preco_rastreamento: plano.preco_rastreamento || 50,
-          rastreamento_mensal_pf_preco: plano.rastreamento_mensal_pf_preco || 25,
-          rastreamento_anual_pf_preco: plano.rastreamento_anual_pf_preco || 250,
-          rastreamento_mensal_frota_preco: plano.rastreamento_mensal_frota_preco || 20,
-          rastreamento_anual_frota_preco: plano.rastreamento_anual_frota_preco || 200,
-        });
-      }
-    };
-
-    fetchPrecos();
-  }, [currentOrganization?.plano]);
-
-  // Calcular preço baseado no tipo (PF ou Frota/PJ) - para consulta avulsa usa mensal
-  const getPrecoConsulta = (tipoPessoa: 'fisica' | 'juridica') => {
-    return tipoPessoa === 'juridica' 
-      ? precos.rastreamento_mensal_frota_preco 
-      : precos.rastreamento_mensal_pf_preco;
-  };
 
   useEffect(() => {
     if (currentOrganization?.id) {
@@ -215,132 +159,6 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
     }
   };
 
-  const rastrearMultas = async (veiculo: VeiculoCadastrado) => {
-    const precoConsulta = getPrecoConsulta(veiculo.tipo_pessoa);
-    
-    // Verificar saldo
-    if (!checkBalance(precoConsulta)) {
-      toast.error(`Saldo insuficiente. Você precisa de ${formatCurrency(precoConsulta)} para rastrear multas.`);
-      return;
-    }
-
-    setRastreando(veiculo.id);
-
-    try {
-      // 1. Deduzir créditos primeiro
-      await deductCredits(
-        precoConsulta,
-        `Consulta de multas - Placa ${veiculo.placa}`,
-        'rastreamento'
-      );
-
-      toast.success(`Cobrança de ${formatCurrency(precoConsulta)} realizada. Consultando multas...`);
-
-      // 2. Consultar API CertaDoc
-      const { data: response, error: funcError } = await supabase.functions.invoke('certadoc', {
-        body: {
-          action: 'consultar-placa',
-          placa: veiculo.placa,
-        },
-      });
-
-      if (funcError) {
-        throw new Error(funcError.message || 'Erro ao consultar API');
-      }
-
-      if (!response?.success) {
-        throw new Error(response?.error || 'Falha na consulta');
-      }
-
-      const dados = response.data;
-      console.log('Dados recebidos da CertaDoc:', dados);
-
-      let multasEncontradas = 0;
-
-      // 3. Processar e salvar multas no banco (se houver multas)
-      if (dados && dados.multas && Array.isArray(dados.multas) && dados.multas.length > 0) {
-        const multasParaSalvar = dados.multas.map((multa: any) => ({
-          veiculo_id: veiculo.id,
-          placa_autuada: veiculo.placa,
-          codigo_infracao: multa.codigoInfracao || multa.codigo || '',
-          descricao: multa.descricao || multa.descricaoInfracao || '',
-          valor: parseFloat(multa.valor) || 0,
-          pontos: parseInt(multa.pontos) || 0,
-          gravidade: multa.gravidade || '',
-          data_multa: multa.dataInfracao || multa.dataMulta || null,
-          hora_infracao: multa.horaInfracao || null,
-          numero_auto: multa.numeroAuto || multa.auto || '',
-          local_infracao: multa.local || multa.localInfracao || '',
-          orgao_autuador: multa.orgao || multa.orgaoAutuador || '',
-          municipio: multa.municipio || '',
-          uf_infracao: multa.uf || multa.estado || '',
-          data_vencimento: multa.dataVencimento || null,
-          status: 'pendente',
-        }));
-
-        multasEncontradas = multasParaSalvar.length;
-
-        const { error: insertError } = await supabase
-          .from('multas')
-          .insert(multasParaSalvar);
-
-        if (insertError) {
-          console.error('Erro ao inserir multas:', insertError);
-          throw new Error('Erro ao salvar multas no banco');
-        }
-
-        toast.success(`${multasParaSalvar.length} multa(s) encontrada(s) e salva(s)!`);
-      }
-      
-      // 4. Verificar se tem dados do veículo para abrir modal de preview
-      // Abre o modal SEMPRE que houver dados_do_veiculo, independente de ter multas ou não
-      if (dados && dados.dados_do_veiculo) {
-        console.log('Abrindo modal com dados completos:', dados);
-        toast.success('Dados do veículo obtidos com sucesso!');
-        // Passar os dados completos (com restricoes_e_impedimentos, etc.)
-        onDadosVeiculoRecebidos?.(dados, veiculo.id, veiculo.cliente_id);
-      } else if (multasEncontradas === 0) {
-        toast.info('Consulta realizada. Nenhuma multa pendente encontrada.');
-      }
-
-      // 4. Salvar histórico da consulta
-      if (currentOrganization?.id) {
-        const historicoData = {
-          veiculo_id: veiculo.id,
-          organization_id: currentOrganization.id,
-          placa: veiculo.placa,
-          cliente_nome: veiculo.cliente_nome,
-          cliente_documento: veiculo.cliente_cpf || veiculo.cliente_cnpj,
-          modelo_veiculo: veiculo.modelo,
-          ano_veiculo: veiculo.ano,
-          valor_cobrado: precoConsulta,
-          resposta_api: dados,
-          multas_encontradas: multasEncontradas,
-          status: 'sucesso',
-        };
-
-        const { error: historicoError } = await supabase
-          .from('consultas_rastreamento')
-          .insert(historicoData);
-
-        if (historicoError) {
-          console.error('Erro ao salvar histórico:', historicoError);
-          // Não bloquear o fluxo por erro no histórico
-        }
-      }
-
-      // 5. Atualizar lista de veículos e multas
-      await fetchVeiculos();
-      onRefreshMultas();
-
-    } catch (error) {
-      console.error('Erro ao rastrear multas:', error);
-      toast.error(error instanceof Error ? error.message : 'Erro ao rastrear multas');
-    } finally {
-      setRastreando(null);
-    }
-  };
-
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -362,12 +180,12 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
         <div>
           <h3 className="text-lg font-bold text-gray-800">Veículos Cadastrados para Rastreamento</h3>
           <p className="text-sm text-gray-500 mt-1">
-            Consulte multas dos veículos cadastrados. Preço por consulta varia conforme seu plano.
+            Rastreamento automático ativo. Consultas semanais programadas.
           </p>
         </div>
-        <div className="flex items-center space-x-2 bg-blue-50 px-4 py-2 rounded-lg">
-          <i className="ri-wallet-3-line text-blue-600"></i>
-          <span className="text-sm font-medium text-blue-800">Saldo: {formatCurrency(balance)}</span>
+        <div className="flex items-center space-x-2 bg-green-50 px-4 py-2 rounded-lg">
+          <i className="ri-radar-line text-green-600"></i>
+          <span className="text-sm font-medium text-green-800">Monitoramento Automático</span>
         </div>
       </div>
 
@@ -450,54 +268,37 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
                   <td className="py-4 px-4">
                     <p className="text-sm text-gray-600">{formatDate(veiculo.ultima_consulta)}</p>
                   </td>
-                <td className="py-4 px-4">
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => rastrearMultas(veiculo)}
-                      disabled={rastreando === veiculo.id}
-                      className="px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-xs font-medium hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center whitespace-nowrap"
-                    >
-                      {rastreando === veiculo.id ? (
-                        <>
-                          <i className="ri-loader-4-line animate-spin mr-1"></i>
-                          Consultando...
-                        </>
-                      ) : (
-                        <>
-                          <i className="ri-search-line mr-1"></i>
-                          Rastrear ({formatCurrency(getPrecoConsulta(veiculo.tipo_pessoa))})
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => onViewHistorico?.(veiculo)}
-                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                      title="Ver histórico de consultas"
-                    >
-                      <i className="ri-history-line text-lg"></i>
-                    </button>
-                    <button
-                      onClick={() => onEditVeiculo?.(veiculo)}
-                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Editar veículo"
-                    >
-                      <i className="ri-pencil-line text-lg"></i>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteVeiculo(veiculo.id, veiculo.placa)}
-                      disabled={deletando === veiculo.id}
-                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                      title="Excluir veículo"
-                    >
-                      {deletando === veiculo.id ? (
-                        <i className="ri-loader-4-line animate-spin text-lg"></i>
-                      ) : (
-                        <i className="ri-delete-bin-line text-lg"></i>
-                      )}
-                    </button>
-                  </div>
-                </td>
-              </tr>
+                  <td className="py-4 px-4">
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => onViewHistorico?.(veiculo)}
+                        className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                        title="Ver histórico de consultas"
+                      >
+                        <i className="ri-history-line text-lg"></i>
+                      </button>
+                      <button
+                        onClick={() => onEditVeiculo?.(veiculo)}
+                        className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Editar veículo"
+                      >
+                        <i className="ri-pencil-line text-lg"></i>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteVeiculo(veiculo.id, veiculo.placa)}
+                        disabled={deletando === veiculo.id}
+                        className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                        title="Excluir veículo"
+                      >
+                        {deletando === veiculo.id ? (
+                          <i className="ri-loader-4-line animate-spin text-lg"></i>
+                        ) : (
+                          <i className="ri-delete-bin-line text-lg"></i>
+                        )}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               );
             })}
           </tbody>
