@@ -1119,17 +1119,25 @@ export default function Rastreamento() {
                         {multa.codigoInfracao} - {multa.descricaoInfracao.substring(0, 50)}{multa.descricaoInfracao.length > 50 ? '...' : ''}
                       </td>
                       <td className="py-4 px-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                          multa.status === 'suspensiva' ? 'bg-red-100 text-[#EF4444]' :
-                          multa.status === 'analise' ? 'bg-yellow-100 text-[#F59E0B]' :
-                          multa.status === 'pendente' ? 'bg-gray-100 text-gray-600' :
-                          'bg-green-100 text-[#10B981]'
-                        }`}>
-                          {multa.status === 'suspensiva' ? 'Suspensiva' :
-                           multa.status === 'analise' ? 'Em Análise' :
-                           multa.status === 'pendente' ? 'Pendente' :
-                           'Concluído'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                            multa.status === 'suspensiva' ? 'bg-red-100 text-[#EF4444]' :
+                            multa.status === 'analise' ? 'bg-yellow-100 text-[#F59E0B]' :
+                            multa.status === 'pendente' ? 'bg-gray-100 text-gray-600' :
+                            'bg-green-100 text-[#10B981]'
+                          }`}>
+                            {multa.status === 'suspensiva' ? 'Suspensiva' :
+                             multa.status === 'analise' ? 'Em Análise' :
+                             multa.status === 'pendente' ? 'Pendente' :
+                             'Concluído'}
+                          </span>
+                          {multa.recursoId && (
+                            <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1">
+                              <i className="ri-file-text-line"></i>
+                              Recurso Gerado
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-4 px-4 text-sm text-gray-700">{formatDate(multa.dataMulta)}</td>
                       <td className="py-4 px-4 text-sm font-semibold text-gray-800">{formatCurrency(multa.valor)}</td>
@@ -1140,16 +1148,30 @@ export default function Rastreamento() {
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex items-center space-x-2">
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              iniciarGeracaoRecurso(multa);
-                            }}
-                            className="px-4 py-2 bg-[#10B981] text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors cursor-pointer whitespace-nowrap"
-                          >
-                            <i className="ri-robot-line mr-1"></i>
-                            Gerar Recurso IA
-                          </button>
+                          {multa.recursoId ? (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Navegar para a pasta do cliente com recursos
+                                navigate(`/cadastro/lista-clientes?cliente=${multa.clienteId}&tab=recursos`);
+                              }}
+                              className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 transition-colors cursor-pointer whitespace-nowrap"
+                            >
+                              <i className="ri-folder-open-line mr-1"></i>
+                              Ver Recurso
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                iniciarGeracaoRecurso(multa);
+                              }}
+                              className="px-4 py-2 bg-[#10B981] text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors cursor-pointer whitespace-nowrap"
+                            >
+                              <i className="ri-robot-line mr-1"></i>
+                              Gerar Recurso IA
+                            </button>
+                          )}
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();

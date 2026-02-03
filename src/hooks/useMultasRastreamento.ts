@@ -34,6 +34,9 @@ export interface MultaRastreada {
   ufInfracao?: string;
   dataVencimento?: string;
   observacoes?: string;
+  // Campo para indicar se já tem recurso gerado
+  recursoId?: string;
+  recursoFinalizado?: boolean;
 }
 
 interface UseMultasRastreamentoReturn {
@@ -145,7 +148,30 @@ export function useMultasRastreamento(): UseMultasRastreamentoReturn {
           ufInfracao: m.uf_infracao || '',
           dataVencimento: m.data_vencimento || '',
           observacoes: m.observacoes || '',
+          // Recurso - será preenchido posteriormente
+          recursoId: undefined as string | undefined,
+          recursoFinalizado: undefined as boolean | undefined,
         }));
+
+      // Buscar recursos vinculados às multas
+      if (multasFiltradas.length > 0) {
+        const multaIds = multasFiltradas.map(m => m.id);
+        const { data: recursos } = await supabase
+          .from('recursos')
+          .select('id, multa_id, finalizado')
+          .in('multa_id', multaIds);
+
+        if (recursos && recursos.length > 0) {
+          const recursosMap = new Map(recursos.map(r => [r.multa_id, { id: r.id, finalizado: r.finalizado }]));
+          multasFiltradas.forEach(m => {
+            const recurso = recursosMap.get(m.id);
+            if (recurso) {
+              m.recursoId = recurso.id;
+              m.recursoFinalizado = recurso.finalizado || false;
+            }
+          });
+        }
+      }
 
       // Se pontos não vier da multa, buscar da tabela de infrações
       if (multasFiltradas.length > 0) {
