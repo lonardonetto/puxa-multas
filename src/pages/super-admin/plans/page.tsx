@@ -334,28 +334,63 @@ export default function PlansManagement() {
                                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center">
                                         <span className="mr-2">04</span> Rastreamento e Prospecção
                                     </h3>
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-600 mb-1">RASTREAMENTO PF (R$/mês)</label>
-                                                <input
-                                                    type="number"
-                                                    step="0.01"
-                                                    value={editingPlan.rastreamento_pf_preco || 0}
-                                                    onChange={(e) => setEditingPlan({ ...editingPlan, rastreamento_pf_preco: parseFloat(e.target.value) })}
-                                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl"
-                                                />
+                                    <div className="space-y-4">
+                                        {/* Rastreamento PF */}
+                                        <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100">
+                                            <p className="text-[10px] font-bold text-amber-800 uppercase border-b border-amber-100 pb-1 mb-3">Rastreamento PF (Pessoa Física)</p>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-gray-600 mb-1">MENSAL (R$/mês)</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={(editingPlan as any).rastreamento_mensal_pf_preco || 0}
+                                                        onChange={(e) => setEditingPlan({ ...editingPlan, rastreamento_mensal_pf_preco: parseFloat(e.target.value) } as any)}
+                                                        className="w-full px-4 py-2 bg-white border border-amber-200 rounded-xl"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-gray-600 mb-1">ANUAL (R$/ano)</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={(editingPlan as any).rastreamento_anual_pf_preco || 0}
+                                                        onChange={(e) => setEditingPlan({ ...editingPlan, rastreamento_anual_pf_preco: parseFloat(e.target.value) } as any)}
+                                                        className="w-full px-4 py-2 bg-white border border-amber-200 rounded-xl"
+                                                    />
+                                                </div>
                                             </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-600 mb-1">RASTREAMENTO FROTA (R$/placa)</label>
-                                                <input
-                                                    type="number"
-                                                    step="0.01"
-                                                    value={editingPlan.rastreamento_frota_preco || 0}
-                                                    onChange={(e) => setEditingPlan({ ...editingPlan, rastreamento_frota_preco: parseFloat(e.target.value) })}
-                                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl"
-                                                />
+                                        </div>
+
+                                        {/* Rastreamento Frota */}
+                                        <div className="bg-green-50/50 p-4 rounded-2xl border border-green-100">
+                                            <p className="text-[10px] font-bold text-green-800 uppercase border-b border-green-100 pb-1 mb-3">Rastreamento Frota (Pessoa Jurídica)</p>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-gray-600 mb-1">MENSAL (R$/placa/mês)</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={(editingPlan as any).rastreamento_mensal_frota_preco || 0}
+                                                        onChange={(e) => setEditingPlan({ ...editingPlan, rastreamento_mensal_frota_preco: parseFloat(e.target.value) } as any)}
+                                                        className="w-full px-4 py-2 bg-white border border-green-200 rounded-xl"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-gray-600 mb-1">ANUAL (R$/placa/ano)</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={(editingPlan as any).rastreamento_anual_frota_preco || 0}
+                                                        onChange={(e) => setEditingPlan({ ...editingPlan, rastreamento_anual_frota_preco: parseFloat(e.target.value) } as any)}
+                                                        className="w-full px-4 py-2 bg-white border border-green-200 rounded-xl"
+                                                    />
+                                                </div>
                                             </div>
+                                        </div>
+
+                                        {/* Outros */}
+                                        <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-xs font-bold text-gray-600 mb-1">RECURSO GARANTIDO (R$/mês)</label>
                                                 <input
@@ -366,8 +401,6 @@ export default function PlansManagement() {
                                                     className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl"
                                                 />
                                             </div>
-                                        </div>
-                                        <div className="space-y-4">
                                             <div>
                                                 <label className="block text-xs font-bold text-gray-600 mb-1">EDITAL / CONTATO (R$/unid)</label>
                                                 <input
@@ -378,30 +411,33 @@ export default function PlansManagement() {
                                                     className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl"
                                                 />
                                             </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-600 mb-1 uppercase">Módulo Educacional</label>
-                                                <select
-                                                    value={editingPlan.modulo_educacional || 'Nenhum'}
-                                                    onChange={(e) => setEditingPlan({ ...editingPlan, modulo_educacional: e.target.value })}
-                                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
-                                                >
-                                                    <option value="Nenhum">Nenhum</option>
-                                                    <option value="Parcial">Parcial</option>
-                                                    <option value="Completo">Completo</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-600 mb-1 uppercase">Suporte Técnico</label>
-                                                <select
-                                                    value={editingPlan.suporte || 'Padrão'}
-                                                    onChange={(e) => setEditingPlan({ ...editingPlan, suporte: e.target.value })}
-                                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
-                                                >
-                                                    <option value="Padrão">Padrão</option>
-                                                    <option value="Prioritário">Prioritário</option>
-                                                    <option value="VIP">VIP</option>
-                                                </select>
-                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6 mt-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-600 mb-1 uppercase">Módulo Educacional</label>
+                                            <select
+                                                value={editingPlan.modulo_educacional || 'Nenhum'}
+                                                onChange={(e) => setEditingPlan({ ...editingPlan, modulo_educacional: e.target.value })}
+                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="Nenhum">Nenhum</option>
+                                                <option value="Parcial">Parcial</option>
+                                                <option value="Completo">Completo</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-600 mb-1 uppercase">Suporte Técnico</label>
+                                            <select
+                                                value={editingPlan.suporte || 'Padrão'}
+                                                onChange={(e) => setEditingPlan({ ...editingPlan, suporte: e.target.value })}
+                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="Padrão">Padrão</option>
+                                                <option value="Prioritário">Prioritário</option>
+                                                <option value="VIP">VIP</option>
+                                            </select>
                                         </div>
                                     </div>
                                 </section>
