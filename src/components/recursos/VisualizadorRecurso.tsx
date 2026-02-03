@@ -307,15 +307,16 @@ export default function VisualizadorRecurso({
         </div>
       </div>
 
-      {/* Conteúdo do Recurso - Apenas Leitura */}
+      {/* Conteúdo do Recurso - Editável */}
       <div className="p-6 max-h-[60vh] overflow-y-auto bg-white">
         <div className="max-w-3xl mx-auto bg-gray-50 border border-gray-200 rounded-lg p-8 shadow-inner">
-          <pre 
-            className="whitespace-pre-wrap text-gray-800 text-sm leading-relaxed"
+          <textarea
+            value={textoEditado}
+            onChange={(e) => setTextoEditado(e.target.value)}
+            className="w-full min-h-[400px] bg-transparent text-gray-800 text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-green-500/20 rounded-lg p-2"
             style={{ fontFamily: "'Times New Roman', serif" }}
-          >
-            {textoEditado}
-          </pre>
+            placeholder="Edite o conteúdo do recurso aqui..."
+          />
         </div>
       </div>
 
