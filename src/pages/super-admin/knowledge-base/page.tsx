@@ -56,6 +56,7 @@ export default function KnowledgeBasePage() {
   const [analisandoAit, setAnalisandoAit] = useState(false);
   const [analisandoDeferimento, setAnalisandoDeferimento] = useState(false);
   const [showAIAnimation, setShowAIAnimation] = useState(false);
+  const [isSavingWithAnimation, setIsSavingWithAnimation] = useState(false);
   const aitInputRef = useRef<HTMLInputElement>(null);
   const deferimentoInputRef = useRef<HTMLInputElement>(null);
 
@@ -322,7 +323,7 @@ export default function KnowledgeBasePage() {
     setShowModal(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Se não há conteúdo mas há anexo, a IA deve ter extraído ou extrairá o conteúdo
@@ -346,7 +347,14 @@ export default function KnowledgeBasePage() {
       conteudo: temConteudo ? formData.conteudo : '[Conteúdo extraído automaticamente dos anexos pela IA]'
     };
     
+    // Mostrar animação de IA por 10 segundos antes de salvar
+    setIsSavingWithAnimation(true);
+    setShowAIAnimation(true);
+    
+    await new Promise(resolve => setTimeout(resolve, 10000)); // Aguardar 10 segundos
+    
     saveMutation.mutate(editingId ? { ...dataToSave, id: editingId } : dataToSave);
+    setIsSavingWithAnimation(false);
   };
 
   // Separar recursos por status
@@ -795,11 +803,13 @@ export default function KnowledgeBasePage() {
               </div>
 
               {/* AI Processing Animation */}
-              {(analisandoAit || analisandoDeferimento || showAIAnimation) && (
+              {(analisandoAit || analisandoDeferimento || showAIAnimation || isSavingWithAnimation) && (
                 <AIProcessingAnimation 
-                  isProcessing={analisandoAit || analisandoDeferimento}
+                  isProcessing={analisandoAit || analisandoDeferimento || isSavingWithAnimation}
                   onComplete={() => {
-                    setTimeout(() => setShowAIAnimation(false), 3000);
+                    if (!isSavingWithAnimation) {
+                      setTimeout(() => setShowAIAnimation(false), 3000);
+                    }
                   }}
                 />
               )}
@@ -941,13 +951,13 @@ export default function KnowledgeBasePage() {
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={saveMutation.isPending || uploadingAit || uploadingDeferimento || analisandoAit || analisandoDeferimento}
+                disabled={saveMutation.isPending || uploadingAit || uploadingDeferimento || analisandoAit || analisandoDeferimento || isSavingWithAnimation}
                 className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-bold disabled:opacity-50 flex items-center gap-2"
               >
-                {saveMutation.isPending ? (
+                {saveMutation.isPending || isSavingWithAnimation ? (
                   <>
                     <i className="ri-loader-4-line animate-spin"></i>
-                    Salvando...
+                    {isSavingWithAnimation ? 'IA Processando...' : 'Salvando...'}
                   </>
                 ) : (
                   <>
