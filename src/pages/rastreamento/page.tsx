@@ -8,6 +8,7 @@ import ModalEditarMulta from '../../components/rastreamento/ModalEditarMulta';
 import ModalPreviewDadosVeiculo from '../../components/rastreamento/ModalPreviewDadosVeiculo';
 import ModalSelecionarPlanoRastreamento from '../../components/rastreamento/ModalSelecionarPlanoRastreamento';
 import AnimacaoRastreamento from '../../components/rastreamento/AnimacaoRastreamento';
+import AnimacaoGeracaoRecurso from '../../components/recursos/AnimacaoGeracaoRecurso';
 import ListaVeiculosCadastrados, { ListaVeiculosRef } from '../../components/rastreamento/ListaVeiculosCadastrados';
 import { useClientes } from '../../hooks/useClientes';
 import { useVeiculos } from '../../hooks/useVeiculos';
@@ -86,6 +87,10 @@ export default function Rastreamento() {
   const [placaAnimacao, setPlacaAnimacao] = useState('');
   const [tipoPlanoAnimacao, setTipoPlanoAnimacao] = useState<'mensal' | 'anual'>('mensal');
   
+  // Estado para animação de geração de recurso
+  const [animacaoRecursoAberta, setAnimacaoRecursoAberta] = useState(false);
+  const [multaParaRecurso, setMultaParaRecurso] = useState<MultaRastreada | null>(null);
+  
   // Estado para dados pendentes do formulário (aguardando seleção de plano)
   const [dadosPendentes, setDadosPendentes] = useState<{
     clienteIdFinal: string;
@@ -137,6 +142,21 @@ export default function Rastreamento() {
   const handleDadosVeiculoRecebidos = (dados: unknown, veiculoId: string, clienteId: string | null) => {
     setDadosVeiculoAPI({ dados, veiculoId, clienteId });
     setPreviewDadosAberto(true);
+  };
+
+  // Função para iniciar animação antes de navegar para recursos-ia
+  const iniciarGeracaoRecurso = (multa: MultaRastreada) => {
+    setMultaParaRecurso(multa);
+    setAnimacaoRecursoAberta(true);
+  };
+
+  // Função chamada quando animação de recurso termina
+  const handleAnimacaoRecursoComplete = () => {
+    setAnimacaoRecursoAberta(false);
+    if (multaParaRecurso) {
+      navegarParaRecursoIA(multaParaRecurso);
+      setMultaParaRecurso(null);
+    }
   };
 
   // Função para navegar para recursos-ia com todos os dados completos
@@ -1119,7 +1139,7 @@ export default function Rastreamento() {
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              navegarParaRecursoIA(multa);
+                              iniciarGeracaoRecurso(multa);
                             }}
                             className="px-4 py-2 bg-[#10B981] text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors cursor-pointer whitespace-nowrap"
                           >
@@ -1168,7 +1188,7 @@ export default function Rastreamento() {
           onClose={() => setMultaSelecionada(null)}
           onGerarRecurso={(multa) => {
             setMultaSelecionada(null);
-            navegarParaRecursoIA(multa);
+            iniciarGeracaoRecurso(multa);
           }}
         />
       )}
@@ -1256,6 +1276,13 @@ export default function Rastreamento() {
         placa={placaAnimacao}
         tipoPlano={tipoPlanoAnimacao}
         onComplete={handleAnimacaoComplete}
+      />
+
+      {/* Animação de geração de recurso */}
+      <AnimacaoGeracaoRecurso
+        isOpen={animacaoRecursoAberta}
+        tipo="iniciando"
+        onComplete={handleAnimacaoRecursoComplete}
       />
     </div>
   );
