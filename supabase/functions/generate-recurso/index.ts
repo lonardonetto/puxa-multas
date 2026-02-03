@@ -147,8 +147,37 @@ serve(async (req) => {
       .order('codigo_infracao', { ascending: false, nullsFirst: false })
       .limit(1);
 
+    // NOVO: Buscar recursos deferidos similares da base de conhecimento
+    const { data: recursosDeferidos } = await supabase
+      .from('recursos_conhecimento')
+      .select('conteudo, argumentos_chave, resultado')
+      .eq('codigo_infracao', dados.codigoInfracao)
+      .eq('resultado', 'deferido')
+      .or(`is_global.eq.true,organization_id.eq.${organizationId}`)
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    console.log('Recursos deferidos encontrados na base:', recursosDeferidos?.length || 0);
+
     const template = templates?.[0];
     const fundamentosText = fundamentos?.map(f => `• ${f.titulo}: ${f.conteudo}`).join('\n\n') || '';
+
+    // Preparar exemplos da base de conhecimento
+    let exemplosConhecimento = '';
+    if (recursosDeferidos && recursosDeferidos.length > 0) {
+      exemplosConhecimento = `
+=== RECURSOS DEFERIDOS ANTERIORES (USE COMO REFERÊNCIA) ===
+Os seguintes recursos foram DEFERIDOS para a mesma infração. Use-os como inspiração para a argumentação:
+
+${recursosDeferidos.map((r, i) => `
+--- EXEMPLO ${i + 1} (DEFERIDO) ---
+${r.argumentos_chave?.length > 0 ? `Argumentos-chave que funcionaram: ${r.argumentos_chave.join(', ')}` : ''}
+Trecho relevante: ${r.conteudo.substring(0, 1500)}...
+`).join('\n')}
+===
+
+`;
+    }
 
     // Gerar o template base estruturado
     const templateBase = getTemplateBase(dados.tipoRecurso, dados, orgao);
@@ -158,6 +187,8 @@ serve(async (req) => {
 ${template?.prompt_ia || 'Você é um advogado especialista em direito de trânsito brasileiro, com vasta experiência em recursos administrativos.'}
 
 Você deve CONTINUAR o recurso abaixo, adicionando a argumentação jurídica completa.
+
+${exemplosConhecimento}
 
 RECURSO JÁ ESTRUTURADO:
 ${templateBase}
@@ -176,6 +207,10 @@ INFRAÇÃO EM QUESTÃO:
 - Pontos: ${dados.pontos}
 
 TIPO DE RECURSO: ${dados.tipoRecurso === 'defesa_previa' ? 'Defesa Prévia' : dados.tipoRecurso === 'jari' ? 'Recurso à JARI (1ª Instância)' : 'Recurso ao CETRAN (2ª Instância)'}
+
+IMPORTANTE: ${recursosDeferidos && recursosDeferidos.length > 0 
+  ? `Utilize os argumentos que funcionaram nos recursos deferidos anteriores como base para sua argumentação.`
+  : 'Não há recursos deferidos anteriores para esta infração - seja criativo e use as melhores práticas jurídicas.'}
 
 Por favor, CONTINUE o recurso acima gerando:
 

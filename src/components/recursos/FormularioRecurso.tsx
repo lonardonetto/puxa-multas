@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { getEstadoFromPlaca, getNomeEstado } from '../../utils/placaUtils';
 
@@ -39,6 +39,10 @@ export interface DadosRecurso {
   // Dados do Recurso
   tipoRecurso: 'defesa_previa' | 'jari' | 'cetran';
   descricaoSituacao: string;
+  
+  // AIT (Auto de Infração de Trânsito)
+  aitBase64?: string;
+  aitFileName?: string;
   
   // Dados do DETRAN
   detranId: string | null;
@@ -121,6 +125,12 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
   const [buscandoPlaca, setBuscandoPlaca] = useState(false);
   const [veiculoEncontrado, setVeiculoEncontrado] = useState<VeiculoEncontrado | null>(null);
   const [detranDetectado, setDetranDetectado] = useState<any | null>(null);
+  
+  // Estados para upload de AIT
+  const [aitFile, setAitFile] = useState<File | null>(null);
+  const [processandoAit, setProcessandoAit] = useState(false);
+  const [erroAit, setErroAit] = useState<string | null>(null);
+  const aitInputRef = useRef<HTMLInputElement>(null);
 
   // Carregar infrações
   useEffect(() => {
@@ -358,6 +368,81 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
     }
   };
 
+  // Processar upload de AIT
+  const handleAitUpload = async (file: File) => {
+    setAitFile(file);
+    setProcessandoAit(true);
+    setErroAit(null);
+
+    try {
+      // Converter arquivo para base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Remover o prefixo data:image/...;base64,
+          const base64Data = result.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Chamar edge function para extrair dados
+      const { data, error } = await supabase.functions.invoke('extrair-ait', {
+        body: { imageBase64: base64 },
+      });
+
+      if (error) throw error;
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Erro ao processar imagem');
+      }
+
+      const dadosExtraidos = data.dados;
+      console.log('Dados extraídos do AIT:', dadosExtraidos);
+
+      // Preencher formulário com dados extraídos
+      setDados(prev => ({
+        ...prev,
+        // Dados do veículo
+        placa: dadosExtraidos.placa || prev.placa,
+        modelo: dadosExtraidos.modelo || prev.modelo,
+        renavam: dadosExtraidos.renavam || prev.renavam,
+        // Dados da infração
+        numeroAuto: dadosExtraidos.numero_auto || prev.numeroAuto,
+        dataInfracao: dadosExtraidos.data_infracao || prev.dataInfracao,
+        horaInfracao: dadosExtraidos.hora_infracao || prev.horaInfracao,
+        codigoInfracao: dadosExtraidos.codigo_infracao || prev.codigoInfracao,
+        descricaoInfracao: dadosExtraidos.descricao_infracao || prev.descricaoInfracao,
+        localInfracao: dadosExtraidos.local_infracao || prev.localInfracao,
+        valorMulta: dadosExtraidos.valor || prev.valorMulta,
+        pontos: dadosExtraidos.pontos || prev.pontos,
+        gravidade: dadosExtraidos.gravidade || prev.gravidade,
+        // Dados do proprietário
+        nomeRecorrente: dadosExtraidos.nome_proprietario || prev.nomeRecorrente,
+        cpfCnpj: dadosExtraidos.cpf_cnpj_proprietario || prev.cpfCnpj,
+        endereco: dadosExtraidos.endereco_proprietario || prev.endereco,
+        cidade: dadosExtraidos.cidade_proprietario || prev.cidade,
+        estado: dadosExtraidos.uf_proprietario || dadosExtraidos.uf || prev.estado,
+        cep: dadosExtraidos.cep_proprietario || prev.cep,
+        // Base64 do AIT para salvar depois
+        aitBase64: base64,
+        aitFileName: file.name,
+        // Adicionar erros detectados na descrição da situação
+        descricaoSituacao: dadosExtraidos.erros_detectados?.length > 0
+          ? `ERROS DETECTADOS NO AIT:\n${dadosExtraidos.erros_detectados.join('\n')}\n\n${dadosExtraidos.observacoes || ''}\n\n${prev.descricaoSituacao}`
+          : prev.descricaoSituacao,
+      }));
+
+    } catch (err: any) {
+      console.error('Erro ao processar AIT:', err);
+      setErroAit(err.message || 'Erro ao processar imagem do AIT');
+    } finally {
+      setProcessandoAit(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await onSubmit(dados);
@@ -369,6 +454,79 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Seção: Upload de AIT */}
+      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-4">
+        <h4 className="font-semibold text-purple-800 mb-3 flex items-center gap-2">
+          <i className="ri-scan-2-line"></i>
+          Upload do Auto de Infração (AIT)
+          <span className="text-xs font-normal text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full ml-2">
+            OCR com IA
+          </span>
+        </h4>
+        
+        <p className="text-xs text-purple-700 mb-3">
+          📸 Envie uma foto ou PDF do Auto de Infração para preencher automaticamente os dados. 
+          <strong> A IA também detectará erros de preenchimento que podem fortalecer seu recurso!</strong>
+        </p>
+
+        <div className="flex items-center gap-4">
+          <input
+            ref={aitInputRef}
+            type="file"
+            accept="image/*,.pdf"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleAitUpload(file);
+            }}
+            className="hidden"
+          />
+          
+          <button
+            type="button"
+            onClick={() => aitInputRef.current?.click()}
+            disabled={processandoAit}
+            className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {processandoAit ? (
+              <>
+                <i className="ri-loader-4-line animate-spin"></i>
+                Analisando AIT com IA...
+              </>
+            ) : (
+              <>
+                <i className="ri-upload-cloud-2-line"></i>
+                {aitFile ? 'Trocar Arquivo' : 'Enviar AIT (Foto/PDF)'}
+              </>
+            )}
+          </button>
+          
+          {aitFile && !processandoAit && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-green-100 border border-green-300 rounded-lg">
+              <i className="ri-checkbox-circle-fill text-green-600"></i>
+              <span className="text-xs text-green-700 font-medium">{aitFile.name}</span>
+            </div>
+          )}
+        </div>
+
+        {erroAit && (
+          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-xs text-red-700 flex items-center gap-1">
+              <i className="ri-error-warning-line"></i>
+              {erroAit}
+            </p>
+          </div>
+        )}
+
+        {dados.aitBase64 && (
+          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-xs text-green-700 flex items-center gap-1">
+              <i className="ri-checkbox-circle-fill"></i>
+              Dados extraídos com sucesso! Revise e complete os campos abaixo.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Seção: Tipo de Recurso */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">

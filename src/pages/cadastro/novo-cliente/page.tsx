@@ -48,7 +48,7 @@ export default function NovoCliente() {
     cidade: '',
     estado: '',
     // Veículos
-    veiculos: [{ placa: '', modelo: '', ano: '', renavam: '' }],
+    veiculos: [{ placa: '', modelo: '', ano: '', renavam: '', rastreamentoAtivo: false }],
     // Serviços e Contrato
     servicoId: '',
     aceiteContrato: false,
@@ -119,7 +119,7 @@ export default function NovoCliente() {
   const adicionarVeiculo = () => {
     setFormData({
       ...formData,
-      veiculos: [...formData.veiculos, { placa: '', modelo: '', ano: '', renavam: '' }],
+      veiculos: [...formData.veiculos, { placa: '', modelo: '', ano: '', renavam: '', rastreamentoAtivo: false }],
     });
   };
 
@@ -128,7 +128,7 @@ export default function NovoCliente() {
     setFormData({ ...formData, veiculos: novosVeiculos });
   };
 
-  const atualizarVeiculo = (index: number, campo: string, valor: string) => {
+  const atualizarVeiculo = (index: number, campo: string, valor: string | boolean) => {
     const novosVeiculos = [...formData.veiculos];
     novosVeiculos[index] = { ...novosVeiculos[index], [campo]: valor };
     setFormData({ ...formData, veiculos: novosVeiculos });
@@ -195,13 +195,15 @@ export default function NovoCliente() {
         throw new Error('Erro ao criar cliente');
       }
 
-      // 3. Criar veículos
+      // 3. Criar veículos com status de rastreamento
       const veiculosData: VeiculoInsert[] = formData.veiculos.map(veiculo => ({
         cliente_id: cliente.id,
         placa: veiculo.placa,
         modelo: veiculo.modelo,
         ano: veiculo.ano,
         renavam: veiculo.renavam || null,
+        rastreamento_ativo: veiculo.rastreamentoAtivo || false,
+        rastreamento_inicio: veiculo.rastreamentoAtivo ? new Date().toISOString() : null,
       }));
 
       await createVeiculosBatch(veiculosData);
@@ -295,7 +297,7 @@ export default function NovoCliente() {
           bairro: '',
           cidade: '',
           estado: '',
-          veiculos: [{ placa: '', modelo: '', ano: '', renavam: '' }],
+          veiculos: [{ placa: '', modelo: '', ano: '', renavam: '', rastreamentoAtivo: false }],
           servicoId: '',
           aceiteContrato: false,
           documentoIdentidade: null,
@@ -795,6 +797,40 @@ export default function NovoCliente() {
                       placeholder="00000000000"
                     />
                   </div>
+                </div>
+
+                {/* Toggle de Rastreamento */}
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i className="ri-radar-line text-xl text-blue-600"></i>
+                      </div>
+                      <div>
+                        <h5 className="text-sm font-semibold text-gray-800">Ativar Rastreamento de Multas</h5>
+                        <p className="text-xs text-gray-500">
+                          Monitore automaticamente novas multas deste veículo
+                        </p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={veiculo.rastreamentoAtivo || false}
+                        onChange={(e) => atualizarVeiculo(index, 'rastreamentoAtivo', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                  {veiculo.rastreamentoAtivo && (
+                    <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-xs text-green-700 flex items-center gap-1">
+                        <i className="ri-checkbox-circle-fill"></i>
+                        Este veículo será monitorado automaticamente após o cadastro
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

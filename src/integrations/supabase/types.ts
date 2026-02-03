@@ -1161,6 +1161,9 @@ export type Database = {
       }
       recursos: {
         Row: {
+          ait_dados_extraidos: Json | null
+          ait_url: string | null
+          cliente_id: string | null
           conteudo: string | null
           contrato_id: string | null
           created_at: string | null
@@ -1175,8 +1178,12 @@ export type Database = {
           organization_id: string | null
           status: Database["public"]["Enums"]["status_recurso"] | null
           updated_at: string | null
+          veiculo_id: string | null
         }
         Insert: {
+          ait_dados_extraidos?: Json | null
+          ait_url?: string | null
+          cliente_id?: string | null
           conteudo?: string | null
           contrato_id?: string | null
           created_at?: string | null
@@ -1191,8 +1198,12 @@ export type Database = {
           organization_id?: string | null
           status?: Database["public"]["Enums"]["status_recurso"] | null
           updated_at?: string | null
+          veiculo_id?: string | null
         }
         Update: {
+          ait_dados_extraidos?: Json | null
+          ait_url?: string | null
+          cliente_id?: string | null
           conteudo?: string | null
           contrato_id?: string | null
           created_at?: string | null
@@ -1207,8 +1218,16 @@ export type Database = {
           organization_id?: string | null
           status?: Database["public"]["Enums"]["status_recurso"] | null
           updated_at?: string | null
+          veiculo_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "recursos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recursos_contrato_id_fkey"
             columns: ["contrato_id"]
@@ -1225,6 +1244,69 @@ export type Database = {
           },
           {
             foreignKeyName: "recursos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recursos_veiculo_id_fkey"
+            columns: ["veiculo_id"]
+            isOneToOne: false
+            referencedRelation: "veiculos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recursos_conhecimento: {
+        Row: {
+          argumentos_chave: string[] | null
+          codigo_infracao: string
+          conteudo: string
+          created_at: string | null
+          data_deferimento: string | null
+          detran_estado: string | null
+          id: string
+          is_global: boolean | null
+          observacoes: string | null
+          organization_id: string | null
+          resultado: string | null
+          tipo_recurso: string
+          updated_at: string | null
+        }
+        Insert: {
+          argumentos_chave?: string[] | null
+          codigo_infracao: string
+          conteudo: string
+          created_at?: string | null
+          data_deferimento?: string | null
+          detran_estado?: string | null
+          id?: string
+          is_global?: boolean | null
+          observacoes?: string | null
+          organization_id?: string | null
+          resultado?: string | null
+          tipo_recurso: string
+          updated_at?: string | null
+        }
+        Update: {
+          argumentos_chave?: string[] | null
+          codigo_infracao?: string
+          conteudo?: string
+          created_at?: string | null
+          data_deferimento?: string | null
+          detran_estado?: string | null
+          id?: string
+          is_global?: boolean | null
+          observacoes?: string | null
+          organization_id?: string | null
+          resultado?: string | null
+          tipo_recurso?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recursos_conhecimento_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
