@@ -299,6 +299,7 @@ export default function Rastreamento() {
 
       // Guardar dados pendentes e abrir modal de seleção de plano
       setDadosPendentes({ clienteIdFinal, placasValidas });
+      setSalvando(false); // Resetar para permitir interação no modal de plano
       setModalPlanoAberto(true);
       
     } catch (error) {
