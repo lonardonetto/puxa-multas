@@ -1261,9 +1261,12 @@ export type Database = {
       recursos_conhecimento: {
         Row: {
           argumentos_chave: string[] | null
+          arquivo_ait_url: string | null
+          arquivo_deferimento_url: string | null
           codigo_infracao: string
           conteudo: string
           created_at: string | null
+          dados_extraidos_ia: Json | null
           data_deferimento: string | null
           detran_estado: string | null
           id: string
@@ -1278,9 +1281,12 @@ export type Database = {
         }
         Insert: {
           argumentos_chave?: string[] | null
+          arquivo_ait_url?: string | null
+          arquivo_deferimento_url?: string | null
           codigo_infracao: string
           conteudo: string
           created_at?: string | null
+          dados_extraidos_ia?: Json | null
           data_deferimento?: string | null
           detran_estado?: string | null
           id?: string
@@ -1295,9 +1301,12 @@ export type Database = {
         }
         Update: {
           argumentos_chave?: string[] | null
+          arquivo_ait_url?: string | null
+          arquivo_deferimento_url?: string | null
           codigo_infracao?: string
           conteudo?: string
           created_at?: string | null
+          dados_extraidos_ia?: Json | null
           data_deferimento?: string | null
           detran_estado?: string | null
           id?: string
