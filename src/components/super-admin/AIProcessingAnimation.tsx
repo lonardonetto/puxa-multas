@@ -33,7 +33,7 @@ export default function AIProcessingAnimation({ isProcessing, onComplete }: AIPr
         }
         return prev + 1;
       });
-    }, 1500);
+    }, 2500);
 
     return () => clearInterval(stepInterval);
   }, [isProcessing, onComplete]);
@@ -41,17 +41,17 @@ export default function AIProcessingAnimation({ isProcessing, onComplete }: AIPr
   if (!isProcessing && !completed) return null;
 
   return (
-    <div className="bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 rounded-2xl p-6 border border-purple-100 animate-fade-in">
+    <div className="bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 rounded-2xl p-6 border border-amber-200 animate-fade-in">
       {/* Header with brain animation */}
       <div className="flex items-center gap-4 mb-6">
         <div className="relative">
-          <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-200">
+          <div className="w-14 h-14 gradient-gold rounded-xl flex items-center justify-center shadow-lg shadow-gold">
             <i className="ri-brain-line text-2xl text-white"></i>
           </div>
           {!completed && (
             <>
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl animate-ping opacity-30"></div>
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>
+              <div className="absolute inset-0 gradient-gold rounded-xl animate-ping opacity-30"></div>
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-success rounded-full border-2 border-white animate-pulse"></div>
             </>
           )}
         </div>
@@ -79,9 +79,9 @@ export default function AIProcessingAnimation({ isProcessing, onComplete }: AIPr
               key={step.id}
               className={`flex items-center gap-4 p-3 rounded-xl transition-all duration-500 ${
                 isActive 
-                  ? 'bg-white shadow-md border border-purple-200 scale-[1.02]' 
+                  ? 'bg-white shadow-md border border-amber-300 scale-[1.02]' 
                   : isCompleted 
-                    ? 'bg-green-50 border border-green-100' 
+                    ? 'bg-green-50 border border-green-200' 
                     : 'bg-white/50 border border-gray-100 opacity-50'
               }`}
             >
@@ -90,13 +90,13 @@ export default function AIProcessingAnimation({ isProcessing, onComplete }: AIPr
                 isCompleted 
                   ? 'bg-green-100' 
                   : isActive 
-                    ? 'bg-purple-100' 
+                    ? 'bg-amber-100' 
                     : 'bg-gray-100'
               }`}>
                 {isCompleted ? (
                   <i className="ri-check-line text-xl text-green-600"></i>
                 ) : isActive ? (
-                  <i className={`${step.icon} text-xl text-purple-600 animate-pulse`}></i>
+                  <i className={`${step.icon} text-xl text-amber-600 animate-pulse`}></i>
                 ) : (
                   <i className={`${step.icon} text-xl text-gray-400`}></i>
                 )}
@@ -108,13 +108,13 @@ export default function AIProcessingAnimation({ isProcessing, onComplete }: AIPr
                   isCompleted 
                     ? 'text-green-700' 
                     : isActive 
-                      ? 'text-purple-700' 
+                      ? 'text-amber-700' 
                       : 'text-gray-400'
                 }`}>
                   {step.label}
                 </p>
                 {isActive && (
-                  <p className="text-xs text-purple-500 animate-pulse mt-0.5">
+                  <p className="text-xs text-amber-500 animate-pulse mt-0.5">
                     {step.description}
                   </p>
                 )}
@@ -127,9 +127,9 @@ export default function AIProcessingAnimation({ isProcessing, onComplete }: AIPr
                 )}
                 {isActive && (
                   <div className="flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                   </div>
                 )}
                 {isPending && (
@@ -144,9 +144,9 @@ export default function AIProcessingAnimation({ isProcessing, onComplete }: AIPr
       {/* Progress bar */}
       {!completed && (
         <div className="mt-6">
-          <div className="h-2 bg-purple-100 rounded-full overflow-hidden">
+          <div className="h-2 bg-amber-100 rounded-full overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-500 ease-out"
+              className="h-full gradient-gold rounded-full transition-all duration-500 ease-out"
               style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
             />
           </div>
@@ -158,7 +158,7 @@ export default function AIProcessingAnimation({ isProcessing, onComplete }: AIPr
 
       {/* Success message */}
       {completed && (
-        <div className="mt-4 p-4 bg-green-50 rounded-xl border border-green-100 animate-fade-in">
+        <div className="mt-4 p-4 bg-green-50 rounded-xl border border-green-200 animate-fade-in">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
               <i className="ri-sparkling-line text-xl text-green-600"></i>
