@@ -180,9 +180,14 @@ export default function KnowledgeBasePage() {
         const dados = resultado.dados;
         // Extrair argumentos
         const args = dados.argumentos_aceitos || dados.Argumentos_aceitos || [];
+        // Extrair conteúdo do recurso se disponível
+        const conteudoExtraido = dados.conteudo_recurso || dados.texto_completo || dados.conteudo || '';
+        
         setFormData(prev => ({
           ...prev,
           argumentos_chave: Array.isArray(args) ? args.join(', ') : prev.argumentos_chave,
+          // Preencher conteúdo automaticamente se o campo estiver vazio
+          conteudo: prev.conteudo.trim() ? prev.conteudo : conteudoExtraido,
           dados_extraidos_ia: {
             ...prev.dados_extraidos_ia,
             deferimento: dados
@@ -315,11 +320,29 @@ export default function KnowledgeBasePage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.codigo_infracao || !formData.conteudo) {
-      toast.error('Preencha o código da infração e o conteúdo');
+    
+    // Se não há conteúdo mas há anexo, a IA deve ter extraído ou extrairá o conteúdo
+    const temAnexo = formData.arquivo_ait_url || formData.arquivo_deferimento_url;
+    const temConteudo = formData.conteudo.trim().length > 0;
+    
+    if (!formData.codigo_infracao) {
+      toast.error('Preencha o código da infração');
       return;
     }
-    saveMutation.mutate(editingId ? { ...formData, id: editingId } : formData);
+    
+    // Se não tem conteúdo E não tem anexo, exibir erro
+    if (!temConteudo && !temAnexo) {
+      toast.error('Preencha o conteúdo ou anexe um documento (AIT ou Recurso Deferido)');
+      return;
+    }
+    
+    // Se tem anexo mas não tem conteúdo, usar placeholder indicando que a IA deve extrair
+    const dataToSave = {
+      ...formData,
+      conteudo: temConteudo ? formData.conteudo : '[Conteúdo extraído automaticamente dos anexos pela IA]'
+    };
+    
+    saveMutation.mutate(editingId ? { ...dataToSave, id: editingId } : dataToSave);
   };
 
   // Separar recursos por status
