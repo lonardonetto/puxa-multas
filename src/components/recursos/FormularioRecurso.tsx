@@ -454,30 +454,37 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Seção: Upload de AIT - OBRIGATÓRIO */}
+      {/* Seção: Upload de AIT - OPCIONAL MAS RECOMENDADO */}
       <div className={`border rounded-lg p-4 ${
         dados.aitBase64 
           ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300' 
-          : 'bg-gradient-to-r from-red-50 to-orange-50 border-red-300'
+          : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300'
       }`}>
         <h4 className={`font-semibold mb-3 flex items-center gap-2 ${
-          dados.aitBase64 ? 'text-green-800' : 'text-red-800'
+          dados.aitBase64 ? 'text-green-800' : 'text-blue-800'
         }`}>
-          <i className={dados.aitBase64 ? 'ri-checkbox-circle-fill' : 'ri-error-warning-fill'}></i>
-          Upload do Auto de Infração (AIT) - OBRIGATÓRIO
+          <i className={dados.aitBase64 ? 'ri-checkbox-circle-fill' : 'ri-upload-cloud-2-line'}></i>
+          Upload do Auto de Infração (AIT)
           <span className={`text-xs font-normal px-2 py-0.5 rounded-full ml-2 ${
             dados.aitBase64 
               ? 'text-green-600 bg-green-100' 
-              : 'text-red-600 bg-red-100'
+              : 'text-blue-600 bg-blue-100'
           }`}>
-            {dados.aitBase64 ? '✓ Anexado' : '* Obrigatório'}
+            {dados.aitBase64 ? '✓ Anexado' : 'Opcional'}
           </span>
         </h4>
         
-        <p className="text-xs text-gray-700 mb-3">
-          📸 <strong>É obrigatório</strong> enviar uma foto ou PDF do Auto de Infração. 
-          A IA lerá o documento para extrair dados e detectar erros formais que fortalecem o recurso.
-        </p>
+        {/* Banner informativo de probabilidade */}
+        <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg p-3 mb-3">
+          <p className="text-sm text-amber-800 flex items-start gap-2">
+            <i className="ri-lightbulb-flash-line text-amber-500 text-lg flex-shrink-0 mt-0.5"></i>
+            <span>
+              <strong>📊 Recursos com análise do AIT pela Inteligência Artificial têm 50% mais probabilidade de serem deferidos.</strong>
+              <br />
+              <span className="text-xs text-amber-700">A IA identifica erros formais no documento que fortalecem a argumentação jurídica.</span>
+            </span>
+          </p>
+        </div>
 
         <div className="flex items-center gap-4">
           <input
