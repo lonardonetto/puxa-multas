@@ -313,6 +313,14 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
                   <i className="ri-file-list-3-line text-base mr-3"></i>
                   <span className="text-sm font-medium">Gestão de Editais</span>
                 </Link>
+                <Link
+                  to="/super-admin/knowledge-base"
+                  className={`flex items-center px-4 py-2 pl-10 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname === '/super-admin/knowledge-base' ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+                    }`}
+                >
+                  <i className="ri-brain-line text-base mr-3"></i>
+                  <span className="text-sm font-medium">Base de Conhecimento IA</span>
+                </Link>
               </div>
             )}
           </div>
