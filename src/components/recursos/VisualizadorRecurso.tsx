@@ -106,135 +106,170 @@ export default function VisualizadorRecurso({
   };
 
   const gerarPDF = async (): Promise<Blob> => {
-    console.log('Iniciando geração de PDF com html2canvas...');
+    console.log('Iniciando geração de PDF profissional...');
     
-    // Criar container temporário invisível para renderizar o HTML
-    const container = document.createElement('div');
-    container.style.cssText = `
-      position: absolute;
-      left: -9999px;
-      top: 0;
-      width: 794px;
-      padding: 60px 50px;
-      background: white;
-      font-family: 'Georgia', 'Times New Roman', serif;
-      font-size: 14px;
-      line-height: 1.8;
-      color: #000;
-    `;
+    // Criar PDF A4 com margens profissionais
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const marginLeft = 25;
+    const marginRight = 25;
+    const marginTop = 35; // Espaço para cabeçalho
+    const marginBottom = 30; // Espaço para rodapé
+    const contentWidth = pageWidth - marginLeft - marginRight;
+    const contentHeight = pageHeight - marginTop - marginBottom;
+
+    // Converter HTML para texto estruturado
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = textoEditado;
     
-    // Adicionar estilos inline para formatação
-    container.innerHTML = `
-      <style>
-        * { box-sizing: border-box; }
-        p { margin-bottom: 14px; text-align: justify; page-break-inside: avoid; }
-        strong, b { font-weight: bold; }
-        em, i { font-style: italic; }
-        u { text-decoration: underline; }
-        hr { margin: 24px 0; border: none; border-top: 1px solid #999; }
-      </style>
-      ${textoEditado}
-    `;
-    
-    document.body.appendChild(container);
-    console.log('Container criado, tamanho:', container.offsetWidth, 'x', container.offsetHeight);
-
-    try {
-      // Renderizar HTML para canvas
-      console.log('Renderizando com html2canvas...');
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        width: 794,
-      });
-      console.log('Canvas gerado:', canvas.width, 'x', canvas.height);
-
-      // Criar PDF A4
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const marginX = 10;
-      const marginY = 10;
-      const contentWidth = pageWidth - (marginX * 2); // 190mm
-      const contentHeight = pageHeight - (marginY * 2); // 277mm
-      
-      // Calcular proporções
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
-      
-      // Altura do canvas em pixels por página (proporcional)
-      const pxPerMm = canvasWidth / contentWidth;
-      const pageHeightPx = contentHeight * pxPerMm;
-      
-      console.log('Pixels por mm:', pxPerMm, 'Altura por página em px:', pageHeightPx);
-      
-      let pageNum = 0;
-      let yOffset = 0;
-      
-      while (yOffset < canvasHeight) {
-        if (pageNum > 0) {
-          doc.addPage();
+    // Extrair parágrafos do HTML
+    const paragraphs: string[] = [];
+    const processNode = (node: Node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent?.trim();
+        if (text) paragraphs.push(text);
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as HTMLElement;
+        if (el.tagName === 'P' || el.tagName === 'DIV') {
+          const text = el.textContent?.trim();
+          if (text) paragraphs.push(text);
+        } else if (el.tagName === 'BR') {
+          // Ignorar BRs isolados
+        } else {
+          el.childNodes.forEach(processNode);
         }
-        
-        // Calcular altura desta fatia (pode ser menor na última página)
-        const sliceHeight = Math.min(pageHeightPx, canvasHeight - yOffset);
-        
-        // Criar canvas temporário para esta fatia
-        const pageCanvas = document.createElement('canvas');
-        pageCanvas.width = canvasWidth;
-        pageCanvas.height = sliceHeight;
-        
-        const ctx = pageCanvas.getContext('2d');
-        if (ctx) {
-          // Desenhar apenas a fatia correspondente do canvas original
-          ctx.drawImage(
-            canvas,
-            0, yOffset,           // Source x, y
-            canvasWidth, sliceHeight, // Source width, height
-            0, 0,                 // Dest x, y
-            canvasWidth, sliceHeight  // Dest width, height
-          );
-        }
-        
-        // Converter fatia para imagem
-        const sliceImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
-        
-        // Calcular altura proporcional em mm para esta fatia
-        const sliceHeightMm = sliceHeight / pxPerMm;
-        
-        // Adicionar ao PDF
-        doc.addImage(
-          sliceImgData,
-          'JPEG',
-          marginX,
-          marginY,
-          contentWidth,
-          sliceHeightMm
-        );
-        
-        yOffset += pageHeightPx;
-        pageNum++;
       }
-
-      console.log('PDF gerado com', pageNum, 'páginas');
-      const blob = doc.output('blob');
-      console.log('Blob criado, tamanho:', blob.size, 'bytes');
-      
-      return blob;
-    } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
-      throw error;
-    } finally {
-      // Remover container temporário
-      document.body.removeChild(container);
+    };
+    
+    // Processar apenas elementos de parágrafo de primeiro nível
+    tempDiv.querySelectorAll('p, div').forEach(el => {
+      const text = el.textContent?.trim();
+      if (text && text.length > 0) {
+        paragraphs.push(text);
+      }
+    });
+    
+    // Se não encontrou parágrafos, usar texto puro
+    if (paragraphs.length === 0) {
+      const plainText = tempDiv.textContent || '';
+      plainText.split(/\n\n+/).forEach(p => {
+        const trimmed = p.trim();
+        if (trimmed) paragraphs.push(trimmed);
+      });
     }
+
+    console.log('Parágrafos extraídos:', paragraphs.length);
+
+    // Configurar fonte
+    doc.setFont('times', 'normal');
+    doc.setFontSize(12);
+    
+    let currentPage = 1;
+    let yPosition = marginTop;
+
+    // Função para adicionar cabeçalho
+    const addHeader = (pageNum: number) => {
+      doc.setFontSize(9);
+      doc.setTextColor(120, 120, 120);
+      doc.text('RECURSO DE TRÂNSITO', pageWidth / 2, 15, { align: 'center' });
+      doc.setDrawColor(200, 200, 200);
+      doc.line(marginLeft, 22, pageWidth - marginRight, 22);
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(12);
+    };
+
+    // Função para adicionar rodapé
+    const addFooter = (pageNum: number, totalPages?: number) => {
+      doc.setFontSize(9);
+      doc.setTextColor(120, 120, 120);
+      doc.setDrawColor(200, 200, 200);
+      doc.line(marginLeft, pageHeight - 20, pageWidth - marginRight, pageHeight - 20);
+      doc.text(`Página ${pageNum}`, pageWidth / 2, pageHeight - 12, { align: 'center' });
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(12);
+    };
+
+    // Adicionar cabeçalho na primeira página
+    addHeader(currentPage);
+
+    // Função para verificar se precisa nova página
+    const checkNewPage = (heightNeeded: number): boolean => {
+      if (yPosition + heightNeeded > pageHeight - marginBottom) {
+        addFooter(currentPage);
+        doc.addPage();
+        currentPage++;
+        addHeader(currentPage);
+        yPosition = marginTop;
+        return true;
+      }
+      return false;
+    };
+
+    // Processar cada parágrafo
+    for (const paragraph of paragraphs) {
+      if (!paragraph.trim()) continue;
+
+      // Quebrar texto em linhas que cabem na largura
+      const lines = doc.splitTextToSize(paragraph, contentWidth);
+      const lineHeight = 6; // mm por linha
+      const paragraphHeight = lines.length * lineHeight + 4; // +4 para espaço entre parágrafos
+
+      // Verificar se o parágrafo inteiro cabe na página atual
+      // Se não couber e não estiver no início da página, criar nova página
+      if (yPosition > marginTop && yPosition + paragraphHeight > pageHeight - marginBottom) {
+        // O parágrafo não cabe - verificar se é muito grande
+        if (paragraphHeight > contentHeight) {
+          // Parágrafo muito grande, precisa dividir
+          for (let i = 0; i < lines.length; i++) {
+            checkNewPage(lineHeight);
+            doc.text(lines[i], marginLeft, yPosition);
+            yPosition += lineHeight;
+          }
+        } else {
+          // Parágrafo cabe em uma página, mover para próxima
+          addFooter(currentPage);
+          doc.addPage();
+          currentPage++;
+          addHeader(currentPage);
+          yPosition = marginTop;
+          
+          // Adicionar parágrafo
+          doc.text(lines, marginLeft, yPosition);
+          yPosition += paragraphHeight;
+        }
+      } else {
+        // Parágrafo cabe na página atual
+        doc.text(lines, marginLeft, yPosition);
+        yPosition += paragraphHeight;
+      }
+    }
+
+    // Adicionar rodapé na última página
+    addFooter(currentPage);
+
+    // Atualizar todas as páginas com número total
+    const totalPages = currentPage;
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(9);
+      doc.setTextColor(120, 120, 120);
+      // Limpar rodapé anterior
+      doc.setFillColor(255, 255, 255);
+      doc.rect(marginLeft, pageHeight - 18, contentWidth, 10, 'F');
+      doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 12, { align: 'center' });
+    }
+
+    console.log('PDF gerado com', totalPages, 'páginas');
+    const blob = doc.output('blob');
+    console.log('Blob criado, tamanho:', blob.size, 'bytes');
+    
+    return blob;
   };
 
 
