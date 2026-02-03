@@ -87,6 +87,8 @@ export default function RecursosIA() {
   const [recursoGerado, setRecursoGerado] = useState<{ conteudo: string; recursoId: string } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [confirmacaoCompra, setConfirmacaoCompra] = useState<{ valor: number; dados: DadosRecurso } | null>(null);
+  const [processandoCobranca, setProcessandoCobranca] = useState(false);
+  const [etapaCobranca, setEtapaCobranca] = useState<'debitando' | 'confirmado'>('debitando');
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -347,9 +349,24 @@ export default function RecursosIA() {
                 Cancelar
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
+                  const dados = confirmacaoCompra.dados;
+                  const valor = confirmacaoCompra.valor;
                   setConfirmacaoCompra(null);
-                  executarGeracao(confirmacaoCompra.dados, false, confirmacaoCompra.valor);
+                  
+                  // Mostrar animação de cobrança
+                  setProcessandoCobranca(true);
+                  setEtapaCobranca('debitando');
+                  
+                  // Simular tempo de processamento
+                  await new Promise(resolve => setTimeout(resolve, 1500));
+                  setEtapaCobranca('confirmado');
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  
+                  setProcessandoCobranca(false);
+                  
+                  // Continuar com a geração
+                  executarGeracao(dados, false, valor);
                 }}
                 disabled={balance < confirmacaoCompra.valor}
                 className="flex-1 px-4 py-3 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -364,6 +381,75 @@ export default function RecursosIA() {
                 Saldo insuficiente. Adicione créditos para continuar.
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Animação de Cobrança */}
+      {processandoCobranca && (
+        <div className="fixed inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 z-50 flex items-center justify-center">
+          <div className="text-center space-y-8 animate-fade-in">
+            {/* Círculo animado */}
+            <div className="relative mx-auto w-32 h-32">
+              {etapaCobranca === 'confirmado' ? (
+                <>
+                  {/* Círculos de pulso - sucesso */}
+                  <div className="absolute inset-0 rounded-full bg-green-500/20 animate-ping" />
+                  <div className="absolute inset-2 rounded-full bg-green-500/30 animate-pulse" />
+                  
+                  {/* Círculo principal - sucesso */}
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-2xl shadow-green-500/50">
+                    <svg 
+                      className="w-16 h-16 text-white" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={3} 
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Círculos de pulso - processando */}
+                  <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping" />
+                  <div className="absolute inset-2 rounded-full bg-blue-500/30 animate-pulse" />
+                  
+                  {/* Círculo principal - processando */}
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center shadow-2xl shadow-blue-500/50">
+                    <i className="ri-money-dollar-circle-line text-5xl text-white animate-pulse"></i>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Texto dinâmico */}
+            <div className="space-y-3">
+              <h2 className="text-3xl font-bold text-white">
+                {etapaCobranca === 'debitando' && 'Processando Cobrança...'}
+                {etapaCobranca === 'confirmado' && 'Pagamento Confirmado!'}
+              </h2>
+              <p className="text-gray-300 text-lg">
+                {etapaCobranca === 'debitando' && 'Debitando do seu saldo disponível'}
+                {etapaCobranca === 'confirmado' && 'Iniciando geração do recurso'}
+              </p>
+            </div>
+
+            {/* Barra de progresso */}
+            <div className="w-64 mx-auto h-1.5 bg-gray-700 rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all duration-500 ${
+                  etapaCobranca === 'confirmado' 
+                    ? 'bg-gradient-to-r from-green-400 to-emerald-500 w-full' 
+                    : 'bg-gradient-to-r from-blue-400 to-indigo-500 w-1/2 animate-pulse'
+                }`}
+              />
+            </div>
           </div>
         </div>
       )}
