@@ -456,8 +456,8 @@ export default function KnowledgeBasePage() {
               <div>
                 <h3 className="font-bold text-purple-900">Upload Inteligente com IA</h3>
                 <p className="text-sm text-purple-700 mt-1">
-                  Agora você pode <strong>anexar imagens do AIT e do deferimento</strong>. A IA irá analisar automaticamente
-                  os documentos, extrair informações relevantes e preencher os campos. Quanto mais exemplos de sucesso, melhor
+                  Anexe o <strong>AIT</strong> e o <strong>recurso que foi deferido</strong>. A IA irá analisar automaticamente
+                  os documentos, extrair argumentos vencedores e aprender padrões de sucesso. Quanto mais exemplos reais, melhor
                   a IA gerará novos recursos!
                 </p>
               </div>
@@ -566,8 +566,8 @@ export default function KnowledgeBasePage() {
                       )}
                       {recurso.arquivo_deferimento_url && (
                         <a href={recurso.arquivo_deferimento_url} target="_blank" rel="noopener noreferrer"
-                          className="px-2 py-1 bg-green-50 text-green-600 text-xs rounded flex items-center gap-1 hover:bg-green-100">
-                          <i className="ri-file-check-line"></i> Defer.
+                          className="px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded flex items-center gap-1 hover:bg-blue-100">
+                          <i className="ri-file-text-line"></i> Recurso
                         </a>
                       )}
                       {!recurso.arquivo_ait_url && !recurso.arquivo_deferimento_url && (
@@ -715,7 +715,7 @@ export default function KnowledgeBasePage() {
                   </div>
                 </div>
 
-                {/* Upload Deferimento */}
+                {/* Upload Recurso Deferido */}
                 <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 hover:border-purple-400 transition-colors">
                   <input
                     ref={deferimentoInputRef}
@@ -726,21 +726,21 @@ export default function KnowledgeBasePage() {
                   />
                   <div className="text-center">
                     <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center mb-3 ${
-                      formData.arquivo_deferimento_url ? 'bg-green-100' : 'bg-green-50'
+                      formData.arquivo_deferimento_url ? 'bg-green-100' : 'bg-blue-50'
                     }`}>
                       {uploadingDeferimento || analisandoDeferimento ? (
                         <i className="ri-loader-4-line text-2xl text-purple-600 animate-spin"></i>
                       ) : formData.arquivo_deferimento_url ? (
                         <i className="ri-check-line text-2xl text-green-600"></i>
                       ) : (
-                        <i className="ri-file-check-line text-2xl text-green-600"></i>
+                        <i className="ri-file-text-line text-2xl text-blue-600"></i>
                       )}
                     </div>
-                    <p className="font-bold text-gray-700 mb-1">Decisão de Deferimento</p>
+                    <p className="font-bold text-gray-700 mb-1">Recurso Deferido</p>
                     <p className="text-xs text-gray-500 mb-3">
                       {analisandoDeferimento ? 'Analisando com IA...' : 
                        uploadingDeferimento ? 'Enviando...' :
-                       formData.arquivo_deferimento_url ? 'Arquivo anexado' : 'Comprovante do deferimento'}
+                       formData.arquivo_deferimento_url ? 'Arquivo anexado' : 'O recurso que foi aprovado'}
                     </p>
                     {formData.arquivo_deferimento_url ? (
                       <div className="flex gap-2 justify-center">
@@ -758,9 +758,9 @@ export default function KnowledgeBasePage() {
                         type="button"
                         onClick={() => deferimentoInputRef.current?.click()}
                         disabled={uploadingDeferimento || analisandoDeferimento}
-                        className="px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 disabled:opacity-50"
+                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 disabled:opacity-50"
                       >
-                        <i className="ri-upload-2-line mr-1"></i> Anexar Deferimento
+                        <i className="ri-upload-2-line mr-1"></i> Anexar Recurso
                       </button>
                     )}
                   </div>
