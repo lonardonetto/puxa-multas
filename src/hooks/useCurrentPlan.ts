@@ -15,6 +15,11 @@ export interface PlanDetails {
     recursos_ia_suspensao_inclusos: number;
     recursos_ia_suspensao_preco_adicional: number;
     rastreamento_pf_preco: number;
+    rastreamento_frota_preco: number;
+    rastreamento_mensal_pf_preco: number;
+    rastreamento_anual_pf_preco: number;
+    rastreamento_mensal_frota_preco: number;
+    rastreamento_anual_frota_preco: number;
     acesso_crm: boolean;
     acesso_disparador: boolean;
     limite_usuarios: number;
@@ -55,6 +60,11 @@ export function useCurrentPlan() {
                     recursos_ia_suspensao_inclusos: p.recursos_ia_suspensao_inclusos || 0,
                     recursos_ia_suspensao_preco_adicional: p.recursos_ia_suspensao_preco_adicional || 0,
                     rastreamento_pf_preco: p.rastreamento_pf_preco || 0,
+                    rastreamento_frota_preco: p.rastreamento_frota_preco || 0,
+                    rastreamento_mensal_pf_preco: p.rastreamento_mensal_pf_preco || 15,
+                    rastreamento_anual_pf_preco: p.rastreamento_anual_pf_preco || 150,
+                    rastreamento_mensal_frota_preco: p.rastreamento_mensal_frota_preco || 10,
+                    rastreamento_anual_frota_preco: p.rastreamento_anual_frota_preco || 100,
                     acesso_crm: (currentOrganization as any).acesso_crm ?? p.acesso_crm,
                     acesso_disparador: (currentOrganization as any).acesso_disparador ?? p.acesso_disparador,
                     limite_usuarios: p.limite_usuarios || 0,
@@ -98,6 +108,11 @@ export function useCurrentPlan() {
             ia_suspensao: planDetails.recursos_ia_suspensao_preco_adicional,
             rastreamento: planDetails.preco_rastreamento,
             rastreamento_pf: planDetails.rastreamento_pf_preco,
+            rastreamento_frota: planDetails.rastreamento_frota_preco,
+            rastreamento_mensal_pf: planDetails.rastreamento_mensal_pf_preco,
+            rastreamento_anual_pf: planDetails.rastreamento_anual_pf_preco,
+            rastreamento_mensal_frota: planDetails.rastreamento_mensal_frota_preco,
+            rastreamento_anual_frota: planDetails.rastreamento_anual_frota_preco,
             edital: planDetails.preco_edital,
             ia_used_this_month: usageStats.ia_used_this_month,
             ia_remaining_free: Math.max(0, (planDetails.recursos_ia_inclusos || 0) - usageStats.ia_used_this_month)
