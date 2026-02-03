@@ -1,15 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRecursos } from '../../hooks/useRecursos';
-import { supabase } from '../../lib/supabase';
-import { useOrganization } from '../../contexts/OrganizationContext';
 
 export default function StatusRecurso() {
   const navigate = useNavigate();
-  const { currentOrganization } = useOrganization();
   const { fetchRecursosDetalhados, atualizarNotificacao, loading } = useRecursos();
   const [recursosList, setRecursosList] = useState<any[]>([]);
-  const [salvandoConhecimento, setSalvandoConhecimento] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     const data = await fetchRecursosDetalhados();
@@ -71,55 +67,6 @@ export default function StatusRecurso() {
     window.open(`https://wa.me/55${telefone.replace(/\D/g, '')}?text=${mensagem}`, '_blank');
     await atualizarNotificacao(recurso.id);
     loadData();
-  };
-
-  // Salvar recurso deferido na base de conhecimento
-  const salvarNaBaseConhecimento = async (recurso: any) => {
-    if (!currentOrganization) return;
-    
-    setSalvandoConhecimento(recurso.id);
-    try {
-      // Buscar o conteúdo completo do recurso
-      const { data: recursoCompleto } = await supabase
-        .from('recursos')
-        .select('conteudo')
-        .eq('id', recurso.id)
-        .single();
-
-      if (!recursoCompleto?.conteudo) {
-        console.error('Recurso sem conteúdo para salvar');
-        return;
-      }
-
-      // Extrair código de infração do recurso
-      const codigoInfracao = recurso.multas?.codigo_infracao || 'N/A';
-
-      // Salvar na base de conhecimento
-      const { error } = await supabase
-        .from('recursos_conhecimento')
-        .insert({
-          organization_id: currentOrganization.id,
-          codigo_infracao: codigoInfracao,
-          tipo_recurso: recurso.instancia || 'defesa_previa',
-          conteudo: recursoCompleto.conteudo,
-          argumentos_chave: [], // Pode ser preenchido manualmente depois
-          resultado: 'deferido',
-          detran_estado: recurso.multas?.uf_infracao || null,
-          data_deferimento: new Date().toISOString().split('T')[0],
-          is_global: false, // Apenas da organização, super admin pode tornar global
-        });
-
-      if (error) {
-        console.error('Erro ao salvar na base de conhecimento:', error);
-        alert('Erro ao salvar na base de conhecimento');
-      } else {
-        alert('Recurso salvo na base de conhecimento! A IA usará este exemplo para melhorar futuros recursos.');
-      }
-    } catch (err) {
-      console.error('Erro:', err);
-    } finally {
-      setSalvandoConhecimento(null);
-    }
   };
 
   const formatarData = (data: string | null) => {
@@ -331,20 +278,15 @@ export default function StatusRecurso() {
                             <i className="ri-whatsapp-line"></i>
                           </button>
                           
-                          {/* Botão para salvar na base de conhecimento (apenas para deferidos) */}
+                          {/* Info: recursos deferidos são enviados automaticamente para análise */}
                           {recurso.status === 'deferido' && (
-                            <button
-                              onClick={() => salvarNaBaseConhecimento(recurso)}
-                              disabled={salvandoConhecimento === recurso.id}
-                              className="bg-purple-500 text-white px-2 py-1 rounded text-xs font-medium hover:bg-purple-600 transition-colors cursor-pointer flex items-center disabled:opacity-50"
-                              title="Salvar na Base de Conhecimento IA"
+                            <span 
+                              className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-medium flex items-center"
+                              title="Recurso enviado automaticamente para análise do administrador"
                             >
-                              {salvandoConhecimento === recurso.id ? (
-                                <i className="ri-loader-4-line animate-spin"></i>
-                              ) : (
-                                <i className="ri-brain-line"></i>
-                              )}
-                            </button>
+                              <i className="ri-brain-line mr-1"></i>
+                              Enviado
+                            </span>
                           )}
                         </div>
                       </td>
