@@ -127,7 +127,7 @@ export default function VisualizadorRecurso({
     container.innerHTML = `
       <style>
         * { box-sizing: border-box; }
-        p { margin-bottom: 14px; text-align: justify; }
+        p { margin-bottom: 14px; text-align: justify; page-break-inside: avoid; }
         strong, b { font-weight: bold; }
         em, i { font-style: italic; }
         u { text-decoration: underline; }
@@ -145,13 +145,13 @@ export default function VisualizadorRecurso({
       const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,
-        logging: true, // Ativar logs do html2canvas
+        logging: false,
         backgroundColor: '#ffffff',
         width: 794,
       });
       console.log('Canvas gerado:', canvas.width, 'x', canvas.height);
 
-      // Criar PDF
+      // Criar PDF A4
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -160,45 +160,67 @@ export default function VisualizadorRecurso({
 
       const pageWidth = 210;
       const pageHeight = 297;
-      const imgWidth = pageWidth - 20; // margens de 10mm cada lado
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const marginX = 10;
+      const marginY = 10;
+      const contentWidth = pageWidth - (marginX * 2); // 190mm
+      const contentHeight = pageHeight - (marginY * 2); // 277mm
       
-      console.log('Dimensões do PDF:', imgWidth, 'x', imgHeight, 'mm');
+      // Calcular proporções
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
       
-      // Se a imagem é maior que uma página, dividir em múltiplas páginas
-      let heightLeft = imgHeight;
-      let position = 10; // margem superior
-      const marginLeft = 10;
-      let pageNum = 1;
-
-      // Primeira página
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      console.log('Imagem gerada, adicionando ao PDF...');
+      // Altura do canvas em pixels por página (proporcional)
+      const pxPerMm = canvasWidth / contentWidth;
+      const pageHeightPx = contentHeight * pxPerMm;
       
-      doc.addImage(
-        imgData,
-        'JPEG',
-        marginLeft,
-        position,
-        imgWidth,
-        imgHeight
-      );
-      heightLeft -= (pageHeight - 20); // descontar margens
-
-      // Páginas adicionais se necessário
-      while (heightLeft > 0) {
-        pageNum++;
-        doc.addPage();
-        position = -(pageHeight - 20) * (Math.ceil((imgHeight - heightLeft) / (pageHeight - 20))) + 10;
+      console.log('Pixels por mm:', pxPerMm, 'Altura por página em px:', pageHeightPx);
+      
+      let pageNum = 0;
+      let yOffset = 0;
+      
+      while (yOffset < canvasHeight) {
+        if (pageNum > 0) {
+          doc.addPage();
+        }
+        
+        // Calcular altura desta fatia (pode ser menor na última página)
+        const sliceHeight = Math.min(pageHeightPx, canvasHeight - yOffset);
+        
+        // Criar canvas temporário para esta fatia
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvasWidth;
+        pageCanvas.height = sliceHeight;
+        
+        const ctx = pageCanvas.getContext('2d');
+        if (ctx) {
+          // Desenhar apenas a fatia correspondente do canvas original
+          ctx.drawImage(
+            canvas,
+            0, yOffset,           // Source x, y
+            canvasWidth, sliceHeight, // Source width, height
+            0, 0,                 // Dest x, y
+            canvasWidth, sliceHeight  // Dest width, height
+          );
+        }
+        
+        // Converter fatia para imagem
+        const sliceImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+        
+        // Calcular altura proporcional em mm para esta fatia
+        const sliceHeightMm = sliceHeight / pxPerMm;
+        
+        // Adicionar ao PDF
         doc.addImage(
-          imgData,
+          sliceImgData,
           'JPEG',
-          marginLeft,
-          position,
-          imgWidth,
-          imgHeight
+          marginX,
+          marginY,
+          contentWidth,
+          sliceHeightMm
         );
-        heightLeft -= (pageHeight - 20);
+        
+        yOffset += pageHeightPx;
+        pageNum++;
       }
 
       console.log('PDF gerado com', pageNum, 'páginas');
