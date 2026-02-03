@@ -1,18 +1,25 @@
 import { useState } from 'react';
+import { jsPDF } from 'jspdf';
+import { supabase } from '../../lib/supabase';
 
 interface VisualizadorRecursoProps {
   conteudo: string;
+  recursoId?: string;
+  clienteId?: string;
   onClose: () => void;
 }
 
 export default function VisualizadorRecurso({ 
   conteudo, 
+  recursoId,
+  clienteId,
   onClose
 }: VisualizadorRecursoProps) {
-  const [editando, setEditando] = useState(false);
   const [textoEditado, setTextoEditado] = useState(conteudo);
   const [copiado, setCopiado] = useState(false);
   const [concluindo, setConcluindo] = useState(false);
+  const [salvandoPDF, setSalvandoPDF] = useState(false);
+  const [etapaConclusao, setEtapaConclusao] = useState<'gerando' | 'salvando' | 'concluido'>('gerando');
 
   const handleCopiar = () => {
     navigator.clipboard.writeText(textoEditado);
@@ -54,12 +61,108 @@ export default function VisualizadorRecurso({
     }
   };
 
-  const handleConcluir = () => {
+  const gerarPDF = async (): Promise<Blob> => {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    // Configurar fonte
+    doc.setFont('times', 'normal');
+    doc.setFontSize(12);
+
+    // Margens
+    const marginLeft = 25;
+    const marginTop = 30;
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const maxWidth = pageWidth - marginLeft * 2;
+    const lineHeight = 7;
+    
+    // Quebrar texto em linhas
+    const lines = doc.splitTextToSize(textoEditado, maxWidth);
+    
+    let y = marginTop;
+    
+    for (let i = 0; i < lines.length; i++) {
+      // Nova página se necessário
+      if (y > pageHeight - 30) {
+        doc.addPage();
+        y = marginTop;
+      }
+      
+      doc.text(lines[i], marginLeft, y);
+      y += lineHeight;
+    }
+
+    return doc.output('blob');
+  };
+
+  const handleConcluir = async () => {
     setConcluindo(true);
-    // Aguardar animação completa antes de fechar
-    setTimeout(() => {
-      onClose();
-    }, 2000);
+    setSalvandoPDF(true);
+    setEtapaConclusao('gerando');
+
+    try {
+      // 1. Gerar PDF
+      const pdfBlob = await gerarPDF();
+      setEtapaConclusao('salvando');
+
+      // 2. Fazer upload para o Storage
+      const fileName = `recursos/${clienteId || 'sem-cliente'}/${recursoId || Date.now()}_recurso.pdf`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('documentos')
+        .upload(fileName, pdfBlob, {
+          contentType: 'application/pdf',
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error('Erro no upload:', uploadError);
+        throw uploadError;
+      }
+
+      // 3. Obter URL pública
+      const { data: urlData } = supabase.storage
+        .from('documentos')
+        .getPublicUrl(fileName);
+
+      const pdfUrl = urlData?.publicUrl;
+
+      // 4. Atualizar recurso no banco como finalizado
+      if (recursoId) {
+        const { error: updateError } = await supabase
+          .from('recursos')
+          .update({
+            pdf_url: pdfUrl,
+            finalizado: true,
+            conteudo: textoEditado
+          } as any)
+          .eq('id', recursoId);
+
+        if (updateError) {
+          console.error('Erro ao atualizar recurso:', updateError);
+        }
+      }
+
+      setEtapaConclusao('concluido');
+
+      // Aguardar animação e fechar
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+
+    } catch (error) {
+      console.error('Erro ao finalizar recurso:', error);
+      // Mesmo com erro, fechar após delay
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+    } finally {
+      setSalvandoPDF(false);
+    }
   };
 
   // Tela de animação de conclusão
@@ -67,77 +170,84 @@ export default function VisualizadorRecurso({
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 z-50 flex items-center justify-center">
         <div className="text-center space-y-8 animate-fade-in">
-          {/* Círculo animado de sucesso */}
+          {/* Círculo animado */}
           <div className="relative mx-auto w-32 h-32">
-            {/* Círculos de pulso */}
-            <div className="absolute inset-0 rounded-full bg-green-500/20 animate-ping" />
-            <div className="absolute inset-2 rounded-full bg-green-500/30 animate-pulse" />
-            
-            {/* Círculo principal */}
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-2xl shadow-green-500/50">
-              <svg 
-                className="w-16 h-16 text-white animate-scale-in" 
-                style={{ animationDelay: '0.3s', animationFillMode: 'both' }}
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={3} 
-                  d="M5 13l4 4L19 7"
-                  className="animate-draw-check"
-                />
-              </svg>
-            </div>
+            {etapaConclusao === 'concluido' ? (
+              <>
+                {/* Círculos de pulso - sucesso */}
+                <div className="absolute inset-0 rounded-full bg-green-500/20 animate-ping" />
+                <div className="absolute inset-2 rounded-full bg-green-500/30 animate-pulse" />
+                
+                {/* Círculo principal - sucesso */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-2xl shadow-green-500/50">
+                  <svg 
+                    className="w-16 h-16 text-white" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={3} 
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Círculos de pulso - processando */}
+                <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping" />
+                <div className="absolute inset-2 rounded-full bg-blue-500/30 animate-pulse" />
+                
+                {/* Círculo principal - processando */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center shadow-2xl shadow-blue-500/50">
+                  <i className="ri-file-pdf-2-line text-5xl text-white animate-pulse"></i>
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Texto */}
+          {/* Texto dinâmico */}
           <div className="space-y-3">
-            <h2 className="text-3xl font-bold text-white animate-fade-in" style={{ animationDelay: '0.5s', animationFillMode: 'both' }}>
-              Recurso Concluído!
+            <h2 className="text-3xl font-bold text-white">
+              {etapaConclusao === 'gerando' && 'Gerando PDF...'}
+              {etapaConclusao === 'salvando' && 'Salvando na Pasta do Cliente...'}
+              {etapaConclusao === 'concluido' && 'Recurso Finalizado!'}
             </h2>
-            <p className="text-gray-300 text-lg animate-fade-in" style={{ animationDelay: '0.7s', animationFillMode: 'both' }}>
-              Salvo com sucesso na lista de acompanhamento
+            <p className="text-gray-300 text-lg">
+              {etapaConclusao === 'gerando' && 'Convertendo documento para PDF'}
+              {etapaConclusao === 'salvando' && 'Armazenando de forma segura'}
+              {etapaConclusao === 'concluido' && 'PDF salvo com sucesso - Recurso bloqueado para edição'}
             </p>
           </div>
 
           {/* Indicador de redirecionamento */}
-          <div className="flex items-center justify-center gap-3 text-gray-400 animate-fade-in" style={{ animationDelay: '1s', animationFillMode: 'both' }}>
-            <div className="flex gap-1">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          {etapaConclusao === 'concluido' && (
+            <div className="flex items-center justify-center gap-3 text-gray-400 animate-fade-in">
+              <div className="flex gap-1">
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+              <span className="text-sm">Redirecionando para Rastreamento</span>
             </div>
-            <span className="text-sm">Redirecionando para Rastreamento</span>
-          </div>
+          )}
 
           {/* Barra de progresso */}
-          <div className="w-64 mx-auto h-1 bg-gray-700 rounded-full overflow-hidden">
+          <div className="w-64 mx-auto h-1.5 bg-gray-700 rounded-full overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full"
-              style={{
-                animation: 'progress 2s ease-out forwards'
-              }}
+              className={`h-full rounded-full transition-all duration-500 ${
+                etapaConclusao === 'concluido' 
+                  ? 'bg-gradient-to-r from-green-400 to-emerald-500 w-full' 
+                  : etapaConclusao === 'salvando'
+                    ? 'bg-gradient-to-r from-blue-400 to-indigo-500 w-2/3'
+                    : 'bg-gradient-to-r from-blue-400 to-indigo-500 w-1/3 animate-pulse'
+              }`}
             />
           </div>
         </div>
-
-        <style>{`
-          @keyframes progress {
-            from { width: 0%; }
-            to { width: 100%; }
-          }
-          @keyframes draw-check {
-            0% { stroke-dasharray: 0 100; }
-            100% { stroke-dasharray: 100 0; }
-          }
-          .animate-draw-check {
-            stroke-dasharray: 100;
-            animation: draw-check 0.5s ease-out 0.3s forwards;
-          }
-        `}</style>
       </div>
     );
   }
@@ -151,7 +261,7 @@ export default function VisualizadorRecurso({
             <i className="ri-file-text-line text-2xl"></i>
             <div>
               <h3 className="font-bold text-lg">Recurso Gerado com Sucesso!</h3>
-              <p className="text-green-100 text-sm">Revise o conteúdo antes de protocolar</p>
+              <p className="text-green-100 text-sm">Revise o conteúdo antes de finalizar</p>
             </div>
           </div>
           <button
@@ -163,22 +273,18 @@ export default function VisualizadorRecurso({
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="border-b border-gray-200 bg-gray-50 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setEditando(!editando)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              editando 
-                ? 'bg-blue-100 text-blue-700 border border-blue-300 scale-105' 
-                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:scale-105'
-            }`}
-          >
-            <i className={`${editando ? 'ri-save-line' : 'ri-edit-line'} mr-2`}></i>
-            {editando ? 'Salvar Edição' : 'Editar'}
-          </button>
+      {/* Aviso importante */}
+      <div className="bg-amber-50 border-b border-amber-200 px-6 py-3">
+        <div className="flex items-center gap-2 text-amber-800">
+          <i className="ri-lock-line text-lg"></i>
+          <p className="text-sm font-medium">
+            Após clicar em "Finalizar", o recurso será salvo como PDF e <strong>não poderá mais ser editado</strong>.
+          </p>
         </div>
-        
+      </div>
+
+      {/* Toolbar */}
+      <div className="border-b border-gray-200 bg-gray-50 px-6 py-3 flex items-center justify-end">
         <div className="flex items-center gap-2">
           <button
             onClick={handleCopiar}
@@ -196,29 +302,20 @@ export default function VisualizadorRecurso({
             className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 hover:scale-105 transition-all duration-200"
           >
             <i className="ri-printer-line mr-2"></i>
-            Imprimir / PDF
+            Pré-visualizar
           </button>
         </div>
       </div>
 
-      {/* Conteúdo do Recurso */}
+      {/* Conteúdo do Recurso - Apenas Leitura */}
       <div className="p-6 max-h-[60vh] overflow-y-auto bg-white">
         <div className="max-w-3xl mx-auto bg-gray-50 border border-gray-200 rounded-lg p-8 shadow-inner">
-          {editando ? (
-            <textarea
-              value={textoEditado}
-              onChange={(e) => setTextoEditado(e.target.value)}
-              className="w-full min-h-[500px] p-4 border border-gray-300 rounded-lg font-serif text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y transition-all"
-              style={{ fontFamily: "'Times New Roman', serif" }}
-            />
-          ) : (
-            <pre 
-              className="whitespace-pre-wrap text-gray-800 text-sm leading-relaxed"
-              style={{ fontFamily: "'Times New Roman', serif" }}
-            >
-              {textoEditado}
-            </pre>
-          )}
+          <pre 
+            className="whitespace-pre-wrap text-gray-800 text-sm leading-relaxed"
+            style={{ fontFamily: "'Times New Roman', serif" }}
+          >
+            {textoEditado}
+          </pre>
         </div>
       </div>
 
@@ -227,15 +324,22 @@ export default function VisualizadorRecurso({
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">
             <i className="ri-information-line mr-1"></i>
-            Revise cuidadosamente antes de protocolar no órgão competente
+            O PDF será salvo automaticamente na pasta do cliente
           </p>
           <div className="flex gap-3">
             <button
-              onClick={handleConcluir}
-              className="group px-6 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg text-sm font-medium hover:from-green-600 hover:to-emerald-700 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-green-500/30 flex items-center gap-2"
+              onClick={onClose}
+              className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-100 transition-all"
             >
-              <i className="ri-check-double-line text-lg group-hover:animate-bounce"></i>
-              Concluído
+              Cancelar
+            </button>
+            <button
+              onClick={handleConcluir}
+              disabled={salvandoPDF}
+              className="group px-6 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg text-sm font-medium hover:from-green-600 hover:to-emerald-700 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-green-500/30 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <i className="ri-lock-line text-lg"></i>
+              Finalizar e Salvar PDF
             </button>
           </div>
         </div>

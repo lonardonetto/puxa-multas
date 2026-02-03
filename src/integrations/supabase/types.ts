@@ -1296,6 +1296,7 @@ export type Database = {
           created_at: string | null
           data_protocolo: string | null
           data_ultima_notificacao: string | null
+          finalizado: boolean | null
           id: string
           instancia: Database["public"]["Enums"]["instancia_recurso"]
           is_ia: boolean | null
@@ -1303,6 +1304,7 @@ export type Database = {
           numero_protocolo: string | null
           observacoes: string | null
           organization_id: string | null
+          pdf_url: string | null
           status: Database["public"]["Enums"]["status_recurso"] | null
           updated_at: string | null
           veiculo_id: string | null
@@ -1316,6 +1318,7 @@ export type Database = {
           created_at?: string | null
           data_protocolo?: string | null
           data_ultima_notificacao?: string | null
+          finalizado?: boolean | null
           id?: string
           instancia: Database["public"]["Enums"]["instancia_recurso"]
           is_ia?: boolean | null
@@ -1323,6 +1326,7 @@ export type Database = {
           numero_protocolo?: string | null
           observacoes?: string | null
           organization_id?: string | null
+          pdf_url?: string | null
           status?: Database["public"]["Enums"]["status_recurso"] | null
           updated_at?: string | null
           veiculo_id?: string | null
@@ -1336,6 +1340,7 @@ export type Database = {
           created_at?: string | null
           data_protocolo?: string | null
           data_ultima_notificacao?: string | null
+          finalizado?: boolean | null
           id?: string
           instancia?: Database["public"]["Enums"]["instancia_recurso"]
           is_ia?: boolean | null
@@ -1343,6 +1348,7 @@ export type Database = {
           numero_protocolo?: string | null
           observacoes?: string | null
           organization_id?: string | null
+          pdf_url?: string | null
           status?: Database["public"]["Enums"]["status_recurso"] | null
           updated_at?: string | null
           veiculo_id?: string | null
