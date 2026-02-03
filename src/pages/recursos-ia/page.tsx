@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useCurrentPlan } from '../../hooks/useCurrentPlan';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -7,6 +7,7 @@ import { useWallet } from '../../hooks/useWallet';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import FormularioRecurso, { DadosRecurso } from '../../components/recursos/FormularioRecurso';
 import VisualizadorRecurso from '../../components/recursos/VisualizadorRecurso';
+import AnimacaoGeracaoRecurso from '../../components/recursos/AnimacaoGeracaoRecurso';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -75,6 +76,8 @@ export default function RecursosIA() {
   }, [searchParams]);
   
   const [gerando, setGerando] = useState(false);
+  const [animacaoAberta, setAnimacaoAberta] = useState(false);
+  const [dadosPendentes, setDadosPendentes] = useState<{ dados: DadosRecurso; isFree: boolean; custo: number } | null>(null);
   const [recursoGerado, setRecursoGerado] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [confirmacaoCompra, setConfirmacaoCompra] = useState<{ valor: number; dados: DadosRecurso } | null>(null);
@@ -99,8 +102,19 @@ export default function RecursosIA() {
       return;
     }
 
-    await executarGeracao(dados, isFree, custo);
+    // Iniciar animação e guardar dados para processamento
+    setDadosPendentes({ dados, isFree, custo });
+    setAnimacaoAberta(true);
   };
+
+  // Função chamada quando animação termina
+  const handleAnimacaoComplete = useCallback(() => {
+    setAnimacaoAberta(false);
+    if (dadosPendentes) {
+      executarGeracao(dadosPendentes.dados, dadosPendentes.isFree, dadosPendentes.custo);
+      setDadosPendentes(null);
+    }
+  }, [dadosPendentes]);
 
   const executarGeracao = async (dados: DadosRecurso, isFree: boolean, custo: number) => {
     setGerando(true);
@@ -356,7 +370,11 @@ export default function RecursosIA() {
                 Cancelar
               </button>
               <button
-                onClick={() => executarGeracao(confirmacaoCompra.dados, false, confirmacaoCompra.valor)}
+                onClick={() => {
+                  setConfirmacaoCompra(null);
+                  setDadosPendentes({ dados: confirmacaoCompra.dados, isFree: false, custo: confirmacaoCompra.valor });
+                  setAnimacaoAberta(true);
+                }}
                 disabled={balance < confirmacaoCompra.valor}
                 className="flex-1 px-4 py-3 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -373,6 +391,13 @@ export default function RecursosIA() {
           </div>
         </div>
       )}
+
+      {/* Animação de geração de recurso */}
+      <AnimacaoGeracaoRecurso
+        isOpen={animacaoAberta}
+        tipo="gerando"
+        onComplete={handleAnimacaoComplete}
+      />
     </div>
   );
 }
