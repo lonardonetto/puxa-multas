@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import LegislacaoTab from '@/components/super-admin/LegislacaoTab';
 
 interface RecursoConhecimento {
   id: string;
@@ -39,6 +40,7 @@ const ESTADOS = [
 
 export default function KnowledgeBasePage() {
   const queryClient = useQueryClient();
+  const [mainTab, setMainTab] = useState<'recursos' | 'legislacao'>('recursos');
   const [activeTab, setActiveTab] = useState<'pendentes' | 'aprovados'>('pendentes');
   const [showModal, setShowModal] = useState(false);
   const [viewingRecurso, setViewingRecurso] = useState<RecursoConhecimento | null>(null);
@@ -350,82 +352,117 @@ export default function KnowledgeBasePage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Base de Conhecimento IA</h1>
-          <p className="text-gray-600 mt-1">Gerencie recursos deferidos para treinar a IA</p>
+          <p className="text-gray-600 mt-1">Gerencie recursos deferidos e legislação para treinar a IA</p>
         </div>
+      </div>
+
+      {/* Main Tabs */}
+      <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-xl w-fit">
         <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          onClick={() => setMainTab('recursos')}
+          className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-all ${
+            mainTab === 'recursos' 
+              ? 'bg-white text-purple-600 shadow-sm' 
+              : 'text-gray-600 hover:text-gray-800'
+          }`}
         >
-          <i className="ri-add-line mr-2"></i>
-          Adicionar Manual
+          <i className="ri-file-text-line"></i>
+          Recursos Deferidos
+        </button>
+        <button
+          onClick={() => setMainTab('legislacao')}
+          className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-all ${
+            mainTab === 'legislacao' 
+              ? 'bg-white text-blue-600 shadow-sm' 
+              : 'text-gray-600 hover:text-gray-800'
+          }`}
+        >
+          <i className="ri-scales-line"></i>
+          Legislação (CTB / CONTRAN)
         </button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div
-          onClick={() => setActiveTab('pendentes')}
-          className={`bg-white rounded-xl p-5 shadow-sm border-2 cursor-pointer transition-all ${
-            activeTab === 'pendentes' ? 'border-orange-500' : 'border-transparent hover:border-orange-200'
-          }`}
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-              <i className="ri-time-line text-2xl text-orange-600"></i>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-orange-600">{stats.pendentes}</p>
-              <p className="text-sm text-gray-500">Pendentes de Análise</p>
-            </div>
+      {/* Render tab content */}
+      {mainTab === 'legislacao' ? (
+        <LegislacaoTab />
+      ) : (
+        <>
+          {/* Button for Recursos */}
+          <div className="flex justify-end mb-6">
+            <button
+              onClick={() => { resetForm(); setShowModal(true); }}
+              className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <i className="ri-add-line mr-2"></i>
+              Adicionar Manual
+            </button>
           </div>
-        </div>
 
-        <div
-          onClick={() => setActiveTab('aprovados')}
-          className={`bg-white rounded-xl p-5 shadow-sm border-2 cursor-pointer transition-all ${
-            activeTab === 'aprovados' ? 'border-green-500' : 'border-transparent hover:border-green-200'
-          }`}
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-              <i className="ri-check-double-line text-2xl text-green-600"></i>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div
+              onClick={() => setActiveTab('pendentes')}
+              className={`bg-white rounded-xl p-5 shadow-sm border-2 cursor-pointer transition-all ${
+                activeTab === 'pendentes' ? 'border-orange-500' : 'border-transparent hover:border-orange-200'
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                  <i className="ri-time-line text-2xl text-orange-600"></i>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-orange-600">{stats.pendentes}</p>
+                  <p className="text-sm text-gray-500">Pendentes de Análise</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-3xl font-bold text-green-600">{stats.aprovados}</p>
-              <p className="text-sm text-gray-500">Aprovados na Base</p>
-            </div>
-          </div>
-        </div>
 
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-              <i className="ri-brain-line text-2xl text-purple-600"></i>
+            <div
+              onClick={() => setActiveTab('aprovados')}
+              className={`bg-white rounded-xl p-5 shadow-sm border-2 cursor-pointer transition-all ${
+                activeTab === 'aprovados' ? 'border-green-500' : 'border-transparent hover:border-green-200'
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                  <i className="ri-check-double-line text-2xl text-green-600"></i>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-green-600">{stats.aprovados}</p>
+                  <p className="text-sm text-gray-500">Aprovados na Base</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-3xl font-bold text-gray-800">{stats.total}</p>
-              <p className="text-sm text-gray-500">Total Geral</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Info Card */}
-      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-5 mb-6 border border-purple-100">
-        <div className="flex items-start gap-4">
-          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center shrink-0">
-            <i className="ri-lightbulb-line text-xl text-purple-600"></i>
+            <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                  <i className="ri-brain-line text-2xl text-purple-600"></i>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-gray-800">{stats.total}</p>
+                  <p className="text-sm text-gray-500">Total Geral</p>
+                </div>
+              </div>
+            </div>
           </div>
-          <div>
-            <h3 className="font-bold text-purple-900">Upload Inteligente com IA</h3>
-            <p className="text-sm text-purple-700 mt-1">
-              Agora você pode <strong>anexar imagens do AIT e do deferimento</strong>. A IA irá analisar automaticamente
-              os documentos, extrair informações relevantes e preencher os campos. Quanto mais exemplos de sucesso, melhor
-              a IA gerará novos recursos!
-            </p>
+
+          {/* Info Card */}
+          <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-5 mb-6 border border-purple-100">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center shrink-0">
+                <i className="ri-lightbulb-line text-xl text-purple-600"></i>
+              </div>
+              <div>
+                <h3 className="font-bold text-purple-900">Upload Inteligente com IA</h3>
+                <p className="text-sm text-purple-700 mt-1">
+                  Agora você pode <strong>anexar imagens do AIT e do deferimento</strong>. A IA irá analisar automaticamente
+                  os documentos, extrair informações relevantes e preencher os campos. Quanto mais exemplos de sucesso, melhor
+                  a IA gerará novos recursos!
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
       {/* Filters */}
       <div className="bg-white rounded-xl p-4 mb-6 shadow-sm border border-gray-100">
@@ -1020,6 +1057,8 @@ export default function KnowledgeBasePage() {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

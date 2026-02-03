@@ -234,6 +234,16 @@ serve(async (req) => {
 
     console.log('Recursos deferidos encontrados na base:', recursosDeferidos?.length || 0);
 
+    // Buscar legislação da base (CTB e CONTRAN)
+    const { data: legislacaoBase } = await supabase
+      .from('legislacao_base')
+      .select('tipo, titulo, conteudo, artigos_relacionados, palavras_chave')
+      .eq('ativo', true)
+      .eq('is_global', true)
+      .limit(20);
+
+    console.log('Legislação encontrada na base:', legislacaoBase?.length || 0);
+
     // ANALISAR AIT COM IA (se enviado)
     let analiseAit: any = null;
     if (dados.aitBase64 && lovableApiKey) {
@@ -244,6 +254,31 @@ serve(async (req) => {
 
     const template = templates?.[0];
     const fundamentosText = fundamentos?.map(f => `• ${f.titulo}: ${f.conteudo}`).join('\n\n') || '';
+
+    // Preparar legislação para o prompt
+    let legislacaoTexto = '';
+    if (legislacaoBase && legislacaoBase.length > 0) {
+      const ctb = legislacaoBase.filter((l: any) => l.tipo === 'ctb');
+      const contran = legislacaoBase.filter((l: any) => l.tipo === 'contran');
+      
+      legislacaoTexto = `
+=== BASE DE LEGISLAÇÃO DISPONÍVEL ===
+
+📖 CÓDIGO DE TRÂNSITO BRASILEIRO (CTB):
+${ctb.map((l: any) => `
+• ${l.titulo}
+${l.conteudo?.substring(0, 1000)}${l.conteudo?.length > 1000 ? '...' : ''}
+`).join('\n')}
+
+📜 RESOLUÇÕES DO CONTRAN:
+${contran.map((l: any) => `
+• ${l.titulo}${l.numero_resolucao ? ` (${l.numero_resolucao})` : ''}
+${l.conteudo?.substring(0, 800)}${l.conteudo?.length > 800 ? '...' : ''}
+`).join('\n')}
+===
+
+`;
+    }
 
     // Preparar exemplos da base de conhecimento
     let exemplosConhecimento = '';
@@ -298,6 +333,8 @@ ${template?.prompt_ia || 'Você é um advogado especialista em direito de trâns
 
 Você deve CONTINUAR o recurso abaixo, adicionando a argumentação jurídica completa.
 
+${legislacaoTexto}
+
 ${analiseAitTexto}
 
 ${exemplosConhecimento}
@@ -309,7 +346,7 @@ DESCRIÇÃO DA SITUAÇÃO PELO CLIENTE:
 ${dados.descricaoSituacao || 'O recorrente discorda da autuação e solicita sua anulação.'}
 
 FUNDAMENTOS LEGAIS DISPONÍVEIS:
-${fundamentosText || 'Utilize os artigos do Código de Trânsito Brasileiro (CTB), resoluções do CONTRAN e jurisprudências aplicáveis.'}
+${fundamentosText || 'Utilize os artigos do Código de Trânsito Brasileiro (CTB), resoluções do CONTRAN e jurisprudências aplicáveis conforme a base de legislação acima.'}
 
 INFRAÇÃO EM QUESTÃO:
 - Código: ${dados.codigoInfracao}
@@ -329,11 +366,15 @@ ${recursosDeferidos && recursosDeferidos.length > 0
   ? `DICA: Utilize os argumentos que funcionaram nos recursos deferidos anteriores como base para sua argumentação.`
   : 'Não há recursos deferidos anteriores para esta infração - seja criativo e use as melhores práticas jurídicas.'}
 
+${legislacaoBase && legislacaoBase.length > 0 
+  ? `📚 IMPORTANTE: Utilize a BASE DE LEGISLAÇÃO fornecida acima (CTB e Resoluções CONTRAN) para fundamentar juridicamente o recurso. Cite os artigos específicos!`
+  : ''}
+
 Por favor, CONTINUE o recurso acima gerando:
 
 1. **DOS FATOS** - Exposição detalhada dos fatos conforme descrição do cliente
 2. **DO DIREITO** - Fundamentação jurídica robusta com:
-   - Artigos do CTB aplicáveis
+   - Artigos do CTB aplicáveis (use a base de legislação fornecida!)
    - Resoluções do CONTRAN relevantes
    - Jurisprudências (se aplicável)
    - Argumentos técnicos sobre possíveis vícios formais ou materiais
