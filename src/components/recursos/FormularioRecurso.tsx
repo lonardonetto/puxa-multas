@@ -221,12 +221,14 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
         // 1. Detectar estado pela placa
         const estado = getEstadoFromPlaca(dados.placa);
         if (estado) {
-          const { data: detran } = await supabase
+          const { data: detranList } = await supabase
             .from('orgaos_transito')
             .select('*')
             .eq('sigla_estado', estado)
             .eq('tipo', 'DETRAN')
-            .single();
+            .limit(1);
+          
+          const detran = detranList?.[0];
 
           if (detran) {
             setDetranDetectado(detran);
