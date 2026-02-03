@@ -1087,8 +1087,12 @@ export type Database = {
           preco_mensal: number | null
           preco_rastreamento: number | null
           preco_recurso_ia: number | null
+          rastreamento_anual_frota_preco: number | null
+          rastreamento_anual_pf_preco: number | null
           rastreamento_frota_preco: number | null
           rastreamento_garantido_preco: number | null
+          rastreamento_mensal_frota_preco: number | null
+          rastreamento_mensal_pf_preco: number | null
           rastreamento_pf_preco: number | null
           recursos: Json | null
           recursos_ia_inclusos: number | null
@@ -1117,8 +1121,12 @@ export type Database = {
           preco_mensal?: number | null
           preco_rastreamento?: number | null
           preco_recurso_ia?: number | null
+          rastreamento_anual_frota_preco?: number | null
+          rastreamento_anual_pf_preco?: number | null
           rastreamento_frota_preco?: number | null
           rastreamento_garantido_preco?: number | null
+          rastreamento_mensal_frota_preco?: number | null
+          rastreamento_mensal_pf_preco?: number | null
           rastreamento_pf_preco?: number | null
           recursos?: Json | null
           recursos_ia_inclusos?: number | null
@@ -1147,8 +1155,12 @@ export type Database = {
           preco_mensal?: number | null
           preco_rastreamento?: number | null
           preco_recurso_ia?: number | null
+          rastreamento_anual_frota_preco?: number | null
+          rastreamento_anual_pf_preco?: number | null
           rastreamento_frota_preco?: number | null
           rastreamento_garantido_preco?: number | null
+          rastreamento_mensal_frota_preco?: number | null
+          rastreamento_mensal_pf_preco?: number | null
           rastreamento_pf_preco?: number | null
           recursos?: Json | null
           recursos_ia_inclusos?: number | null
@@ -1625,6 +1637,7 @@ export type Database = {
           quantidade_eixos: string | null
           rastreamento_ativo: boolean | null
           rastreamento_inicio: string | null
+          rastreamento_notificado: boolean | null
           rastreamento_tipo: string | null
           rastreamento_valor: number | null
           rastreamento_vencimento: string | null
@@ -1654,6 +1667,7 @@ export type Database = {
           quantidade_eixos?: string | null
           rastreamento_ativo?: boolean | null
           rastreamento_inicio?: string | null
+          rastreamento_notificado?: boolean | null
           rastreamento_tipo?: string | null
           rastreamento_valor?: number | null
           rastreamento_vencimento?: string | null
@@ -1683,6 +1697,7 @@ export type Database = {
           quantidade_eixos?: string | null
           rastreamento_ativo?: boolean | null
           rastreamento_inicio?: string | null
+          rastreamento_notificado?: boolean | null
           rastreamento_tipo?: string | null
           rastreamento_valor?: number | null
           rastreamento_vencimento?: string | null

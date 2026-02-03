@@ -6,11 +6,13 @@ import ModalHistoricoConsultas from '../../components/rastreamento/ModalHistoric
 import ModalEditarVeiculo from '../../components/rastreamento/ModalEditarVeiculo';
 import ModalEditarMulta from '../../components/rastreamento/ModalEditarMulta';
 import ModalPreviewDadosVeiculo from '../../components/rastreamento/ModalPreviewDadosVeiculo';
+import ModalSelecionarPlanoRastreamento from '../../components/rastreamento/ModalSelecionarPlanoRastreamento';
 import ListaVeiculosCadastrados from '../../components/rastreamento/ListaVeiculosCadastrados';
 import { useClientes } from '../../hooks/useClientes';
 import { useVeiculos } from '../../hooks/useVeiculos';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useWallet } from '../../hooks/useWallet';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabase';
 
@@ -31,11 +33,13 @@ export default function Rastreamento() {
   const { createVeiculo, createVeiculosBatch } = useVeiculos();
   const { currentOrganization } = useOrganization();
   const { user } = useAuth();
+  const { balance, checkBalance, deductCredits } = useWallet();
   
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [filtroTipo, setFiltroTipo] = useState('todos');
   const [busca, setBusca] = useState('');
   const [modalAberto, setModalAberto] = useState(false);
+  const [modalPlanoAberto, setModalPlanoAberto] = useState(false);
   const [tipoRastreamento, setTipoRastreamento] = useState<'frota' | 'individual' | null>(null);
   const [multaSelecionada, setMultaSelecionada] = useState<MultaRastreada | null>(null);
   const [multaParaEditar, setMultaParaEditar] = useState<MultaRastreada | null>(null);
@@ -66,6 +70,18 @@ export default function Rastreamento() {
     dados: unknown;
     veiculoId: string;
     clienteId: string | null;
+  } | null>(null);
+  
+  // Estado para seleção de plano de rastreamento
+  const [planoRastreamentoSelecionado, setPlanoRastreamentoSelecionado] = useState<{
+    tipo: 'mensal' | 'anual';
+    preco: number;
+  } | null>(null);
+  
+  // Estado para dados pendentes do formulário (aguardando seleção de plano)
+  const [dadosPendentes, setDadosPendentes] = useState<{
+    clienteIdFinal: string;
+    placasValidas: { placa: string; modelo: string; ano: string; renavam: string }[];
   } | null>(null);
   
   // Estado para seleção de cliente existente
@@ -249,7 +265,6 @@ export default function Rastreamento() {
       if (modoCliente === 'existente' && clienteSelecionadoId) {
         // Usar cliente existente
         clienteIdFinal = clienteSelecionadoId;
-        toast.info('Veículo será vinculado ao cliente existente');
       } else {
         // Criar novo cliente
         const tipoPessoa = tipoRastreamento === 'frota' ? 'juridica' : 'fisica';
@@ -276,7 +291,52 @@ export default function Rastreamento() {
         clienteIdFinal = cliente.id;
       }
 
-      // 2. Criar os veículos com rastreamento ativo
+      // Guardar dados pendentes e abrir modal de seleção de plano
+      setDadosPendentes({ clienteIdFinal, placasValidas });
+      setModalPlanoAberto(true);
+      
+    } catch (error) {
+      console.error('Erro ao cadastrar:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao cadastrar rastreamento');
+      setSalvando(false);
+    }
+  };
+
+  // Função chamada após seleção do plano de rastreamento
+  const handlePlanoSelecionado = async (tipo: 'mensal' | 'anual', preco: number) => {
+    if (!dadosPendentes || !currentOrganization) {
+      toast.error('Dados incompletos');
+      return;
+    }
+
+    const { clienteIdFinal, placasValidas } = dadosPendentes;
+    const totalVeiculos = placasValidas.length;
+    const custoTotal = preco * totalVeiculos;
+
+    // Verificar saldo
+    if (!checkBalance(custoTotal)) {
+      toast.error(`Saldo insuficiente. Necessário: R$ ${custoTotal.toFixed(2)}, Disponível: R$ ${balance.toFixed(2)}`);
+      setSalvando(false);
+      return;
+    }
+
+    try {
+      // Deduzir créditos da carteira
+      await deductCredits(
+        custoTotal,
+        `Rastreamento ${tipo} - ${totalVeiculos} veículo(s)`,
+        'rastreamento'
+      );
+
+      // Calcular data de vencimento
+      const vencimento = new Date();
+      if (tipo === 'mensal') {
+        vencimento.setMonth(vencimento.getMonth() + 1);
+      } else {
+        vencimento.setFullYear(vencimento.getFullYear() + 1);
+      }
+
+      // Criar os veículos com rastreamento ativo
       const veiculosData = placasValidas.map(p => ({
         placa: p.placa.toUpperCase().replace(/[^A-Z0-9]/g, ''),
         modelo: p.modelo || 'Não informado',
@@ -285,7 +345,10 @@ export default function Rastreamento() {
         cliente_id: clienteIdFinal,
         rastreamento_ativo: true,
         rastreamento_inicio: new Date().toISOString(),
-        rastreamento_valor: tipoRastreamento === 'frota' ? 50 : 60,
+        rastreamento_tipo: tipo,
+        rastreamento_valor: preco,
+        rastreamento_vencimento: vencimento.toISOString().split('T')[0],
+        rastreamento_notificado: false,
         ativo: true,
       }));
 
@@ -295,15 +358,38 @@ export default function Rastreamento() {
         await createVeiculosBatch(veiculosData);
       }
 
-      toast.success(`${placasValidas.length} veículo(s) cadastrado(s) com sucesso!`);
+      toast.success(`${totalVeiculos} veículo(s) cadastrado(s) com rastreamento ${tipo}!`);
+      setModalPlanoAberto(false);
+      setDadosPendentes(null);
       fecharModal();
-      refresh(); // Atualizar lista de multas
+      refresh();
       
     } catch (error) {
-      console.error('Erro ao cadastrar:', error);
-      toast.error(error instanceof Error ? error.message : 'Erro ao cadastrar rastreamento');
+      console.error('Erro ao ativar rastreamento:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao ativar rastreamento');
     } finally {
       setSalvando(false);
+    }
+  };
+
+  // Função para cancelar rastreamento de um veículo
+  const handleCancelarRastreamento = async (veiculoId: string, placa: string) => {
+    if (!confirm(`Deseja cancelar o rastreamento do veículo ${placa}? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase.functions.invoke('cancelar-rastreamento', {
+        body: { veiculo_id: veiculoId, placa, motivo: 'manual' },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Rastreamento cancelado para ${placa}`);
+      refresh();
+    } catch (error) {
+      console.error('Erro ao cancelar rastreamento:', error);
+      toast.error('Erro ao cancelar rastreamento');
     }
   };
 
@@ -314,6 +400,26 @@ export default function Rastreamento() {
           <h2 className="text-3xl font-bold text-gray-800">Rastreamento de Multas</h2>
           <p className="text-sm text-gray-600 mt-2">Gerencie todas as multas rastreadas da sua frota</p>
         </div>
+      </div>
+
+      {/* Saldo disponível */}
+      <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+            <i className="ri-wallet-3-line text-blue-600 text-xl"></i>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Saldo disponível para rastreamento</p>
+            <p className="text-lg font-bold text-blue-600">{formatCurrency(balance)}</p>
+          </div>
+        </div>
+        <button 
+          onClick={() => navigate('/checkout')}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+        >
+          <i className="ri-add-line mr-1"></i>
+          Adicionar Créditos
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -328,7 +434,10 @@ export default function Rastreamento() {
             <div>
               <h3 className="text-xl font-bold text-gray-800">Rastreamento de Frotas</h3>
               <p className="text-sm text-gray-600 mt-2">Para empresas com múltiplos veículos</p>
-              <p className="text-xs text-gray-500 mt-1">A partir de 3 veículos - R$ 50/placa (Gratuito) | R$ 25/placa (Premium)</p>
+              <div className="flex gap-2 justify-center mt-2">
+                <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">Mensal</span>
+                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Anual (Economia)</span>
+              </div>
             </div>
             <button className="px-6 py-3 bg-[#10B981] text-white rounded-lg font-medium hover:bg-green-600 transition-colors whitespace-nowrap">
               <i className="ri-add-line mr-2"></i>
@@ -348,7 +457,10 @@ export default function Rastreamento() {
             <div>
               <h3 className="text-xl font-bold text-gray-800">Rastreamento Individual</h3>
               <p className="text-sm text-gray-600 mt-2">Para pessoas físicas ou veículos individuais</p>
-              <p className="text-xs text-gray-500 mt-1">R$ 60 por veículo (Gratuito) | R$ 30 por veículo (Premium)</p>
+              <div className="flex gap-2 justify-center mt-2">
+                <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">Mensal</span>
+                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Anual (Economia)</span>
+              </div>
             </div>
             <button className="px-6 py-3 bg-[#10B981] text-white rounded-lg font-medium hover:bg-green-600 transition-colors whitespace-nowrap">
               <i className="ri-add-line mr-2"></i>
@@ -958,6 +1070,19 @@ export default function Rastreamento() {
           onSuccess={() => refresh()}
         />
       )}
+
+      {/* Modal de seleção de plano de rastreamento */}
+      <ModalSelecionarPlanoRastreamento
+        isOpen={modalPlanoAberto}
+        onClose={() => {
+          setModalPlanoAberto(false);
+          setDadosPendentes(null);
+          setSalvando(false);
+        }}
+        onConfirm={handlePlanoSelecionado}
+        tipoVeiculo={tipoRastreamento === 'frota' ? 'frota' : 'individual'}
+        loading={salvando}
+      />
     </div>
   );
 }

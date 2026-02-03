@@ -14,3 +14,12 @@ verify_jwt = false
 
 [functions.extrair-ait]
 verify_jwt = false
+
+[functions.analisar-documento-conhecimento]
+verify_jwt = false
+
+[functions.cancelar-rastreamento]
+verify_jwt = false
+
+[functions.verificar-vencimento-rastreamento]
+verify_jwt = false
