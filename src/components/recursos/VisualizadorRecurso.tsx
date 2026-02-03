@@ -3,24 +3,20 @@ import { useState } from 'react';
 interface VisualizadorRecursoProps {
   conteudo: string;
   onClose: () => void;
-  onSalvar: () => void;
-  onCopiar: () => void;
-  onImprimir: () => void;
 }
 
 export default function VisualizadorRecurso({ 
   conteudo, 
-  onClose, 
-  onSalvar, 
-  onCopiar, 
-  onImprimir 
+  onClose
 }: VisualizadorRecursoProps) {
   const [editando, setEditando] = useState(false);
   const [textoEditado, setTextoEditado] = useState(conteudo);
+  const [copiado, setCopiado] = useState(false);
 
   const handleCopiar = () => {
     navigator.clipboard.writeText(textoEditado);
-    onCopiar();
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
   };
 
   const handleImprimir = () => {
@@ -55,7 +51,6 @@ export default function VisualizadorRecurso({
       printWindow.document.close();
       printWindow.print();
     }
-    onImprimir();
   };
 
   return (
@@ -98,24 +93,21 @@ export default function VisualizadorRecurso({
         <div className="flex items-center gap-2">
           <button
             onClick={handleCopiar}
-            className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              copiado 
+                ? 'bg-green-100 text-green-700 border border-green-300' 
+                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
           >
-            <i className="ri-file-copy-line mr-2"></i>
-            Copiar
+            <i className={`${copiado ? 'ri-check-line' : 'ri-file-copy-line'} mr-2`}></i>
+            {copiado ? 'Copiado!' : 'Copiar'}
           </button>
           <button
             onClick={handleImprimir}
-            className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            <i className="ri-printer-line mr-2"></i>
-            Imprimir
-          </button>
-          <button
-            onClick={onSalvar}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
           >
-            <i className="ri-download-line mr-2"></i>
-            Salvar como PDF
+            <i className="ri-printer-line mr-2"></i>
+            Imprimir / PDF
           </button>
         </div>
       </div>
@@ -151,16 +143,10 @@ export default function VisualizadorRecurso({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
-            >
-              Fechar
-            </button>
-            <button
-              onClick={onSalvar}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+              className="px-6 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
             >
               <i className="ri-check-line mr-2"></i>
-              Finalizar e Salvar
+              Concluído
             </button>
           </div>
         </div>
