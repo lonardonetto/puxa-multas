@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 interface VeiculoCadastrado {
   id: string;
@@ -45,6 +46,10 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
   const [veiculos, setVeiculos] = useState<VeiculoCadastrado[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletando, setDeletando] = useState<string | null>(null);
+  
+  // Estado para o modal de confirmação
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [veiculoParaExcluir, setVeiculoParaExcluir] = useState<{ id: string; placa: string } | null>(null);
 
   useEffect(() => {
     if (currentOrganization?.id) {
@@ -52,12 +57,17 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
     }
   }, [currentOrganization?.id]);
 
-  const handleDeleteVeiculo = async (veiculoId: string, placa: string) => {
-    if (!confirm(`Tem certeza que deseja excluir o veículo ${placa}? Esta ação também excluirá todas as multas associadas.`)) {
-      return;
-    }
+  const abrirConfirmacaoDelete = (veiculoId: string, placa: string) => {
+    setVeiculoParaExcluir({ id: veiculoId, placa });
+    setConfirmDeleteOpen(true);
+  };
 
+  const confirmarDeleteVeiculo = async () => {
+    if (!veiculoParaExcluir) return;
+
+    const { id: veiculoId, placa } = veiculoParaExcluir;
     setDeletando(veiculoId);
+    
     try {
       // Primeiro excluir multas do veículo
       await supabase.from('multas').delete().eq('veiculo_id', veiculoId);
@@ -75,6 +85,7 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
       toast.error('Erro ao excluir veículo');
     } finally {
       setDeletando(null);
+      setVeiculoParaExcluir(null);
     }
   };
 
@@ -285,7 +296,7 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
                         <i className="ri-pencil-line text-lg"></i>
                       </button>
                       <button
-                        onClick={() => handleDeleteVeiculo(veiculo.id, veiculo.placa)}
+                        onClick={() => abrirConfirmacaoDelete(veiculo.id, veiculo.placa)}
                         disabled={deletando === veiculo.id}
                         className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                         title="Excluir veículo"
@@ -304,6 +315,19 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
           </tbody>
         </table>
       </div>
+
+      {/* Modal de confirmação de exclusão */}
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title="Excluir Veículo"
+        description={`Tem certeza que deseja excluir o veículo ${veiculoParaExcluir?.placa || ''}? Esta ação também excluirá todas as multas associadas e não pode ser desfeita.`}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        variant="danger"
+        onConfirm={confirmarDeleteVeiculo}
+        loading={deletando !== null}
+      />
     </div>
   );
 }
