@@ -427,8 +427,11 @@ export default function Rastreamento() {
         };
       });
 
+      let veiculoIdCriado: string | null = null;
+      
       if (veiculosData.length === 1) {
-        await createVeiculo(veiculosData[0]);
+        const veiculoCriado = await createVeiculo(veiculosData[0]);
+        veiculoIdCriado = veiculoCriado?.id || null;
       } else {
         await createVeiculosBatch(veiculosData);
       }
@@ -442,6 +445,16 @@ export default function Rastreamento() {
       // Atualizar lista de veículos e multas
       refresh();
       listaVeiculosRef.current?.refresh();
+      
+      // Se houver dados da API e apenas 1 veículo, abrir modal de preview para atualização completa
+      if (dadosAPI?.dados_do_veiculo && veiculoIdCriado && totalVeiculos === 1) {
+        setDadosVeiculoAPI({
+          dados: dadosAPI,
+          veiculoId: veiculoIdCriado,
+          clienteId: clienteIdFinal,
+        });
+        setPreviewDadosAberto(true);
+      }
       
     } catch (error) {
       console.error('Erro ao ativar rastreamento:', error);
