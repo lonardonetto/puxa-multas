@@ -247,8 +247,8 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
 
       let multasEncontradas = 0;
 
-      // 3. Processar e salvar multas no banco
-      if (dados && dados.multas && Array.isArray(dados.multas)) {
+      // 3. Processar e salvar multas no banco (se houver multas)
+      if (dados && dados.multas && Array.isArray(dados.multas) && dados.multas.length > 0) {
         const multasParaSalvar = dados.multas.map((multa: any) => ({
           veiculo_id: veiculo.id,
           placa_autuada: veiculo.placa,
@@ -270,33 +270,27 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
 
         multasEncontradas = multasParaSalvar.length;
 
-        if (multasParaSalvar.length > 0) {
-          const { error: insertError } = await supabase
-            .from('multas')
-            .insert(multasParaSalvar);
+        const { error: insertError } = await supabase
+          .from('multas')
+          .insert(multasParaSalvar);
 
-          if (insertError) {
-            console.error('Erro ao inserir multas:', insertError);
-            throw new Error('Erro ao salvar multas no banco');
-          }
+        if (insertError) {
+          console.error('Erro ao inserir multas:', insertError);
+          throw new Error('Erro ao salvar multas no banco');
+        }
 
-          toast.success(`${multasParaSalvar.length} multa(s) encontrada(s) e salva(s)!`);
-        } else {
-          toast.info('Nenhuma multa encontrada para este veículo');
-        }
-      } else if (dados && typeof dados === 'object') {
-        // API retornou dados do veículo (consulta veicular completa)
-        // A estrutura pode vir como { result: { dados_do_veiculo: {...} } } ou diretamente
-        const dadosVeiculo = dados.result || dados;
-        
-        if (dadosVeiculo && 'dados_do_veiculo' in dadosVeiculo && dadosVeiculo.dados_do_veiculo) {
-          toast.success('Dados do veículo obtidos com sucesso!');
-          console.log('Abrindo modal com dados:', dadosVeiculo);
-          // Notificar o componente pai para exibir modal de preview
-          onDadosVeiculoRecebidos?.(dadosVeiculo, veiculo.id, veiculo.cliente_id);
-        } else {
-          toast.info('Consulta realizada. Nenhuma multa pendente encontrada.');
-        }
+        toast.success(`${multasParaSalvar.length} multa(s) encontrada(s) e salva(s)!`);
+      }
+      
+      // 4. Verificar se tem dados do veículo para abrir modal de preview
+      // Abre o modal SEMPRE que houver dados_do_veiculo, independente de ter multas ou não
+      if (dados && dados.dados_do_veiculo) {
+        console.log('Abrindo modal com dados completos:', dados);
+        toast.success('Dados do veículo obtidos com sucesso!');
+        // Passar os dados completos (com restricoes_e_impedimentos, etc.)
+        onDadosVeiculoRecebidos?.(dados, veiculo.id, veiculo.cliente_id);
+      } else if (multasEncontradas === 0) {
+        toast.info('Consulta realizada. Nenhuma multa pendente encontrada.');
       }
 
       // 4. Salvar histórico da consulta
