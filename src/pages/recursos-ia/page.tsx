@@ -161,13 +161,18 @@ export default function RecursosIA() {
 
       if (insertError) {
         console.error('Erro ao salvar recurso:', insertError);
+        showToast('Recurso gerado mas houve erro ao salvar. Copie o conteúdo abaixo.', 'error');
+        setRecursoGerado(data.content);
       } else {
         console.log('Recurso salvo:', recursoSalvo);
+        refresh();
+        showToast('Recurso gerado com sucesso! Redirecionando para acompanhamento...', 'success');
+        
+        // Redirecionar para página de status do recurso após 1.5s
+        setTimeout(() => {
+          navigate('/status-recurso');
+        }, 1500);
       }
-
-      setRecursoGerado(data.content);
-      refresh();
-      showToast('Recurso gerado com sucesso! Vá para "Status do Recurso" para acompanhar.', 'success');
     } catch (err: any) {
       console.error('Erro ao gerar recurso:', err);
       showToast(err.message || 'Erro ao gerar recurso. Tente novamente.', 'error');
