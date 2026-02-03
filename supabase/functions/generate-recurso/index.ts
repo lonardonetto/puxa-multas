@@ -123,7 +123,7 @@ Retorne um JSON com:
   }
 }
 
-// Template base estruturado para o recurso
+// Template base estruturado para o recurso com formatação HTML
 function getTemplateBase(tipo: string, dados: DadosRecurso, orgao: any): string {
   const tipoFormatado = tipo === 'defesa_previa' ? 'DEFESA PRÉVIA' : 
                         tipo === 'jari' ? 'RECURSO À JARI' : 
@@ -135,33 +135,33 @@ function getTemplateBase(tipo: string, dados: DadosRecurso, orgao: any): string 
 
   const dataFormatada = dados.dataInfracao ? new Date(dados.dataInfracao).toLocaleDateString('pt-BR') : '[DATA]';
   
-  return `
-${tipoFormatado}
+  // Template com formatação HTML profissional (negrito nos títulos e dados importantes)
+  return `<p style="text-align: center;"><strong>${tipoFormatado}</strong></p>
 
-${destinatario}
-${orgao?.nome || dados.detranNome || 'DETRAN'}
-${orgao?.estado || dados.estadoDetran || ''}
+<p><strong>${destinatario}</strong><br>
+<strong>${orgao?.nome || dados.detranNome || 'DETRAN'}</strong><br>
+${orgao?.estado || dados.estadoDetran || ''}</p>
 
-RECORRENTE: ${dados.nomeRecorrente}
-CPF/CNPJ: ${dados.cpfCnpj}
-${dados.endereco ? `ENDEREÇO: ${dados.endereco}${dados.cidade ? `, ${dados.cidade}` : ''}${dados.estado ? ` - ${dados.estado}` : ''}${dados.cep ? ` CEP: ${dados.cep}` : ''}` : ''}
-${dados.telefone ? `TELEFONE: ${dados.telefone}` : ''}
-${dados.email ? `E-MAIL: ${dados.email}` : ''}
+<p><strong>RECORRENTE:</strong> ${dados.nomeRecorrente}<br>
+<strong>CPF/CNPJ:</strong> ${dados.cpfCnpj}<br>
+${dados.endereco ? `<strong>ENDEREÇO:</strong> ${dados.endereco}${dados.cidade ? `, ${dados.cidade}` : ''}${dados.estado ? ` - ${dados.estado}` : ''}${dados.cep ? ` CEP: ${dados.cep}` : ''}<br>` : ''}
+${dados.telefone ? `<strong>TELEFONE:</strong> ${dados.telefone}<br>` : ''}
+${dados.email ? `<strong>E-MAIL:</strong> ${dados.email}` : ''}</p>
 
-VEÍCULO: ${dados.modelo || ''} - Placa ${dados.placa}
-${dados.renavam ? `RENAVAM: ${dados.renavam}` : ''}
+<p><strong>VEÍCULO:</strong> ${dados.modelo || ''} - Placa <strong>${dados.placa}</strong><br>
+${dados.renavam ? `<strong>RENAVAM:</strong> ${dados.renavam}` : ''}</p>
 
-AUTO DE INFRAÇÃO Nº: ${dados.numeroAuto}
-DATA DA INFRAÇÃO: ${dataFormatada}${dados.horaInfracao ? ` às ${dados.horaInfracao}` : ''}
-${dados.localInfracao ? `LOCAL: ${dados.localInfracao}` : ''}
+<p><strong>AUTO DE INFRAÇÃO Nº:</strong> ${dados.numeroAuto}<br>
+<strong>DATA DA INFRAÇÃO:</strong> ${dataFormatada}${dados.horaInfracao ? ` às ${dados.horaInfracao}` : ''}<br>
+${dados.localInfracao ? `<strong>LOCAL:</strong> ${dados.localInfracao}` : ''}</p>
 
-CÓDIGO DA INFRAÇÃO: ${dados.codigoInfracao}
-DESCRIÇÃO: ${dados.descricaoInfracao}
-VALOR DA MULTA: R$ ${dados.valorMulta.toFixed(2)}
-PONTUAÇÃO: ${dados.pontos} pontos
-GRAVIDADE: ${dados.gravidade}
+<p><strong>CÓDIGO DA INFRAÇÃO:</strong> ${dados.codigoInfracao}<br>
+<strong>DESCRIÇÃO:</strong> ${dados.descricaoInfracao}<br>
+<strong>VALOR DA MULTA:</strong> R$ ${dados.valorMulta.toFixed(2)}<br>
+<strong>PONTUAÇÃO:</strong> ${dados.pontos} pontos<br>
+<strong>GRAVIDADE:</strong> ${dados.gravidade}</p>
 
----
+<hr>
 
 `;
 }
@@ -414,20 +414,43 @@ ${legislacaoBase && legislacaoBase.length > 0
   ? `📚 IMPORTANTE: Utilize TODA a BASE DE LEGISLAÇÃO fornecida acima (CTB, Resoluções CONTRAN e JURISPRUDÊNCIA) para fundamentar juridicamente o recurso. Cite os artigos específicos, resoluções e decisões judiciais aplicáveis!`
   : ''}
 
-Por favor, CONTINUE o recurso acima gerando:
+Por favor, CONTINUE o recurso acima gerando em FORMATO HTML com formatação profissional:
 
-1. **DOS FATOS** - Exposição detalhada dos fatos conforme descrição do cliente
-2. **DO DIREITO** - Fundamentação jurídica robusta com:
+IMPORTANTE - FORMATAÇÃO OBRIGATÓRIA:
+- Use tags HTML: <p> para parágrafos, <strong> para negrito, <br> para quebras de linha
+- TODOS os títulos de seção devem estar em <strong>NEGRITO</strong> (ex: <strong>1. DOS FATOS</strong>)
+- Subtítulos também devem estar em <strong>negrito</strong> (ex: <strong>2.1. Do Vício Formal</strong>)
+- Artigos de lei e referências legais devem estar em <strong>negrito</strong> (ex: <strong>Art. 280 do CTB</strong>)
+- Citações de jurisprudência devem estar em <strong>negrito</strong> (ex: <strong>STJ no REsp 1.325.487</strong>)
+- Cada parágrafo deve estar envolto em tags <p></p>
+- Use <hr> para separadores visuais quando necessário
+
+ESTRUTURA ESPERADA:
+
+<p><strong>1. DOS FATOS</strong></p>
+<p>Exposição detalhada dos fatos conforme descrição do cliente...</p>
+
+<p><strong>2. DO DIREITO</strong></p>
+<p><strong>2.1. [Subtítulo do argumento]</strong></p>
+<p>Fundamentação jurídica robusta com:
    - Artigos do CTB aplicáveis (use a base de legislação fornecida!)
    - Resoluções do CONTRAN relevantes
    - Jurisprudências (se aplicável)
    - Argumentos técnicos sobre possíveis vícios formais ou materiais
-   ${analiseAit ? '- ERROS FORMAIS DO AIT (use os erros detectados acima como argumentação central!)' : ''}
-3. **DOS PEDIDOS** - Pedidos claros e específicos (anulação do auto, cancelamento da multa, restituição de pontos)
-4. **FECHAMENTO** - Fechamento formal com "Nestes termos, pede deferimento" e espaço para assinatura
+   ${analiseAit ? '- ERROS FORMAIS DO AIT (use os erros detectados acima como argumentação central!)' : ''}</p>
+
+<p><strong>3. DOS PEDIDOS</strong></p>
+<p>Pedidos claros e específicos (anulação do auto, cancelamento da multa, restituição de pontos)...</p>
+
+<p>Nestes termos, pede deferimento.</p>
+<p>[Local], [Data].</p>
+<p>__________________________________________<br>
+<strong>${dados.nomeRecorrente}</strong><br>
+Recorrente</p>
 
 Use linguagem jurídica formal, persuasiva e técnica. Seja detalhista na fundamentação.
 NÃO repita o cabeçalho - apenas continue de onde o template parou.
+Gere o conteúdo em HTML válido e bem formatado.
 `;
 
     console.log('Using Lovable AI Gateway');
