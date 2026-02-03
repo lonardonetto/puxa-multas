@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { jsPDF } from 'jspdf';
 import { supabase } from '../../lib/supabase';
+import RichTextEditor from '../contracts/RichTextEditor';
 
 interface VisualizadorRecursoProps {
   conteudo: string;
@@ -21,8 +22,15 @@ export default function VisualizadorRecurso({
   const [salvandoPDF, setSalvandoPDF] = useState(false);
   const [etapaConclusao, setEtapaConclusao] = useState<'gerando' | 'salvando' | 'concluido'>('gerando');
 
+  // Extrair texto puro do HTML para copiar
+  const extrairTextoPuro = (html: string) => {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return div.textContent || div.innerText || '';
+  };
+
   const handleCopiar = () => {
-    navigator.clipboard.writeText(textoEditado);
+    navigator.clipboard.writeText(extrairTextoPuro(textoEditado));
     setCopiado(true);
     setTimeout(() => setCopiado(false), 2000);
   };
@@ -36,23 +44,19 @@ export default function VisualizadorRecurso({
             <title>Recurso de Trânsito</title>
             <style>
               body {
-                font-family: 'Times New Roman', serif;
+                font-family: 'Georgia', serif;
                 font-size: 12pt;
                 line-height: 1.8;
                 padding: 40px 60px;
                 max-width: 800px;
                 margin: 0 auto;
               }
-              pre {
-                white-space: pre-wrap;
-                word-wrap: break-word;
-                font-family: 'Times New Roman', serif;
-                font-size: 12pt;
-              }
+              p { margin-bottom: 1em; }
+              ul, ol { margin-left: 20px; margin-bottom: 1em; }
             </style>
           </head>
           <body>
-            <pre>${textoEditado}</pre>
+            ${textoEditado}
           </body>
         </html>
       `);
@@ -80,8 +84,11 @@ export default function VisualizadorRecurso({
     const maxWidth = pageWidth - marginLeft * 2;
     const lineHeight = 7;
     
+    // Extrair texto puro do HTML para o PDF
+    const textoPuro = extrairTextoPuro(textoEditado);
+    
     // Quebrar texto em linhas
-    const lines = doc.splitTextToSize(textoEditado, maxWidth);
+    const lines = doc.splitTextToSize(textoPuro, maxWidth);
     
     let y = marginTop;
     
@@ -307,15 +314,14 @@ export default function VisualizadorRecurso({
         </div>
       </div>
 
-      {/* Conteúdo do Recurso - Editável */}
+      {/* Conteúdo do Recurso - Editor Rico */}
       <div className="p-6 max-h-[60vh] overflow-y-auto bg-white">
-        <div className="max-w-3xl mx-auto bg-gray-50 border border-gray-200 rounded-lg p-8 shadow-inner">
-          <textarea
+        <div className="max-w-4xl mx-auto">
+          <RichTextEditor
             value={textoEditado}
-            onChange={(e) => setTextoEditado(e.target.value)}
-            className="w-full min-h-[400px] bg-transparent text-gray-800 text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-green-500/20 rounded-lg p-2"
-            style={{ fontFamily: "'Times New Roman', serif" }}
+            onChange={setTextoEditado}
             placeholder="Edite o conteúdo do recurso aqui..."
+            minHeight="400px"
           />
         </div>
       </div>
