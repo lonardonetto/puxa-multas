@@ -442,8 +442,8 @@ export default function Rastreamento() {
       setPlanoRastreamentoSelecionado(null);
       fecharModal();
       
-      // Atualizar lista de veículos e multas
-      refresh();
+      // Atualizar lista de veículos (não chamar refresh() aqui pois createVeiculo já atualiza o estado local)
+      // Apenas atualizar a lista da listagem que tem seu próprio estado
       listaVeiculosRef.current?.refresh();
       
       // Se houver dados da API e apenas 1 veículo, abrir modal de preview para atualização completa
