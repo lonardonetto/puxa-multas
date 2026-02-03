@@ -156,7 +156,8 @@ export default function RecursosIA() {
         refresh();
       }
 
-      // Fechar animação e MOSTRAR o recurso gerado
+      // Fechar animação e MOSTRAR o recurso gerado (SEM abrir impressão)
+      console.log('✅ Geração concluída, mostrando visualizador...');
       setAnimacaoAberta(false);
       setRecursoGerado(data.content);
       showToast('Recurso gerado e salvo com sucesso!', 'success');
@@ -167,42 +168,6 @@ export default function RecursosIA() {
       showToast(err.message || 'Erro ao gerar recurso. Tente novamente.', 'error');
     } finally {
       setGerando(false);
-    }
-  };
-
-  const handleSalvarPDF = () => {
-    if (!recursoGerado) return;
-    
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Recurso de Trânsito</title>
-            <style>
-              body {
-                font-family: 'Times New Roman', serif;
-                font-size: 12pt;
-                line-height: 1.8;
-                padding: 40px 60px;
-                max-width: 800px;
-                margin: 0 auto;
-              }
-              pre {
-                white-space: pre-wrap;
-                word-wrap: break-word;
-                font-family: 'Times New Roman', serif;
-                font-size: 12pt;
-              }
-            </style>
-          </head>
-          <body>
-            <pre>${recursoGerado}</pre>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
     }
   };
 
@@ -289,9 +254,6 @@ export default function RecursosIA() {
         <VisualizadorRecurso
           conteudo={recursoGerado}
           onClose={() => setRecursoGerado(null)}
-          onSalvar={handleSalvarPDF}
-          onCopiar={() => showToast('Recurso copiado para a área de transferência!', 'success')}
-          onImprimir={() => showToast('Preparando impressão...', 'success')}
         />
       )}
 
