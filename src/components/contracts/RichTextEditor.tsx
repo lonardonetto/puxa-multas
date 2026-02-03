@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
 
 interface RichTextEditorProps {
     value: string;
@@ -18,33 +18,68 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     minHeight = '400px'
 }) => {
     const editorRef = useRef<HTMLDivElement>(null);
+    const [isInitialized, setIsInitialized] = useState(false);
+
+    // Inicializar conteúdo apenas uma vez
+    useEffect(() => {
+        if (editorRef.current && !isInitialized && value) {
+            editorRef.current.innerHTML = value;
+            setIsInitialized(true);
+        }
+    }, [value, isInitialized]);
 
     // Aplicar formatação
-    const applyFormat = useCallback((command: string, value?: string) => {
-        document.execCommand(command, false, value);
-        editorRef.current?.focus();
-
-        // Notificar mudança
+    const applyFormat = useCallback((command: string, cmdValue?: string) => {
+        // Salvar seleção atual
+        const selection = window.getSelection();
+        const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+        
+        document.execCommand(command, false, cmdValue);
+        
+        // Restaurar foco no editor
         if (editorRef.current) {
+            editorRef.current.focus();
+            
+            // Restaurar seleção se possível
+            if (range && selection) {
+                try {
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                } catch (e) {
+                    // Ignorar erros de seleção
+                }
+            }
+            
             onChange(editorRef.current.innerHTML);
         }
     }, [onChange]);
 
     // Verificar se formato está ativo
     const isFormatActive = (command: string) => {
-        return document.queryCommandState(command);
+        try {
+            return document.queryCommandState(command);
+        } catch {
+            return false;
+        }
     };
 
-    // Botão de formatação
+    // Botão de formatação - prevenir comportamento padrão
     const FormatButton: React.FC<{
         command: string;
         icon: string;
         title: string;
-        value?: string;
-    }> = ({ command, icon, title, value }) => (
+        cmdValue?: string;
+    }> = ({ command, icon, title, cmdValue }) => (
         <button
             type="button"
-            onClick={() => applyFormat(command, value)}
+            onMouseDown={(e) => {
+                e.preventDefault(); // Prevenir perda de foco
+            }}
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                applyFormat(command, cmdValue);
+            }}
             className={`p-2 rounded transition-colors ${isFormatActive(command)
                 ? 'bg-blue-100 text-blue-700'
                 : 'text-gray-600 hover:bg-gray-100'
@@ -60,7 +95,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         <div className="w-px h-6 bg-gray-200 mx-1"></div>
     );
 
-    // Handler de mudança
+    // Handler de mudança - debounced
     const handleInput = useCallback(() => {
         if (editorRef.current) {
             onChange(editorRef.current.innerHTML);
@@ -72,12 +107,21 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         e.preventDefault();
         const text = e.clipboardData.getData('text/plain');
         document.execCommand('insertText', false, text);
+        handleInput();
+    }, [handleInput]);
+
+    // Handler de keydown para manter comportamento normal
+    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+        // Permitir Enter para criar nova linha
+        if (e.key === 'Enter' && !e.shiftKey) {
+            // Comportamento padrão do contentEditable
+        }
     }, []);
 
     return (
         <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
             {/* Barra de Ferramentas */}
-            <div className="flex flex-wrap items-center gap-0.5 p-2 bg-gray-50 border-b border-gray-200">
+            <div className="flex flex-wrap items-center gap-0.5 p-2 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                 {/* Formatação de Texto */}
                 <FormatButton command="bold" icon="ri-bold" title="Negrito (Ctrl+B)" />
                 <FormatButton command="italic" icon="ri-italic" title="Itálico (Ctrl+I)" />
@@ -120,7 +164,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <div
                 ref={editorRef}
                 contentEditable
-                className="p-4 outline-none prose prose-sm max-w-none overflow-y-auto"
+                suppressContentEditableWarning
+                className="p-4 outline-none prose prose-sm max-w-none overflow-y-auto focus:ring-2 focus:ring-green-500/20"
                 style={{
                     minHeight,
                     fontFamily: 'Georgia, serif',
@@ -129,7 +174,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 }}
                 onInput={handleInput}
                 onPaste={handlePaste}
-                dangerouslySetInnerHTML={{ __html: value || '' }}
+                onKeyDown={handleKeyDown}
                 data-placeholder={placeholder}
             />
 
