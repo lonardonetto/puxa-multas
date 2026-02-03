@@ -110,14 +110,24 @@ export default function ListaClientes() {
 
   // Handle deep-linking from URL
   useEffect(() => {
-    const idFromUrl = searchParams.get('clienteId');
+    const idFromUrl = searchParams.get('clienteId') || searchParams.get('cliente');
+    const tabFromUrl = searchParams.get('tab');
+    
     if (idFromUrl && clientes.length > 0) {
       if (idFromUrl !== clienteIdSelecionado) {
         const exists = clientes.some(c => c.id === idFromUrl);
         if (exists) {
           setClienteIdSelecionado(idFromUrl);
-          setAbaAtiva('dados');
+          // Se veio com tab=recursos, abrir direto na aba de recursos
+          if (tabFromUrl === 'recursos') {
+            setAbaAtiva('recursos');
+          } else {
+            setAbaAtiva('dados');
+          }
         }
+      } else if (tabFromUrl === 'recursos' && abaAtiva !== 'recursos') {
+        // Se cliente já está selecionado mas a aba precisa mudar
+        setAbaAtiva('recursos');
       }
     } else if (!idFromUrl && clienteIdSelecionado) {
       // If URL is cleared, close the modal
