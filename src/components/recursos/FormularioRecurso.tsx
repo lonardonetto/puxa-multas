@@ -885,30 +885,12 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
         </p>
       </div>
 
-      {/* Aviso de AIT obrigatório */}
-      {!dados.aitBase64 && (
-        <div className="bg-red-100 border-2 border-red-400 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-red-200 rounded-full flex items-center justify-center flex-shrink-0">
-              <i className="ri-file-warning-line text-2xl text-red-600"></i>
-            </div>
-            <div>
-              <p className="font-semibold text-red-800">
-                É obrigatório anexar o Auto de Infração (AIT)
-              </p>
-              <p className="text-sm text-red-700">
-                A IA precisa ler o documento original para gerar um recurso preciso e identificar erros formais.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Botão de Submissão */}
       <div className="flex gap-4">
         <button
           type="submit"
-          disabled={gerando || !dados.aitBase64 || !dados.nomeRecorrente || !dados.cpfCnpj || !dados.placa || !dados.numeroAuto || !dados.codigoInfracao}
+          disabled={gerando || !dados.nomeRecorrente || !dados.cpfCnpj || !dados.placa || !dados.numeroAuto || !dados.codigoInfracao}
           className="flex-1 px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-semibold hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {gerando ? (
