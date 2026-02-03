@@ -5,21 +5,63 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-interface VeiculoResponse {
-  success: boolean;
-  dados?: {
-    placa: string;
-    marca: string;
-    modelo: string;
-    ano: string;
-    anoModelo: string;
-    cor: string;
-    combustivel: string;
-    uf: string;
-    cidade: string;
+const CERTADOC_API_URL = 'https://dev-app-certadoc-api.azurewebsites.net';
+
+// Cache de token para evitar autenticar a cada requisição
+let cachedToken: { token: string; expiresAt: number } | null = null;
+
+// Função para converter string para Base64
+function toBase64(str: string): string {
+  return btoa(str);
+}
+
+async function getCertaDocToken(): Promise<string> {
+  // Verificar se existe token válido em cache (com margem de 5 min)
+  if (cachedToken && cachedToken.expiresAt > Date.now() + 300000) {
+    console.log('Usando token em cache');
+    return cachedToken.token;
+  }
+
+  const email = Deno.env.get('CERTADOC_EMAIL');
+  const password = Deno.env.get('CERTADOC_PASSWORD');
+
+  if (!email || !password) {
+    throw new Error('Credenciais CertaDoc não configuradas');
+  }
+
+  console.log('Autenticando na CertaDoc...');
+
+  const response = await fetch(`${CERTADOC_API_URL}/api/Login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      EmailBase64: toBase64(email),
+      PasswordBase64: toBase64(password),
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Erro na autenticação CertaDoc:', response.status, errorText);
+    throw new Error('Falha na autenticação CertaDoc');
+  }
+
+  const data = await response.json();
+  const token = data.accessToken || data.token;
+
+  if (!token) {
+    console.error('Token não encontrado na resposta:', data);
+    throw new Error('Token não retornado pela CertaDoc');
+  }
+
+  // Cache do token por 12 horas
+  cachedToken = {
+    token,
+    expiresAt: Date.now() + 12 * 60 * 60 * 1000,
   };
-  error?: string;
-  source?: 'api_brasil' | 'mock';
+
+  console.log('Token CertaDoc obtido com sucesso');
+  return token;
 }
 
 serve(async (req) => {
@@ -37,114 +79,96 @@ serve(async (req) => {
       );
     }
 
-    // Normalizar placa (remover caracteres especiais)
     const placaNormalizada = placa.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    console.log('Consultando veículo na CertaDoc:', placaNormalizada);
 
-    console.log('Consultando veículo:', placaNormalizada);
+    // Obter token de autenticação
+    const token = await getCertaDocToken();
+    const emailParam = Deno.env.get('CERTADOC_EMAIL') || '';
 
-    // Tentar API Brasil (gratuita e pública para dados básicos de veículos)
-    // Fonte: https://apibrasil.com.br ou similar
-    // Por ora, vamos usar um fallback com dados simulados baseados no padrão da placa
+    // 1. Consultar dados do veículo via POST /api/vendor/consultar-placa
+    const consultaUrl = `${CERTADOC_API_URL}/api/vendor/consultar-placa?placa=${placaNormalizada}&email=${encodeURIComponent(emailParam)}`;
+    console.log('Chamando consultar-placa...');
     
-    // Detectar padrão da placa (antiga AAA-0000 ou Mercosul AAA0A00)
-    const isMercosul = /^[A-Z]{3}[0-9][A-Z][0-9]{2}$/.test(placaNormalizada);
+    let dadosVeiculoRaw: Record<string, unknown> = {};
     
-    // Extrair UF estimada pela placa (usando faixas conhecidas)
-    const ufEstimada = getUFByPlaca(placaNormalizada);
-
-    // Por questões de API pública gratuita, vamos retornar dados parciais
-    // Em produção, integrar com APIs como:
-    // - API Brasil (apibrasil.com.br)
-    // - Sinesp Cidadão (requer cadastro)
-    // - APIs privadas de consulta veicular
-
-    // Retorna apenas os dados que conseguimos inferir pela placa
-    const dadosVeiculo: VeiculoResponse = {
-      success: true,
-      dados: {
-        placa: formatPlaca(placaNormalizada),
-        marca: '',
-        modelo: '',
-        ano: '',
-        anoModelo: '',
-        cor: '',
-        combustivel: '',
-        uf: ufEstimada,
-        cidade: '',
+    const consultaResponse = await fetch(consultaUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
-      source: 'mock',
+    });
+
+    if (consultaResponse.ok) {
+      const consultaData = await consultaResponse.json();
+      console.log('Resposta consultar-placa:', JSON.stringify(consultaData).substring(0, 800));
+      
+      // A resposta pode vir em 'result' ou diretamente
+      dadosVeiculoRaw = consultaData.result || consultaData;
+    } else {
+      const errText = await consultaResponse.text();
+      console.error('Erro ao consultar placa:', consultaResponse.status, errText);
+    }
+
+    // 2. Buscar multas via GET /api/vendor/multa-por-placa
+    const multasUrl = `${CERTADOC_API_URL}/api/vendor/multa-por-placa?placa=${placaNormalizada}&email=${encodeURIComponent(emailParam)}`;
+    console.log('Chamando multa-por-placa...');
+    
+    let dadosMultas: unknown[] | Record<string, unknown> = [];
+    
+    const multasResponse = await fetch(multasUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (multasResponse.ok) {
+      const multasData = await multasResponse.json();
+      console.log('Resposta multa-por-placa:', JSON.stringify(multasData).substring(0, 500));
+      
+      // A API retorna array, pegar primeiro item se existir
+      if (Array.isArray(multasData) && multasData.length > 0) {
+        dadosMultas = multasData[0];
+      } else {
+        dadosMultas = multasData;
+      }
+    } else {
+      console.error('Erro ao buscar multas:', multasResponse.status);
+    }
+
+    // Extrair dados estruturados
+    const dadosVeiculo = dadosVeiculoRaw.dados_do_veiculo || dadosVeiculoRaw;
+    const infoTecnicas = dadosVeiculoRaw.informacoes_tecnicas_e_adicionais || {};
+    const restricoes = dadosVeiculoRaw.restricoes_e_impedimentos || {};
+
+    // Montar resposta no formato esperado pelo AnimacaoRastreamento
+    const result = {
+      dados_do_veiculo: dadosVeiculo,
+      informacoes_tecnicas_e_adicionais: infoTecnicas,
+      restricoes_e_impedimentos: restricoes,
+      multas: dadosMultas,
     };
 
-    console.log('UF estimada pela placa:', ufEstimada || 'não identificada');
-
-    console.log('Retornando dados do veículo:', dadosVeiculo.dados?.modelo || 'não encontrado');
+    console.log('Modelo do veículo:', (dadosVeiculo as Record<string, unknown>)?.modelo || 'não encontrado');
+    console.log('Chassi:', (dadosVeiculo as Record<string, unknown>)?.chassi || 'não encontrado');
 
     return new Response(
-      JSON.stringify(dadosVeiculo),
+      JSON.stringify({ 
+        success: true, 
+        result,
+        source: 'certadoc'
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-  } catch (error) {
-    console.error('Erro ao consultar veículo:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro ao consultar veículo';
+    console.error('Erro ao consultar veículo:', errorMessage);
     return new Response(
-      JSON.stringify({ success: false, error: 'Erro ao consultar veículo' }),
+      JSON.stringify({ success: false, error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
-
-// Formatar placa para exibição
-function formatPlaca(placa: string): string {
-  if (placa.length === 7) {
-    // Mercosul: ABC1D23 -> ABC1D23
-    // Antiga: ABC1234 -> ABC-1234
-    const isMercosul = /^[A-Z]{3}[0-9][A-Z][0-9]{2}$/.test(placa);
-    if (!isMercosul) {
-      return `${placa.slice(0, 3)}-${placa.slice(3)}`;
-    }
-  }
-  return placa;
-}
-
-// Obter UF pela faixa de placas (tabela simplificada)
-function getUFByPlaca(placa: string): string {
-  const prefixo = placa.substring(0, 3).toUpperCase();
-  
-  // Mapeamento de faixas de placas para UF
-  const faixas: { inicio: string; fim: string; uf: string }[] = [
-    { inicio: 'AAA', fim: 'BEZ', uf: 'PR' },
-    { inicio: 'BFA', fim: 'GKI', uf: 'SP' },
-    { inicio: 'GKJ', fim: 'HOK', uf: 'MG' },
-    { inicio: 'HOL', fim: 'JDO', uf: 'RJ' },
-    { inicio: 'JDP', fim: 'JXY', uf: 'RS' },
-    { inicio: 'JXZ', fim: 'KAW', uf: 'SC' },
-    { inicio: 'KAX', fim: 'KEW', uf: 'ES' },
-    { inicio: 'KEX', fim: 'LVE', uf: 'GO' },
-    { inicio: 'LVF', fim: 'LWQ', uf: 'DF' },
-    { inicio: 'LWR', fim: 'MMM', uf: 'MT' },
-    { inicio: 'MMN', fim: 'MOZ', uf: 'MS' },
-    { inicio: 'MPA', fim: 'MZM', uf: 'BA' },
-    { inicio: 'MZN', fim: 'NAG', uf: 'SE' },
-    { inicio: 'NAH', fim: 'NBS', uf: 'AL' },
-    { inicio: 'NBT', fim: 'NDV', uf: 'PE' },
-    { inicio: 'NDW', fim: 'NEK', uf: 'PB' },
-    { inicio: 'NEL', fim: 'NFR', uf: 'RN' },
-    { inicio: 'NFS', fim: 'NGZ', uf: 'CE' },
-    { inicio: 'NHA', fim: 'NHK', uf: 'PI' },
-    { inicio: 'NHL', fim: 'NJA', uf: 'MA' },
-    { inicio: 'NJB', fim: 'NKZ', uf: 'PA' },
-    { inicio: 'NLA', fim: 'NLH', uf: 'AP' },
-    { inicio: 'NLI', fim: 'NME', uf: 'AM' },
-    { inicio: 'NMF', fim: 'NNE', uf: 'RR' },
-    { inicio: 'NNF', fim: 'NNQ', uf: 'RO' },
-    { inicio: 'NNR', fim: 'NOM', uf: 'AC' },
-    { inicio: 'NON', fim: 'NPF', uf: 'TO' },
-  ];
-
-  for (const faixa of faixas) {
-    if (prefixo >= faixa.inicio && prefixo <= faixa.fim) {
-      return faixa.uf;
-    }
-  }
-
-  return '';
-}
