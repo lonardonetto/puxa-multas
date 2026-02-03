@@ -37,6 +37,10 @@ interface DadosRecurso {
   tipoRecurso: 'defesa_previa' | 'jari' | 'cetran';
   descricaoSituacao: string;
   
+  // AIT (Auto de Infração de Trânsito) - OBRIGATÓRIO
+  aitBase64?: string;
+  aitFileName?: string;
+  
   // Dados do DETRAN
   detranId?: string | null;
   detranNome?: string | null;
@@ -46,6 +50,77 @@ interface DadosRecurso {
 interface GenerateRequest {
   dados: DadosRecurso;
   organizationId: string;
+}
+
+// Função para analisar AIT com IA
+async function analisarAitComIA(aitBase64: string, lovableApiKey: string): Promise<any> {
+  try {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { 
+            role: 'system', 
+            content: `Você é um especialista em análise de Autos de Infração de Trânsito (AIT).
+Analise a imagem do AIT e extraia:
+1. Erros formais de preenchimento (campo vazio, ilegível, rasurado, sem assinatura, data incorreta, etc.)
+2. Inconsistências que possam ser usadas como argumentação
+3. Dados relevantes que possam fortalecer o recurso
+
+Retorne um JSON com:
+{
+  "erros_formais": ["lista de erros encontrados"],
+  "inconsistencias": ["lista de inconsistências"],
+  "observacoes_importantes": ["pontos que fortalecem o recurso"],
+  "resumo_analise": "texto resumido da análise"
+}` 
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Analise este Auto de Infração e identifique todos os erros formais e inconsistências que possam ser usados em um recurso administrativo.'
+              },
+              {
+                type: 'image_url',
+                image_url: { url: `data:image/jpeg;base64,${aitBase64}` }
+              }
+            ]
+          }
+        ],
+        max_tokens: 2000,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Erro ao analisar AIT:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    
+    // Tentar extrair JSON da resposta
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    } catch {
+      return { resumo_analise: content };
+    }
+    
+    return { resumo_analise: content };
+  } catch (error) {
+    console.error('Erro ao analisar AIT:', error);
+    return null;
+  }
 }
 
 // Template base estruturado para o recurso
@@ -147,10 +222,10 @@ serve(async (req) => {
       .order('codigo_infracao', { ascending: false, nullsFirst: false })
       .limit(1);
 
-    // NOVO: Buscar recursos deferidos similares da base de conhecimento
+    // Buscar recursos deferidos similares da base de conhecimento
     const { data: recursosDeferidos } = await supabase
       .from('recursos_conhecimento')
-      .select('conteudo, argumentos_chave, resultado')
+      .select('conteudo, argumentos_chave, resultado, dados_extraidos_ia')
       .eq('codigo_infracao', dados.codigoInfracao)
       .eq('resultado', 'deferido')
       .or(`is_global.eq.true,organization_id.eq.${organizationId}`)
@@ -158,6 +233,14 @@ serve(async (req) => {
       .limit(3);
 
     console.log('Recursos deferidos encontrados na base:', recursosDeferidos?.length || 0);
+
+    // ANALISAR AIT COM IA (se enviado)
+    let analiseAit: any = null;
+    if (dados.aitBase64 && lovableApiKey) {
+      console.log('Analisando AIT com IA...');
+      analiseAit = await analisarAitComIA(dados.aitBase64, lovableApiKey);
+      console.log('Análise do AIT:', analiseAit);
+    }
 
     const template = templates?.[0];
     const fundamentosText = fundamentos?.map(f => `• ${f.titulo}: ${f.conteudo}`).join('\n\n') || '';
@@ -172,8 +255,35 @@ Os seguintes recursos foram DEFERIDOS para a mesma infração. Use-os como inspi
 ${recursosDeferidos.map((r, i) => `
 --- EXEMPLO ${i + 1} (DEFERIDO) ---
 ${r.argumentos_chave?.length > 0 ? `Argumentos-chave que funcionaram: ${r.argumentos_chave.join(', ')}` : ''}
+${r.dados_extraidos_ia ? `Dados extraídos por IA: ${JSON.stringify(r.dados_extraidos_ia).substring(0, 500)}` : ''}
 Trecho relevante: ${r.conteudo.substring(0, 1500)}...
 `).join('\n')}
+===
+
+`;
+    }
+
+    // Preparar análise do AIT para o prompt
+    let analiseAitTexto = '';
+    if (analiseAit) {
+      analiseAitTexto = `
+=== ANÁLISE DO AUTO DE INFRAÇÃO (AIT) PELA IA ===
+${analiseAit.erros_formais?.length > 0 ? `
+🔴 ERROS FORMAIS DETECTADOS (USAR COMO ARGUMENTAÇÃO):
+${analiseAit.erros_formais.map((e: string) => `• ${e}`).join('\n')}
+` : ''}
+${analiseAit.inconsistencias?.length > 0 ? `
+⚠️ INCONSISTÊNCIAS ENCONTRADAS:
+${analiseAit.inconsistencias.map((e: string) => `• ${e}`).join('\n')}
+` : ''}
+${analiseAit.observacoes_importantes?.length > 0 ? `
+📌 OBSERVAÇÕES IMPORTANTES:
+${analiseAit.observacoes_importantes.map((e: string) => `• ${e}`).join('\n')}
+` : ''}
+${analiseAit.resumo_analise ? `
+📋 RESUMO DA ANÁLISE:
+${analiseAit.resumo_analise}
+` : ''}
 ===
 
 `;
@@ -187,6 +297,8 @@ Trecho relevante: ${r.conteudo.substring(0, 1500)}...
 ${template?.prompt_ia || 'Você é um advogado especialista em direito de trânsito brasileiro, com vasta experiência em recursos administrativos.'}
 
 Você deve CONTINUAR o recurso abaixo, adicionando a argumentação jurídica completa.
+
+${analiseAitTexto}
 
 ${exemplosConhecimento}
 
@@ -208,8 +320,13 @@ INFRAÇÃO EM QUESTÃO:
 
 TIPO DE RECURSO: ${dados.tipoRecurso === 'defesa_previa' ? 'Defesa Prévia' : dados.tipoRecurso === 'jari' ? 'Recurso à JARI (1ª Instância)' : 'Recurso ao CETRAN (2ª Instância)'}
 
-IMPORTANTE: ${recursosDeferidos && recursosDeferidos.length > 0 
-  ? `Utilize os argumentos que funcionaram nos recursos deferidos anteriores como base para sua argumentação.`
+${analiseAit ? `
+🚨 IMPORTANTE - ANÁLISE DO AIT PELA IA:
+Foi realizada uma análise automatizada do Auto de Infração anexado. USE OBRIGATORIAMENTE os erros formais e inconsistências detectados na sua argumentação! Estes são pontos fortes para o recurso.
+` : ''}
+
+${recursosDeferidos && recursosDeferidos.length > 0 
+  ? `DICA: Utilize os argumentos que funcionaram nos recursos deferidos anteriores como base para sua argumentação.`
   : 'Não há recursos deferidos anteriores para esta infração - seja criativo e use as melhores práticas jurídicas.'}
 
 Por favor, CONTINUE o recurso acima gerando:
@@ -220,6 +337,7 @@ Por favor, CONTINUE o recurso acima gerando:
    - Resoluções do CONTRAN relevantes
    - Jurisprudências (se aplicável)
    - Argumentos técnicos sobre possíveis vícios formais ou materiais
+   ${analiseAit ? '- ERROS FORMAIS DO AIT (use os erros detectados acima como argumentação central!)' : ''}
 3. **DOS PEDIDOS** - Pedidos claros e específicos (anulação do auto, cancelamento da multa, restituição de pontos)
 4. **FECHAMENTO** - Fechamento formal com "Nestes termos, pede deferimento" e espaço para assinatura
 

@@ -454,19 +454,29 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Seção: Upload de AIT */}
-      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-4">
-        <h4 className="font-semibold text-purple-800 mb-3 flex items-center gap-2">
-          <i className="ri-scan-2-line"></i>
-          Upload do Auto de Infração (AIT)
-          <span className="text-xs font-normal text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full ml-2">
-            OCR com IA
+      {/* Seção: Upload de AIT - OBRIGATÓRIO */}
+      <div className={`border rounded-lg p-4 ${
+        dados.aitBase64 
+          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300' 
+          : 'bg-gradient-to-r from-red-50 to-orange-50 border-red-300'
+      }`}>
+        <h4 className={`font-semibold mb-3 flex items-center gap-2 ${
+          dados.aitBase64 ? 'text-green-800' : 'text-red-800'
+        }`}>
+          <i className={dados.aitBase64 ? 'ri-checkbox-circle-fill' : 'ri-error-warning-fill'}></i>
+          Upload do Auto de Infração (AIT) - OBRIGATÓRIO
+          <span className={`text-xs font-normal px-2 py-0.5 rounded-full ml-2 ${
+            dados.aitBase64 
+              ? 'text-green-600 bg-green-100' 
+              : 'text-red-600 bg-red-100'
+          }`}>
+            {dados.aitBase64 ? '✓ Anexado' : '* Obrigatório'}
           </span>
         </h4>
         
-        <p className="text-xs text-purple-700 mb-3">
-          📸 Envie uma foto ou PDF do Auto de Infração para preencher automaticamente os dados. 
-          <strong> A IA também detectará erros de preenchimento que podem fortalecer seu recurso!</strong>
+        <p className="text-xs text-gray-700 mb-3">
+          📸 <strong>É obrigatório</strong> enviar uma foto ou PDF do Auto de Infração. 
+          A IA lerá o documento para extrair dados e detectar erros formais que fortalecem o recurso.
         </p>
 
         <div className="flex items-center gap-4">
@@ -868,11 +878,30 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
         </p>
       </div>
 
+      {/* Aviso de AIT obrigatório */}
+      {!dados.aitBase64 && (
+        <div className="bg-red-100 border-2 border-red-400 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-red-200 rounded-full flex items-center justify-center flex-shrink-0">
+              <i className="ri-file-warning-line text-2xl text-red-600"></i>
+            </div>
+            <div>
+              <p className="font-semibold text-red-800">
+                É obrigatório anexar o Auto de Infração (AIT)
+              </p>
+              <p className="text-sm text-red-700">
+                A IA precisa ler o documento original para gerar um recurso preciso e identificar erros formais.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Botão de Submissão */}
       <div className="flex gap-4">
         <button
           type="submit"
-          disabled={gerando || !dados.nomeRecorrente || !dados.cpfCnpj || !dados.placa || !dados.numeroAuto || !dados.codigoInfracao}
+          disabled={gerando || !dados.aitBase64 || !dados.nomeRecorrente || !dados.cpfCnpj || !dados.placa || !dados.numeroAuto || !dados.codigoInfracao}
           className="flex-1 px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-semibold hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {gerando ? (
