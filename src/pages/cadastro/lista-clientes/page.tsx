@@ -1822,27 +1822,10 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                                       Baixar
                                     </a>
                                   </>
-                                ) : recurso.conteudo ? (
-                                  <button
-                                    onClick={() => {
-                                      // Salvar no sessionStorage e redirecionar para a página de recursos para continuar edição
-                                      sessionStorage.setItem('recurso_em_edicao', JSON.stringify({
-                                        conteudo: recurso.conteudo,
-                                        recursoId: recurso.id,
-                                        clienteId: recurso.cliente_id
-                                      }));
-                                      window.location.href = '/recursos-ia';
-                                    }}
-                                    className="px-3 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors flex items-center gap-2"
-                                    title="Continuar edição e finalizar como PDF"
-                                  >
-                                    <i className="ri-edit-line"></i>
-                                    Continuar Edição
-                                  </button>
                                 ) : (
                                   <span className="px-3 py-2 bg-gray-100 text-gray-500 rounded-lg text-sm font-medium flex items-center gap-2">
-                                    <i className="ri-draft-line"></i>
-                                    Rascunho
+                                    <i className="ri-file-forbid-line"></i>
+                                    Sem PDF
                                   </span>
                                 )}
 
