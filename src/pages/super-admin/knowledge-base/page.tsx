@@ -226,27 +226,31 @@ export default function KnowledgeBasePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
             <Brain className="h-8 w-8 text-purple-600 dark:text-purple-400" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Base de Conhecimento IA</h1>
-            <p className="text-muted-foreground">
-              Analise recursos deferidos pelos clientes e aprove para treinar a IA
+            <p className="text-muted-foreground text-sm">
+              Analise recursos deferidos e aprove para treinar a IA
             </p>
           </div>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button className="bg-purple-600 hover:bg-purple-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar Manual
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <Button 
+          onClick={() => setIsDialogOpen(true)} 
+          className="bg-purple-600 hover:bg-purple-700 shrink-0"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Adicionar Manual
+        </Button>
+      </div>
+
+      {/* Modal para adicionar/editar */}
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Brain className="h-5 w-5 text-purple-600" />
@@ -359,8 +363,7 @@ export default function KnowledgeBasePage() {
               </DialogFooter>
             </form>
           </DialogContent>
-        </Dialog>
-      </div>
+      </Dialog>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
