@@ -84,7 +84,7 @@ export default function RecursosIA() {
   
   const [gerando, setGerando] = useState(false);
   const [animacaoAberta, setAnimacaoAberta] = useState(false);
-  const [recursoGerado, setRecursoGerado] = useState<string | null>(null);
+  const [recursoGerado, setRecursoGerado] = useState<{ conteudo: string; recursoId: string } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [confirmacaoCompra, setConfirmacaoCompra] = useState<{ valor: number; dados: DadosRecurso } | null>(null);
 
@@ -171,8 +171,11 @@ export default function RecursosIA() {
       // Fechar animação e MOSTRAR o recurso gerado (SEM abrir impressão)
       console.log('✅ Geração concluída, mostrando visualizador...');
       setAnimacaoAberta(false);
-      setRecursoGerado(data.content);
-      showToast('Recurso gerado e salvo com sucesso!', 'success');
+      setRecursoGerado({ 
+        conteudo: data.content, 
+        recursoId: recursoSalvo?.id || '' 
+      });
+      showToast('Recurso gerado com sucesso! Finalize para salvar o PDF.', 'success');
       
     } catch (err: any) {
       console.error('Erro ao gerar recurso:', err);
@@ -264,7 +267,9 @@ export default function RecursosIA() {
       {/* Resultado Gerado */}
       {recursoGerado && (
         <VisualizadorRecurso
-          conteudo={recursoGerado}
+          conteudo={recursoGerado.conteudo}
+          recursoId={recursoGerado.recursoId}
+          clienteId={idsVinculacao.clienteId || undefined}
           onClose={() => {
             setRecursoGerado(null);
             // Voltar para rastreamento ao concluir

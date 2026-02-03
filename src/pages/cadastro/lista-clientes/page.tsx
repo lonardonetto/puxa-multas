@@ -1733,11 +1733,11 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                         return (
                           <div 
                             key={recurso.id} 
-                            className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm hover:border-[#10B981] transition-colors group"
+                            className={`p-4 border rounded-lg bg-white shadow-sm hover:border-[#10B981] transition-colors group ${recurso.finalizado ? 'border-green-200 bg-green-50/30' : 'border-gray-200'}`}
                           >
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
+                                <div className="flex items-center gap-2 mb-2 flex-wrap">
                                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[recurso.status] || 'bg-gray-100 text-gray-700'}`}>
                                     {statusLabels[recurso.status] || recurso.status}
                                   </span>
@@ -1748,6 +1748,18 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                                     <span className="px-2 py-1 bg-gradient-to-r from-[#10B981] to-[#059669] text-white rounded-full text-xs font-medium flex items-center gap-1">
                                       <i className="ri-robot-line"></i>
                                       IA
+                                    </span>
+                                  )}
+                                  {recurso.finalizado && (
+                                    <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium flex items-center gap-1">
+                                      <i className="ri-lock-line"></i>
+                                      Finalizado
+                                    </span>
+                                  )}
+                                  {recurso.pdf_url && (
+                                    <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium flex items-center gap-1">
+                                      <i className="ri-file-pdf-line"></i>
+                                      PDF
                                     </span>
                                   )}
                                 </div>
@@ -1786,55 +1798,74 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={() => {
-                                    if (recurso.conteudo) {
-                                      const printWindow = window.open('', '_blank');
-                                      if (printWindow) {
-                                        printWindow.document.write(`
-                                          <html>
-                                            <head>
-                                              <title>Recurso - ${recurso.numero_protocolo || recurso.id}</title>
-                                              <style>
-                                                body { font-family: Georgia, serif; padding: 40px; line-height: 1.6; }
-                                                h1 { font-size: 18px; margin-bottom: 20px; }
-                                                pre { white-space: pre-wrap; font-family: inherit; }
-                                              </style>
-                                            </head>
-                                            <body>
-                                              <pre>${recurso.conteudo}</pre>
-                                            </body>
-                                          </html>
-                                        `);
-                                        printWindow.document.close();
-                                        printWindow.print();
-                                      }
-                                    }
-                                  }}
-                                  className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#1E3A8A] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                                  title="Imprimir Recurso"
-                                >
-                                  <i className="ri-printer-line"></i>
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    if (recurso.conteudo) {
-                                      navigator.clipboard.writeText(recurso.conteudo);
-                                      showConfirm({
-                                        title: 'Copiado!',
-                                        message: 'Conteúdo do recurso copiado para a área de transferência.',
-                                        type: 'success',
-                                        confirmLabel: 'OK',
-                                        onConfirm: () => { }
-                                      });
-                                    }
-                                  }}
-                                  className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#10B981] hover:bg-green-50 rounded-lg transition-colors cursor-pointer"
-                                  title="Copiar Conteúdo"
-                                >
-                                  <i className="ri-file-copy-line"></i>
-                                </button>
+                              <div className="flex items-center gap-2 ml-4">
+                                {/* Se tem PDF, mostrar botão de download */}
+                                {recurso.pdf_url ? (
+                                  <>
+                                    <a
+                                      href={recurso.pdf_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
+                                      title="Baixar PDF"
+                                    >
+                                      <i className="ri-file-pdf-line"></i>
+                                      Baixar PDF
+                                    </a>
+                                  </>
+                                ) : (
+                                  // Se não tem PDF, mostrar botões antigos de imprimir/copiar
+                                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={() => {
+                                        if (recurso.conteudo) {
+                                          const printWindow = window.open('', '_blank');
+                                          if (printWindow) {
+                                            printWindow.document.write(`
+                                              <html>
+                                                <head>
+                                                  <title>Recurso - ${recurso.numero_protocolo || recurso.id}</title>
+                                                  <style>
+                                                    body { font-family: Georgia, serif; padding: 40px; line-height: 1.6; }
+                                                    h1 { font-size: 18px; margin-bottom: 20px; }
+                                                    pre { white-space: pre-wrap; font-family: inherit; }
+                                                  </style>
+                                                </head>
+                                                <body>
+                                                  <pre>${recurso.conteudo}</pre>
+                                                </body>
+                                              </html>
+                                            `);
+                                            printWindow.document.close();
+                                            printWindow.print();
+                                          }
+                                        }
+                                      }}
+                                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#1E3A8A] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                      title="Imprimir Recurso"
+                                    >
+                                      <i className="ri-printer-line"></i>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        if (recurso.conteudo) {
+                                          navigator.clipboard.writeText(recurso.conteudo);
+                                          showConfirm({
+                                            title: 'Copiado!',
+                                            message: 'Conteúdo do recurso copiado para a área de transferência.',
+                                            type: 'success',
+                                            confirmLabel: 'OK',
+                                            onConfirm: () => { }
+                                          });
+                                        }
+                                      }}
+                                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#10B981] hover:bg-green-50 rounded-lg transition-colors cursor-pointer"
+                                      title="Copiar Conteúdo"
+                                    >
+                                      <i className="ri-file-copy-line"></i>
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
