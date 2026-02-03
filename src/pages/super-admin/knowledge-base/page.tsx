@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import LegislacaoTab from '@/components/super-admin/LegislacaoTab';
+import AIProcessingAnimation from '@/components/super-admin/AIProcessingAnimation';
 
 interface RecursoConhecimento {
   id: string;
@@ -54,6 +55,7 @@ export default function KnowledgeBasePage() {
   const [uploadingDeferimento, setUploadingDeferimento] = useState(false);
   const [analisandoAit, setAnalisandoAit] = useState(false);
   const [analisandoDeferimento, setAnalisandoDeferimento] = useState(false);
+  const [showAIAnimation, setShowAIAnimation] = useState(false);
   const aitInputRef = useRef<HTMLInputElement>(null);
   const deferimentoInputRef = useRef<HTMLInputElement>(null);
 
@@ -140,6 +142,7 @@ export default function KnowledgeBasePage() {
       toast.success('AIT enviado! Analisando com IA...');
       
       setAnalisandoAit(true);
+      setShowAIAnimation(true);
       const resultado = await analisarDocumento(url, 'ait');
       setAnalisandoAit(false);
 
@@ -173,6 +176,7 @@ export default function KnowledgeBasePage() {
       toast.success('Deferimento enviado! Analisando com IA...');
       
       setAnalisandoDeferimento(true);
+      setShowAIAnimation(true);
       const resultado = await analisarDocumento(url, 'deferimento');
       setAnalisandoDeferimento(false);
 
@@ -789,6 +793,16 @@ export default function KnowledgeBasePage() {
                   </div>
                 </div>
               </div>
+
+              {/* AI Processing Animation */}
+              {(analisandoAit || analisandoDeferimento || showAIAnimation) && (
+                <AIProcessingAnimation 
+                  isProcessing={analisandoAit || analisandoDeferimento}
+                  onComplete={() => {
+                    setTimeout(() => setShowAIAnimation(false), 3000);
+                  }}
+                />
+              )}
 
               {/* Dados extraídos pela IA */}
               {formData.dados_extraidos_ia && (
