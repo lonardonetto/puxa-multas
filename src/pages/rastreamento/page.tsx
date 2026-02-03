@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMultasRastreamento, MultaRastreada } from '../../hooks/useMultasRastreamento';
 import ModalDetalhesMulta from '../../components/rastreamento/ModalDetalhesMulta';
@@ -67,6 +67,18 @@ export default function Rastreamento() {
     veiculoId: string;
     clienteId: string | null;
   } | null>(null);
+  
+  // Estado para seleção de cliente existente
+  const [modoCliente, setModoCliente] = useState<'novo' | 'existente'>('novo');
+  const [clienteSelecionadoId, setClienteSelecionadoId] = useState<string | null>(null);
+  const [clientesExistentes, setClientesExistentes] = useState<{
+    id: string;
+    nome_completo: string;
+    cpf: string | null;
+    cnpj: string | null;
+    tipo_pessoa: 'fisica' | 'juridica';
+  }[]>([]);
+  
   const [formData, setFormData] = useState({
     nomeCliente: '',
     cpfCnpj: '',
@@ -76,6 +88,26 @@ export default function Rastreamento() {
     nomeEmpresa: '',
     numeroVeiculos: '',
   });
+
+  // Buscar clientes existentes quando abre o modal
+  useEffect(() => {
+    const fetchClientes = async () => {
+      if (!currentOrganization?.id || !modalAberto) return;
+      
+      const { data } = await supabase
+        .from('clientes')
+        .select('id, nome_completo, cpf, cnpj, tipo_pessoa')
+        .eq('organization_id', currentOrganization.id)
+        .eq('ativo', true)
+        .order('nome_completo');
+
+      if (data) {
+        setClientesExistentes(data as typeof clientesExistentes);
+      }
+    };
+
+    fetchClientes();
+  }, [modalAberto, currentOrganization?.id]);
 
   // Função para abrir o modal de preview com dados da API
   const handleDadosVeiculoRecebidos = (dados: unknown, veiculoId: string, clienteId: string | null) => {
@@ -152,6 +184,8 @@ export default function Rastreamento() {
   const fecharModal = () => {
     setModalAberto(false);
     setTipoRastreamento(null);
+    setModoCliente('novo');
+    setClienteSelecionadoId(null);
     setFormData({
       nomeCliente: '',
       cpfCnpj: '',
@@ -201,29 +235,45 @@ export default function Rastreamento() {
       return;
     }
 
+    // Se modo cliente existente, validar seleção
+    if (modoCliente === 'existente' && !clienteSelecionadoId) {
+      toast.error('Selecione um cliente existente ou crie um novo');
+      return;
+    }
+
     setSalvando(true);
     
     try {
-      // 1. Criar o cliente
-      const tipoPessoa = tipoRastreamento === 'frota' ? 'juridica' : 'fisica';
-      const clienteData = {
-        user_id: user.id,
-        nome_completo: formData.nomeCliente,
-        tipo_pessoa: tipoPessoa as 'fisica' | 'juridica',
-        cpf: tipoPessoa === 'fisica' ? formData.cpfCnpj : null,
-        cnpj: tipoPessoa === 'juridica' ? formData.cpfCnpj : null,
-        razao_social: tipoRastreamento === 'frota' ? formData.nomeEmpresa : null,
-        nome_fantasia: tipoRastreamento === 'frota' ? formData.nomeEmpresa : null,
-        email: formData.email,
-        celular: formData.telefone,
-        organization_id: currentOrganization.id,
-        ativo: true,
-      };
-
-      const cliente = await createCliente(clienteData);
+      let clienteIdFinal: string;
       
-      if (!cliente) {
-        throw new Error('Falha ao criar cliente');
+      if (modoCliente === 'existente' && clienteSelecionadoId) {
+        // Usar cliente existente
+        clienteIdFinal = clienteSelecionadoId;
+        toast.info('Veículo será vinculado ao cliente existente');
+      } else {
+        // Criar novo cliente
+        const tipoPessoa = tipoRastreamento === 'frota' ? 'juridica' : 'fisica';
+        const clienteData = {
+          user_id: user.id,
+          nome_completo: formData.nomeCliente,
+          tipo_pessoa: tipoPessoa as 'fisica' | 'juridica',
+          cpf: tipoPessoa === 'fisica' ? formData.cpfCnpj : null,
+          cnpj: tipoPessoa === 'juridica' ? formData.cpfCnpj : null,
+          razao_social: tipoRastreamento === 'frota' ? formData.nomeEmpresa : null,
+          nome_fantasia: tipoRastreamento === 'frota' ? formData.nomeEmpresa : null,
+          email: formData.email,
+          celular: formData.telefone,
+          organization_id: currentOrganization.id,
+          ativo: true,
+        };
+
+        const cliente = await createCliente(clienteData);
+        
+        if (!cliente) {
+          throw new Error('Falha ao criar cliente');
+        }
+        
+        clienteIdFinal = cliente.id;
       }
 
       // 2. Criar os veículos com rastreamento ativo
@@ -232,7 +282,7 @@ export default function Rastreamento() {
         modelo: p.modelo || 'Não informado',
         ano: p.ano || null,
         renavam: p.renavam || null,
-        cliente_id: cliente.id,
+        cliente_id: clienteIdFinal,
         rastreamento_ativo: true,
         rastreamento_inicio: new Date().toISOString(),
         rastreamento_valor: tipoRastreamento === 'frota' ? 50 : 60,
@@ -324,95 +374,147 @@ export default function Rastreamento() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {tipoRastreamento === 'frota' && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Nome da Empresa *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.nomeEmpresa}
-                    onChange={(e) => setFormData({ ...formData, nomeEmpresa: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
-                    placeholder="Digite o nome da empresa"
-                  />
-                </div>
-              )}
+              {/* Seletor de modo: cliente existente ou novo */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                  <i className="ri-user-line"></i>
+                  Proprietário do Veículo
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="modoCliente"
+                        checked={modoCliente === 'existente'}
+                        onChange={() => setModoCliente('existente')}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">Selecionar cliente existente</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="modoCliente"
+                        checked={modoCliente === 'novo'}
+                        onChange={() => setModoCliente('novo')}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">Criar novo cliente</span>
+                    </label>
+                  </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  {tipoRastreamento === 'frota' ? 'Nome do Responsável *' : 'Nome Completo *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.nomeCliente}
-                  onChange={(e) => setFormData({ ...formData, nomeCliente: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
-                  placeholder="Digite o nome completo"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  {tipoRastreamento === 'frota' ? 'CNPJ *' : 'CPF *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.cpfCnpj}
-                  onChange={(e) => setFormData({ ...formData, cpfCnpj: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
-                  placeholder={tipoRastreamento === 'frota' ? '00.000.000/0000-00' : '000.000.000-00'}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    E-mail *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
-                    placeholder="email@exemplo.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Telefone *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={formData.telefone}
-                    onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
-                    placeholder="(00) 00000-0000"
-                  />
+                  {modoCliente === 'existente' && (
+                    <select
+                      value={clienteSelecionadoId || ''}
+                      onChange={(e) => setClienteSelecionadoId(e.target.value || null)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Selecione um cliente...</option>
+                      {clientesExistentes.map((cliente) => (
+                        <option key={cliente.id} value={cliente.id}>
+                          {cliente.nome_completo} - {cliente.cpf || cliente.cnpj || 'Sem documento'}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
-              {tipoRastreamento === 'frota' && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Número de Veículos *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="3"
-                    value={formData.numeroVeiculos}
-                    onChange={(e) => setFormData({ ...formData, numeroVeiculos: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
-                    placeholder="Mínimo 3 veículos"
-                  />
-                </div>
+              {/* Campos do novo cliente - só mostra se modo = novo */}
+              {modoCliente === 'novo' && (
+                <>
+                  {tipoRastreamento === 'frota' && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Nome da Empresa *
+                      </label>
+                      <input
+                        type="text"
+                        required={modoCliente === 'novo'}
+                        value={formData.nomeEmpresa}
+                        onChange={(e) => setFormData({ ...formData, nomeEmpresa: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                        placeholder="Digite o nome da empresa"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      {tipoRastreamento === 'frota' ? 'Nome do Responsável *' : 'Nome Completo *'}
+                    </label>
+                    <input
+                      type="text"
+                      required={modoCliente === 'novo'}
+                      value={formData.nomeCliente}
+                      onChange={(e) => setFormData({ ...formData, nomeCliente: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                      placeholder="Digite o nome completo"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      {tipoRastreamento === 'frota' ? 'CNPJ *' : 'CPF *'}
+                    </label>
+                    <input
+                      type="text"
+                      required={modoCliente === 'novo'}
+                      value={formData.cpfCnpj}
+                      onChange={(e) => setFormData({ ...formData, cpfCnpj: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                      placeholder={tipoRastreamento === 'frota' ? '00.000.000/0000-00' : '000.000.000-00'}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        E-mail *
+                      </label>
+                      <input
+                        type="email"
+                        required={modoCliente === 'novo'}
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                        placeholder="email@exemplo.com"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Telefone *
+                      </label>
+                      <input
+                        type="tel"
+                        required={modoCliente === 'novo'}
+                        value={formData.telefone}
+                        onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                        placeholder="(00) 00000-0000"
+                      />
+                    </div>
+                  </div>
+
+                  {tipoRastreamento === 'frota' && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Número de Veículos *
+                      </label>
+                      <input
+                        type="number"
+                        required={modoCliente === 'novo' && tipoRastreamento === 'frota'}
+                        min="3"
+                        value={formData.numeroVeiculos}
+                        onChange={(e) => setFormData({ ...formData, numeroVeiculos: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                        placeholder="Mínimo 3 veículos"
+                      />
+                    </div>
+                  )}
+                </>
               )}
 
               <div>

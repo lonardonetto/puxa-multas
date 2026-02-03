@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabase';
+import { useOrganization } from '../../contexts/OrganizationContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface DadosVeiculoAPI {
   dados_do_veiculo: {
@@ -41,6 +43,14 @@ interface DadosVeiculoAPI {
   };
 }
 
+interface ClienteExistente {
+  id: string;
+  nome_completo: string;
+  cpf: string | null;
+  cnpj: string | null;
+  tipo_pessoa: 'fisica' | 'juridica';
+}
+
 interface Props {
   aberto: boolean;
   onClose: () => void;
@@ -62,12 +72,40 @@ export default function ModalPreviewDadosVeiculo({
   userId,
   onSuccess,
 }: Props) {
+  const { currentOrganization } = useOrganization();
+  const { user } = useAuth();
   const [salvando, setSalvando] = useState(false);
+  const [clientesExistentes, setClientesExistentes] = useState<ClienteExistente[]>([]);
+  const [clienteSelecionado, setClienteSelecionado] = useState<string | null>(clienteId);
+  const [modoCliente, setModoCliente] = useState<'existente' | 'criar' | 'atualizar'>(
+    clienteId ? 'atualizar' : 'existente'
+  );
   const [opcoes, setOpcoes] = useState({
     atualizarVeiculo: true,
-    atualizarCliente: true,
-    criarClienteSeNaoExistir: true,
+    sincronizarCliente: true,
   });
+
+  // Buscar clientes existentes para seleção
+  useEffect(() => {
+    const fetchClientes = async () => {
+      if (!currentOrganization?.id) return;
+      
+      const { data } = await supabase
+        .from('clientes')
+        .select('id, nome_completo, cpf, cnpj, tipo_pessoa')
+        .eq('organization_id', currentOrganization.id)
+        .eq('ativo', true)
+        .order('nome_completo');
+
+      if (data) {
+        setClientesExistentes(data as ClienteExistente[]);
+      }
+    };
+
+    if (aberto) {
+      fetchClientes();
+    }
+  }, [aberto, currentOrganization?.id]);
 
   if (!aberto) return null;
 
@@ -79,14 +117,18 @@ export default function ModalPreviewDadosVeiculo({
     try {
       let clienteAtualId = clienteId;
 
-      // 1. Criar ou atualizar cliente
-      if (opcoes.atualizarCliente || opcoes.criarClienteSeNaoExistir) {
+      // Gerenciar cliente baseado no modo selecionado
+      if (opcoes.sincronizarCliente) {
         const nomeProprietario = informacoes_tecnicas_e_adicionais.nomeproprietario;
         const documento = informacoes_tecnicas_e_adicionais.documentoproprietario;
         const tipoDoc = informacoes_tecnicas_e_adicionais.tipodocumentoproprietario;
         const isCPF = tipoDoc === 'CPF';
 
-        if (clienteId && opcoes.atualizarCliente) {
+        if (modoCliente === 'existente' && clienteSelecionado) {
+          // Usar cliente existente selecionado
+          clienteAtualId = clienteSelecionado;
+          toast.success('Cliente vinculado ao veículo!');
+        } else if (modoCliente === 'atualizar' && clienteId) {
           // Atualizar cliente existente
           const { error: clienteError } = await supabase
             .from('clientes')
@@ -105,13 +147,13 @@ export default function ModalPreviewDadosVeiculo({
           } else {
             toast.success('Dados do cliente atualizados!');
           }
-        } else if (!clienteId && opcoes.criarClienteSeNaoExistir) {
+        } else if (modoCliente === 'criar') {
           // Criar novo cliente
           const { data: novoCliente, error: createError } = await supabase
             .from('clientes')
             .insert({
-              user_id: userId,
-              organization_id: organizationId,
+              user_id: userId || user?.id,
+              organization_id: organizationId || currentOrganization?.id,
               nome_completo: nomeProprietario,
               cpf: isCPF ? documento : null,
               cnpj: !isCPF ? documento : null,
@@ -131,12 +173,27 @@ export default function ModalPreviewDadosVeiculo({
         }
       }
 
-      // 2. Atualizar veículo
+      // Atualizar veículo com TODOS os dados da API
       if (opcoes.atualizarVeiculo) {
         const updateData: Record<string, unknown> = {
+          // Dados básicos
           modelo: `${dados_do_veiculo.marca} ${dados_do_veiculo.modelo}`,
           ano: dados_do_veiculo.anofabricacao,
           renavam: dados_do_veiculo.renavam,
+          // Novos campos completos
+          chassi: dados_do_veiculo.chassi,
+          cor: dados_do_veiculo.cor,
+          municipio: dados_do_veiculo.municipio,
+          uf: dados_do_veiculo.uf,
+          motor: informacoes_tecnicas_e_adicionais.motor,
+          potencia: informacoes_tecnicas_e_adicionais.potencia,
+          cilindradas: informacoes_tecnicas_e_adicionais.cilindradas,
+          especie: informacoes_tecnicas_e_adicionais.especie,
+          capacidade_passageiros: informacoes_tecnicas_e_adicionais.capacidadedepassageiros,
+          quantidade_eixos: informacoes_tecnicas_e_adicionais.quantidadedeeixos,
+          caixa_cambio: informacoes_tecnicas_e_adicionais.caixadecambio,
+          situacao_veiculo: restricoes_e_impedimentos.situacao_veiculo,
+          ultima_sincronizacao: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
 
@@ -197,7 +254,7 @@ export default function ModalPreviewDadosVeiculo({
               <i className="ri-settings-3-line"></i>
               O que deseja atualizar?
             </h4>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -205,28 +262,81 @@ export default function ModalPreviewDadosVeiculo({
                   onChange={(e) => setOpcoes({ ...opcoes, atualizarVeiculo: e.target.checked })}
                   className="w-4 h-4 text-blue-600 rounded"
                 />
-                <span className="text-sm text-gray-700">Atualizar dados do veículo (modelo, ano, RENAVAM)</span>
+                <span className="text-sm text-gray-700">
+                  Atualizar TODOS os dados do veículo (modelo, ano, RENAVAM, chassi, cor, motor, etc.)
+                </span>
               </label>
-              {clienteId ? (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={opcoes.atualizarCliente}
-                    onChange={(e) => setOpcoes({ ...opcoes, atualizarCliente: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 rounded"
-                  />
-                  <span className="text-sm text-gray-700">Atualizar dados do cliente vinculado</span>
-                </label>
-              ) : (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={opcoes.criarClienteSeNaoExistir}
-                    onChange={(e) => setOpcoes({ ...opcoes, criarClienteSeNaoExistir: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 rounded"
-                  />
-                  <span className="text-sm text-gray-700">Criar cliente e vincular ao veículo</span>
-                </label>
+              
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={opcoes.sincronizarCliente}
+                  onChange={(e) => setOpcoes({ ...opcoes, sincronizarCliente: e.target.checked })}
+                  className="w-4 h-4 text-blue-600 rounded"
+                />
+                <span className="text-sm text-gray-700">Sincronizar dados do proprietário</span>
+              </label>
+
+              {/* Opções de cliente */}
+              {opcoes.sincronizarCliente && (
+                <div className="ml-6 mt-2 space-y-2 p-3 bg-white rounded-lg border border-blue-100">
+                  <p className="text-xs text-gray-500 mb-2">Como deseja vincular o proprietário?</p>
+                  
+                  {!clienteId && (
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="modoCliente"
+                        checked={modoCliente === 'existente'}
+                        onChange={() => setModoCliente('existente')}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">Selecionar cliente existente</span>
+                    </label>
+                  )}
+                  
+                  {clienteId && (
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="modoCliente"
+                        checked={modoCliente === 'atualizar'}
+                        onChange={() => setModoCliente('atualizar')}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">Atualizar cliente já vinculado</span>
+                    </label>
+                  )}
+                  
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="modoCliente"
+                      checked={modoCliente === 'criar'}
+                      onChange={() => setModoCliente('criar')}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">Criar novo cliente com dados do proprietário</span>
+                  </label>
+
+                  {/* Seletor de cliente existente */}
+                  {modoCliente === 'existente' && !clienteId && (
+                    <div className="mt-2">
+                      <select
+                        value={clienteSelecionado || ''}
+                        onChange={(e) => setClienteSelecionado(e.target.value || null)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Selecione um cliente...</option>
+                        {clientesExistentes.map((cliente) => (
+                          <option key={cliente.id} value={cliente.id}>
+                            {cliente.nome_completo} - {cliente.cpf || cliente.cnpj}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -237,16 +347,16 @@ export default function ModalPreviewDadosVeiculo({
               <i className="ri-car-fill text-blue-600"></i>
               Dados do Veículo
             </h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <InfoItem label="Placa" value={dados_do_veiculo.placa} />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <InfoItem label="Placa" value={dados_do_veiculo.placa} highlight />
               <InfoItem label="Marca" value={dados_do_veiculo.marca} />
               <InfoItem label="Modelo" value={dados_do_veiculo.modelo} />
               <InfoItem label="Ano Fab." value={dados_do_veiculo.anofabricacao} />
               <InfoItem label="Cor" value={dados_do_veiculo.cor} />
               <InfoItem label="RENAVAM" value={dados_do_veiculo.renavam} highlight />
-              <InfoItem label="Chassi" value={dados_do_veiculo.chassi} />
+              <InfoItem label="Chassi" value={dados_do_veiculo.chassi} highlight />
               <InfoItem label="UF" value={dados_do_veiculo.uf} />
-              <InfoItem label="Município" value={dados_do_veiculo.municipio} />
+              <InfoItem label="Município" value={dados_do_veiculo.municipio} className="col-span-2" />
             </div>
           </div>
 
@@ -330,7 +440,7 @@ export default function ModalPreviewDadosVeiculo({
           </button>
           <button
             onClick={handleSalvar}
-            disabled={salvando || (!opcoes.atualizarVeiculo && !opcoes.atualizarCliente && !opcoes.criarClienteSeNaoExistir)}
+            disabled={salvando || (!opcoes.atualizarVeiculo && !opcoes.sincronizarCliente)}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {salvando ? (

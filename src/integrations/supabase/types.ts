@@ -1447,43 +1447,88 @@ export type Database = {
         Row: {
           ano: string | null
           ativo: boolean | null
+          caixa_cambio: string | null
+          capacidade_passageiros: string | null
+          chassi: string | null
+          cilindradas: string | null
           cliente_id: string | null
+          cor: string | null
           created_at: string | null
+          especie: string | null
           id: string
           modelo: string
+          motor: string | null
+          municipio: string | null
           placa: string
+          potencia: string | null
+          quantidade_eixos: string | null
           rastreamento_ativo: boolean | null
           rastreamento_inicio: string | null
+          rastreamento_tipo: string | null
           rastreamento_valor: number | null
+          rastreamento_vencimento: string | null
           renavam: string | null
+          situacao_veiculo: string | null
+          uf: string | null
+          ultima_sincronizacao: string | null
           updated_at: string | null
         }
         Insert: {
           ano?: string | null
           ativo?: boolean | null
+          caixa_cambio?: string | null
+          capacidade_passageiros?: string | null
+          chassi?: string | null
+          cilindradas?: string | null
           cliente_id?: string | null
+          cor?: string | null
           created_at?: string | null
+          especie?: string | null
           id?: string
           modelo: string
+          motor?: string | null
+          municipio?: string | null
           placa: string
+          potencia?: string | null
+          quantidade_eixos?: string | null
           rastreamento_ativo?: boolean | null
           rastreamento_inicio?: string | null
+          rastreamento_tipo?: string | null
           rastreamento_valor?: number | null
+          rastreamento_vencimento?: string | null
           renavam?: string | null
+          situacao_veiculo?: string | null
+          uf?: string | null
+          ultima_sincronizacao?: string | null
           updated_at?: string | null
         }
         Update: {
           ano?: string | null
           ativo?: boolean | null
+          caixa_cambio?: string | null
+          capacidade_passageiros?: string | null
+          chassi?: string | null
+          cilindradas?: string | null
           cliente_id?: string | null
+          cor?: string | null
           created_at?: string | null
+          especie?: string | null
           id?: string
           modelo?: string
+          motor?: string | null
+          municipio?: string | null
           placa?: string
+          potencia?: string | null
+          quantidade_eixos?: string | null
           rastreamento_ativo?: boolean | null
           rastreamento_inicio?: string | null
+          rastreamento_tipo?: string | null
           rastreamento_valor?: number | null
+          rastreamento_vencimento?: string | null
           renavam?: string | null
+          situacao_veiculo?: string | null
+          uf?: string | null
+          ultima_sincronizacao?: string | null
           updated_at?: string | null
         }
         Relationships: [
