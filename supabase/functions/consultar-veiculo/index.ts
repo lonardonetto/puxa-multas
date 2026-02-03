@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -70,7 +71,7 @@ serve(async (req) => {
   }
 
   try {
-    const { placa } = await req.json();
+    const { placa, veiculo_id, organization_id, cliente_nome, cliente_documento, valor_cobrado } = await req.json();
 
     if (!placa || placa.length < 7) {
       return new Response(
@@ -152,13 +153,59 @@ serve(async (req) => {
       multas: dadosMultas,
     };
 
+    // Contar multas encontradas
+    let multasCount = 0;
+    if (dadosMultas && typeof dadosMultas === 'object' && !Array.isArray(dadosMultas)) {
+      const m = dadosMultas as Record<string, unknown[]>;
+      multasCount = (m.aPagar?.length || 0) + (m.notificacoes?.length || 0) + (m.pagas?.length || 0);
+    }
+
     console.log('Modelo do veículo:', (dadosVeiculo as Record<string, unknown>)?.modelo || 'não encontrado');
     console.log('Chassi:', (dadosVeiculo as Record<string, unknown>)?.chassi || 'não encontrado');
+    console.log('Total de multas encontradas:', multasCount);
+
+    // Salvar no histórico de consultas se tiver veiculo_id e organization_id
+    if (veiculo_id && organization_id) {
+      try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        const consultaRecord = {
+          veiculo_id,
+          organization_id,
+          placa: placaNormalizada,
+          multas_encontradas: multasCount,
+          valor_cobrado: valor_cobrado || 0,
+          status: 'sucesso',
+          cliente_nome: cliente_nome || null,
+          cliente_documento: cliente_documento || null,
+          modelo_veiculo: (dadosVeiculo as Record<string, unknown>)?.modelo || null,
+          ano_veiculo: (dadosVeiculo as Record<string, unknown>)?.anofabricacao || null,
+          resposta_api: result,
+        };
+
+        const { error: insertError } = await supabase
+          .from('consultas_rastreamento')
+          .insert(consultaRecord);
+
+        if (insertError) {
+          console.error('Erro ao salvar histórico de consulta:', insertError);
+        } else {
+          console.log('✅ Consulta salva no histórico');
+        }
+      } catch (dbError) {
+        console.error('Erro ao conectar ao banco:', dbError);
+      }
+    } else {
+      console.log('⚠️ veiculo_id ou organization_id não fornecidos, consulta não será salva no histórico');
+    }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         result,
+        multas_count: multasCount,
         source: 'certadoc'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

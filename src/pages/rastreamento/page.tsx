@@ -367,6 +367,13 @@ export default function Rastreamento() {
     restricoes_e_impedimentos?: {
       situacao_veiculo?: string;
     };
+    multas?: {
+      aPagar?: unknown[];
+      notificacoes?: unknown[];
+      pagas?: unknown[];
+      multasNic?: unknown[];
+      outros?: unknown[];
+    };
   } | null) => {
     // Proteção contra execução duplicada
     if (animacaoProcessandoRef.current) {
@@ -460,6 +467,46 @@ export default function Rastreamento() {
         veiculoIdCriado = veiculoCriado?.id || null;
       } else {
         await createVeiculosBatch(veiculosData);
+      }
+
+      // Salvar no histórico de consultas APÓS criar o veículo
+      if (veiculoIdCriado && currentOrganization?.id && dadosAPI) {
+        try {
+          // Buscar dados do cliente para o registro
+          const { data: clienteData } = await supabase
+            .from('clientes')
+            .select('nome_completo, cpf, cnpj')
+            .eq('id', clienteIdFinal)
+            .limit(1);
+          
+          const cliente = clienteData?.[0];
+          
+          // Contar multas da resposta
+          let multasCount = 0;
+          const multas = dadosAPI.multas as Record<string, unknown[]> | undefined;
+          if (multas && typeof multas === 'object') {
+            multasCount = (multas.aPagar?.length || 0) + (multas.notificacoes?.length || 0) + (multas.pagas?.length || 0);
+          }
+          
+          const consultaRecord = {
+            veiculo_id: veiculoIdCriado,
+            organization_id: currentOrganization.id,
+            placa: placasValidas[0].placa.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+            multas_encontradas: multasCount,
+            valor_cobrado: preco,
+            status: 'sucesso',
+            cliente_nome: cliente?.nome_completo || null,
+            cliente_documento: cliente?.cpf || cliente?.cnpj || null,
+            modelo_veiculo: dadosAPI.dados_do_veiculo?.modelo || null,
+            ano_veiculo: dadosAPI.dados_do_veiculo?.anofabricacao || null,
+            resposta_api: dadosAPI,
+          };
+
+          await supabase.from('consultas_rastreamento').insert([consultaRecord as any]);
+          console.log('✅ Histórico de consulta salvo');
+        } catch (histError) {
+          console.error('Erro ao salvar histórico:', histError);
+        }
       }
 
       toast.success(`${totalVeiculos} veículo(s) cadastrado(s) com rastreamento ${tipo}!`);
