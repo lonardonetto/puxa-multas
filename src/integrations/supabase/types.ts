@@ -899,6 +899,64 @@ export type Database = {
           },
         ]
       }
+      notificacoes_multas: {
+        Row: {
+          created_at: string | null
+          descricao: string
+          id: string
+          lido: boolean | null
+          multa_id: string
+          organization_id: string
+          placa: string
+          valor: number | null
+          veiculo_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          descricao: string
+          id?: string
+          lido?: boolean | null
+          multa_id: string
+          organization_id: string
+          placa: string
+          valor?: number | null
+          veiculo_id: string
+        }
+        Update: {
+          created_at?: string | null
+          descricao?: string
+          id?: string
+          lido?: boolean | null
+          multa_id?: string
+          organization_id?: string
+          placa?: string
+          valor?: number | null
+          veiculo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_multas_multa_id_fkey"
+            columns: ["multa_id"]
+            isOneToOne: false
+            referencedRelation: "multas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificacoes_multas_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificacoes_multas_veiculo_id_fkey"
+            columns: ["veiculo_id"]
+            isOneToOne: false
+            referencedRelation: "veiculos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           acesso_crm: boolean | null

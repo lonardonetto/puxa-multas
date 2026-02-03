@@ -126,6 +126,9 @@ Deno.serve(async (req) => {
           if (multasParaSalvar.length > 0) {
             // Verificar se já existem essas multas (pelo numero_auto)
             for (const multa of multasParaSalvar) {
+              let multaId: string | null = null;
+              let isNova = false;
+              
               if (multa.numero_auto) {
                 const { data: existente } = await supabase
                   .from('multas')
@@ -135,10 +138,36 @@ Deno.serve(async (req) => {
                   .maybeSingle();
 
                 if (!existente) {
-                  await supabase.from('multas').insert(multa);
+                  const { data: novaMulta } = await supabase
+                    .from('multas')
+                    .insert(multa)
+                    .select('id')
+                    .single();
+                  multaId = novaMulta?.id;
+                  isNova = true;
                 }
               } else {
-                await supabase.from('multas').insert(multa);
+                const { data: novaMulta } = await supabase
+                  .from('multas')
+                  .insert(multa)
+                  .select('id')
+                  .single();
+                multaId = novaMulta?.id;
+                isNova = true;
+              }
+              
+              // Criar notificação para multa nova
+              if (isNova && multaId && organizationId) {
+                await supabase.from('notificacoes_multas').insert({
+                  organization_id: organizationId,
+                  veiculo_id: veiculo.id,
+                  multa_id: multaId,
+                  placa: veiculo.placa,
+                  descricao: multa.descricao,
+                  valor: multa.valor,
+                  lido: false,
+                });
+                console.log(`Notificação criada para multa ${multa.numero_auto} na placa ${veiculo.placa}`);
               }
             }
           }
