@@ -51,16 +51,25 @@ export default function AnimacaoRastreamento({ isOpen, placa, tipoPlano, onCompl
   const [concluido, setConcluido] = useState(false);
   const dadosAPIRef = useRef<DadosVeiculoAPI | null>(null);
   const apiChamadaRef = useRef(false);
+  const onCompleteChamadoRef = useRef(false);
+  const animacaoIniciadaRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) {
+      // Reset quando fecha
       setEtapaAtual(0);
       setProgresso(0);
       setConcluido(false);
       dadosAPIRef.current = null;
       apiChamadaRef.current = false;
+      onCompleteChamadoRef.current = false;
+      animacaoIniciadaRef.current = false;
       return;
     }
+
+    // Evitar re-execução se já iniciou
+    if (animacaoIniciadaRef.current) return;
+    animacaoIniciadaRef.current = true;
 
     let etapaIndex = 0;
     let progressoAtual = 0;
@@ -101,15 +110,19 @@ export default function AnimacaoRastreamento({ isOpen, placa, tipoPlano, onCompl
         }, etapas[etapaIndex].duracao);
       } else {
         setConcluido(true);
-        setTimeout(() => {
-          onComplete(dadosAPIRef.current);
-        }, 800);
+        // Garantir que onComplete é chamado apenas uma vez
+        if (!onCompleteChamadoRef.current) {
+          onCompleteChamadoRef.current = true;
+          setTimeout(() => {
+            onComplete(dadosAPIRef.current);
+          }, 800);
+        }
       }
     };
 
     // Iniciar após um pequeno delay
     setTimeout(avancarEtapa, 300);
-  }, [isOpen, placa, onComplete]);
+  }, [isOpen, placa]); // Removido onComplete das deps para evitar re-execução
 
   if (!isOpen) return null;
 

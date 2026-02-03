@@ -337,6 +337,9 @@ export default function Rastreamento() {
     setAnimacaoAberta(true);
   };
 
+  // Ref para evitar execução duplicada do handleAnimacaoComplete
+  const animacaoProcessandoRef = useRef(false);
+
   // Função chamada quando a animação termina (com dados da API)
   const handleAnimacaoComplete = async (dadosAPI: {
     dados_do_veiculo?: {
@@ -365,10 +368,18 @@ export default function Rastreamento() {
       situacao_veiculo?: string;
     };
   } | null) => {
+    // Proteção contra execução duplicada
+    if (animacaoProcessandoRef.current) {
+      console.log('Animação já está sendo processada, ignorando...');
+      return;
+    }
+    
     if (!dadosPendentes || !currentOrganization || !planoRastreamentoSelecionado) {
       setAnimacaoAberta(false);
       return;
     }
+
+    animacaoProcessandoRef.current = true;
 
     const { clienteIdFinal, placasValidas } = dadosPendentes;
     const { tipo, preco } = planoRastreamentoSelecionado;
@@ -376,6 +387,21 @@ export default function Rastreamento() {
     const custoTotal = preco * totalVeiculos;
 
     try {
+      // Verificar se alguma placa já existe no banco antes de criar
+      const placasNormalizadas = placasValidas.map(p => p.placa.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+      const { data: veiculosExistentes } = await supabase
+        .from('veiculos')
+        .select('placa')
+        .in('placa', placasNormalizadas);
+      
+      if (veiculosExistentes && veiculosExistentes.length > 0) {
+        const placasExistentes = veiculosExistentes.map(v => v.placa).join(', ');
+        toast.error(`Placa(s) já cadastrada(s): ${placasExistentes}`);
+        setAnimacaoAberta(false);
+        animacaoProcessandoRef.current = false;
+        return;
+      }
+
       // Deduzir créditos da carteira
       await deductCredits(
         custoTotal,
@@ -442,8 +468,7 @@ export default function Rastreamento() {
       setPlanoRastreamentoSelecionado(null);
       fecharModal();
       
-      // Atualizar lista de veículos (não chamar refresh() aqui pois createVeiculo já atualiza o estado local)
-      // Apenas atualizar a lista da listagem que tem seu próprio estado
+      // Atualizar lista de veículos
       listaVeiculosRef.current?.refresh();
       
       // Se houver dados da API e apenas 1 veículo, abrir modal de preview para atualização completa
@@ -462,6 +487,7 @@ export default function Rastreamento() {
       setAnimacaoAberta(false);
     } finally {
       setSalvando(false);
+      animacaoProcessandoRef.current = false;
     }
   };
 
