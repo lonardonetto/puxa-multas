@@ -1799,73 +1799,51 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                               </div>
 
                               <div className="flex items-center gap-2 ml-4">
-                                {/* Botão de abrir recurso (sempre visível) */}
-                                <button
-                                  onClick={() => {
-                                    if (recurso.pdf_url) {
-                                      // Se tem PDF, abrir em nova aba
-                                      window.open(recurso.pdf_url, '_blank');
-                                    } else if (recurso.conteudo) {
-                                      // Se não tem PDF mas tem conteúdo, abrir em janela para visualização
-                                      const printWindow = window.open('', '_blank');
-                                      if (printWindow) {
-                                        printWindow.document.write(`
-                                          <!DOCTYPE html>
-                                          <html>
-                                            <head>
-                                              <meta charset="utf-8">
-                                              <title>Recurso - ${recurso.numero_protocolo || recurso.id}</title>
-                                              <style>
-                                                * { box-sizing: border-box; }
-                                                body {
-                                                  font-family: 'Georgia', 'Times New Roman', serif;
-                                                  font-size: 12pt;
-                                                  line-height: 1.8;
-                                                  padding: 40px 60px;
-                                                  max-width: 800px;
-                                                  margin: 0 auto;
-                                                  color: #000;
-                                                }
-                                                p { margin-bottom: 1em; text-align: justify; }
-                                                strong, b { font-weight: bold; }
-                                                hr { margin: 24px 0; border: none; border-top: 1px solid #ccc; }
-                                              </style>
-                                            </head>
-                                            <body>
-                                              ${recurso.conteudo}
-                                            </body>
-                                          </html>
-                                        `);
-                                        printWindow.document.close();
-                                      }
-                                    } else {
-                                      showConfirm({
-                                        title: 'Recurso sem conteúdo',
-                                        message: 'Este recurso ainda não possui conteúdo ou PDF gerado.',
-                                        type: 'info',
-                                        confirmLabel: 'OK',
-                                        onConfirm: () => { }
-                                      });
-                                    }
-                                  }}
-                                  className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
-                                  title="Abrir Recurso"
-                                >
-                                  <i className="ri-eye-line"></i>
-                                  Abrir
-                                </button>
-
-                                {/* Botão de baixar PDF (se existir) */}
-                                {recurso.pdf_url && (
-                                  <a
-                                    href={recurso.pdf_url}
-                                    download
-                                    className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
-                                    title="Baixar PDF"
+                                {/* Se tem PDF, mostrar botões de abrir e baixar */}
+                                {recurso.pdf_url ? (
+                                  <>
+                                    <a
+                                      href={recurso.pdf_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                      title="Abrir PDF no navegador"
+                                    >
+                                      <i className="ri-eye-line"></i>
+                                      Abrir
+                                    </a>
+                                    <a
+                                      href={recurso.pdf_url}
+                                      download={`recurso_${recurso.numero_protocolo || recurso.id}.pdf`}
+                                      className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
+                                      title="Baixar PDF"
+                                    >
+                                      <i className="ri-download-line"></i>
+                                      Baixar
+                                    </a>
+                                  </>
+                                ) : recurso.conteudo ? (
+                                  <button
+                                    onClick={() => {
+                                      // Salvar no sessionStorage e redirecionar para a página de recursos para continuar edição
+                                      sessionStorage.setItem('recurso_em_edicao', JSON.stringify({
+                                        conteudo: recurso.conteudo,
+                                        recursoId: recurso.id,
+                                        clienteId: recurso.cliente_id
+                                      }));
+                                      window.location.href = '/recursos-ia';
+                                    }}
+                                    className="px-3 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors flex items-center gap-2"
+                                    title="Continuar edição e finalizar como PDF"
                                   >
-                                    <i className="ri-download-line"></i>
-                                    Baixar
-                                  </a>
+                                    <i className="ri-edit-line"></i>
+                                    Continuar Edição
+                                  </button>
+                                ) : (
+                                  <span className="px-3 py-2 bg-gray-100 text-gray-500 rounded-lg text-sm font-medium flex items-center gap-2">
+                                    <i className="ri-draft-line"></i>
+                                    Rascunho
+                                  </span>
                                 )}
 
                                 {/* Botão de excluir recurso */}
