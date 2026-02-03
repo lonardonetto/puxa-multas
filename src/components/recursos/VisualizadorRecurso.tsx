@@ -106,17 +106,19 @@ export default function VisualizadorRecurso({
   };
 
   const gerarPDF = async (): Promise<Blob> => {
+    console.log('Iniciando geração de PDF com html2canvas...');
+    
     // Criar container temporário invisível para renderizar o HTML
     const container = document.createElement('div');
     container.style.cssText = `
       position: absolute;
       left: -9999px;
       top: 0;
-      width: 210mm;
-      padding: 25mm 20mm;
+      width: 794px;
+      padding: 60px 50px;
       background: white;
       font-family: 'Georgia', 'Times New Roman', serif;
-      font-size: 12pt;
+      font-size: 14px;
       line-height: 1.8;
       color: #000;
     `;
@@ -125,26 +127,29 @@ export default function VisualizadorRecurso({
     container.innerHTML = `
       <style>
         * { box-sizing: border-box; }
-        p { margin-bottom: 12px; text-align: justify; }
+        p { margin-bottom: 14px; text-align: justify; }
         strong, b { font-weight: bold; }
         em, i { font-style: italic; }
         u { text-decoration: underline; }
-        hr { margin: 20px 0; border: none; border-top: 1px solid #999; }
+        hr { margin: 24px 0; border: none; border-top: 1px solid #999; }
       </style>
       ${textoEditado}
     `;
     
     document.body.appendChild(container);
+    console.log('Container criado, tamanho:', container.offsetWidth, 'x', container.offsetHeight);
 
     try {
       // Renderizar HTML para canvas
+      console.log('Renderizando com html2canvas...');
       const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,
-        logging: false,
+        logging: true, // Ativar logs do html2canvas
         backgroundColor: '#ffffff',
-        windowWidth: 794, // A4 width in pixels at 96dpi
+        width: 794,
       });
+      console.log('Canvas gerado:', canvas.width, 'x', canvas.height);
 
       // Criar PDF
       const doc = new jsPDF({
@@ -158,14 +163,20 @@ export default function VisualizadorRecurso({
       const imgWidth = pageWidth - 20; // margens de 10mm cada lado
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
+      console.log('Dimensões do PDF:', imgWidth, 'x', imgHeight, 'mm');
+      
       // Se a imagem é maior que uma página, dividir em múltiplas páginas
       let heightLeft = imgHeight;
       let position = 10; // margem superior
       const marginLeft = 10;
+      let pageNum = 1;
 
       // Primeira página
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      console.log('Imagem gerada, adicionando ao PDF...');
+      
       doc.addImage(
-        canvas.toDataURL('image/jpeg', 0.95),
+        imgData,
         'JPEG',
         marginLeft,
         position,
@@ -176,10 +187,11 @@ export default function VisualizadorRecurso({
 
       // Páginas adicionais se necessário
       while (heightLeft > 0) {
+        pageNum++;
         doc.addPage();
         position = -(pageHeight - 20) * (Math.ceil((imgHeight - heightLeft) / (pageHeight - 20))) + 10;
         doc.addImage(
-          canvas.toDataURL('image/jpeg', 0.95),
+          imgData,
           'JPEG',
           marginLeft,
           position,
@@ -189,7 +201,14 @@ export default function VisualizadorRecurso({
         heightLeft -= (pageHeight - 20);
       }
 
-      return doc.output('blob');
+      console.log('PDF gerado com', pageNum, 'páginas');
+      const blob = doc.output('blob');
+      console.log('Blob criado, tamanho:', blob.size, 'bytes');
+      
+      return blob;
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      throw error;
     } finally {
       // Remover container temporário
       document.body.removeChild(container);
@@ -203,12 +222,20 @@ export default function VisualizadorRecurso({
     setEtapaConclusao('gerando');
 
     try {
+      console.log('Iniciando geração de PDF...');
+      console.log('RecursoId:', recursoId);
+      console.log('ClienteId:', clienteId);
+      
       // 1. Gerar PDF
       const pdfBlob = await gerarPDF();
+      console.log('PDF gerado, tamanho:', pdfBlob.size);
+      
       setEtapaConclusao('salvando');
 
       // 2. Fazer upload para o Storage
-      const fileName = `recursos/${clienteId || 'sem-cliente'}/${recursoId || Date.now()}_recurso.pdf`;
+      const timestamp = Date.now();
+      const fileName = `recursos/${clienteId || 'sem-cliente'}/${recursoId || timestamp}_recurso.pdf`;
+      console.log('Fazendo upload para:', fileName);
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('documentos')
@@ -219,8 +246,10 @@ export default function VisualizadorRecurso({
 
       if (uploadError) {
         console.error('Erro no upload:', uploadError);
-        throw uploadError;
+        throw new Error(`Erro no upload: ${uploadError.message}`);
       }
+
+      console.log('Upload concluído:', uploadData);
 
       // 3. Obter URL pública
       const { data: urlData } = supabase.storage
@@ -228,24 +257,36 @@ export default function VisualizadorRecurso({
         .getPublicUrl(fileName);
 
       const pdfUrl = urlData?.publicUrl;
+      console.log('URL pública:', pdfUrl);
 
       // 4. Atualizar recurso no banco como finalizado
       if (recursoId) {
-        const { error: updateError } = await supabase
+        console.log('Atualizando recurso no banco...');
+        const { data: updateData, error: updateError } = await supabase
           .from('recursos')
           .update({
             pdf_url: pdfUrl,
             finalizado: true,
             conteudo: textoEditado
           } as any)
-          .eq('id', recursoId);
+          .eq('id', recursoId)
+          .select();
 
         if (updateError) {
           console.error('Erro ao atualizar recurso:', updateError);
+          throw new Error(`Erro ao atualizar: ${updateError.message}`);
         }
+        
+        console.log('Recurso atualizado:', updateData);
+      } else {
+        console.warn('RecursoId não fornecido, PDF salvo mas não vinculado');
       }
 
       setEtapaConclusao('concluido');
+      console.log('Processo concluído com sucesso!');
+
+      // Limpar sessionStorage
+      sessionStorage.removeItem('recurso_em_edicao');
 
       // Aguardar animação e fechar
       setTimeout(() => {
@@ -254,7 +295,11 @@ export default function VisualizadorRecurso({
 
     } catch (error) {
       console.error('Erro ao finalizar recurso:', error);
-      // Mesmo com erro, fechar após delay
+      setEtapaConclusao('concluido'); // Mostrar como concluído mesmo com erro
+      
+      // Mostrar mensagem de erro ao usuário
+      alert(`Erro ao salvar PDF: ${error instanceof Error ? error.message : 'Erro desconhecido'}. Verifique o console para mais detalhes.`);
+      
       setTimeout(() => {
         onClose();
       }, 2000);
