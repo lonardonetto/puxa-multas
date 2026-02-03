@@ -125,13 +125,15 @@ async function multaPorPlaca(token: string, placa: string, email: string) {
   return await response.json();
 }
 
-// Consultar placa diretamente no órgão (consulta ativa)
+// Consultar placa - retorna dados do veículo + multas
 async function consultarPlaca(token: string, placa: string, email: string) {
-  console.log('Consultando placa no órgão:', placa);
+  console.log('=== INICIANDO CONSULTA COMPLETA PARA PLACA:', placa, '===');
   
-  // Primeiro tenta o endpoint de consulta ativa
+  // PASSO 1: Buscar dados do veículo via consultar-placa
+  let dadosVeiculo = null;
   try {
-    const response = await fetch(
+    console.log('PASSO 1: Buscando dados do veículo...');
+    const veiculoResponse = await fetch(
       `${CERTADOC_API_URL}/api/vendor/consultar-placa?placa=${encodeURIComponent(placa)}&email=${encodeURIComponent(email)}`,
       {
         method: 'POST',
@@ -139,51 +141,111 @@ async function consultarPlaca(token: string, placa: string, email: string) {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ placa, email }),
       }
     );
 
-    if (response.ok) {
-      const data = await response.json();
-      console.log('Consulta ativa bem-sucedida:', JSON.stringify(data).substring(0, 200));
-      return data;
+    if (veiculoResponse.ok) {
+      const veiculoData = await veiculoResponse.json();
+      dadosVeiculo = veiculoData.result?.dados_do_veiculo || veiculoData.dados_do_veiculo || null;
+      console.log('Dados do veículo obtidos:', JSON.stringify(dadosVeiculo).substring(0, 300));
+    } else {
+      console.log('Consulta de veículo retornou status:', veiculoResponse.status);
     }
-    
-    const errorText = await response.text();
-    console.log('Consulta ativa falhou, tentando multa-por-placa. Status:', response.status, 'Erro:', errorText);
   } catch (err) {
-    console.log('Erro na consulta ativa, tentando alternativa:', err);
+    console.log('Erro ao buscar dados do veículo (não crítico):', err);
   }
   
-  // Fallback: usar endpoint multa-por-placa
-  console.log('Usando fallback: multa-por-placa');
-  const fallbackResponse = await fetch(
-    `${CERTADOC_API_URL}/api/vendor/multa-por-placa?placa=${encodeURIComponent(placa)}&email=${encodeURIComponent(email)}`,
-    {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    }
-  );
+  // PASSO 2: Buscar MULTAS via multa-por-placa (endpoint correto para multas!)
+  let multasData = null;
+  try {
+    console.log('PASSO 2: Buscando MULTAS via multa-por-placa...');
+    const multasResponse = await fetch(
+      `${CERTADOC_API_URL}/api/vendor/multa-por-placa?placa=${encodeURIComponent(placa)}&email=${encodeURIComponent(email)}`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
-  if (!fallbackResponse.ok) {
-    const errorText = await fallbackResponse.text();
-    console.error('Fallback também falhou:', fallbackResponse.status, errorText);
-    
-    // Se ambos falharam, retornar estrutura vazia para não travar
-    return { 
-      success: true, 
-      multas: [], 
-      mensagem: 'Nenhuma multa encontrada para esta placa',
-      placa: placa
-    };
+    if (multasResponse.ok) {
+      const rawMultas = await multasResponse.json();
+      console.log('Resposta bruta de multas:', JSON.stringify(rawMultas).substring(0, 500));
+      
+      // A API retorna array, pegar primeiro item
+      if (Array.isArray(rawMultas) && rawMultas.length > 0) {
+        multasData = rawMultas[0];
+      } else {
+        multasData = rawMultas;
+      }
+    } else {
+      console.log('Consulta de multas retornou status:', multasResponse.status);
+    }
+  } catch (err) {
+    console.log('Erro ao buscar multas:', err);
   }
 
-  const result = await fallbackResponse.json();
-  console.log('Fallback bem-sucedido:', JSON.stringify(result).substring(0, 200));
-  return result;
+  // PASSO 3: Consolidar todas as multas em uma lista única
+  const todasMultas: any[] = [];
+  
+  if (multasData) {
+    // Multas a pagar (PRIORIDADE MÁXIMA)
+    if (multasData.aPagar && Array.isArray(multasData.aPagar)) {
+      multasData.aPagar.forEach((m: any) => {
+        todasMultas.push({ ...m, categoria: 'a_pagar', status: 'pendente' });
+      });
+      console.log('Multas a pagar encontradas:', multasData.aPagar.length);
+    }
+    
+    // Notificações (podem virar multas)
+    if (multasData.notificacoes && Array.isArray(multasData.notificacoes)) {
+      multasData.notificacoes.forEach((m: any) => {
+        todasMultas.push({ ...m, categoria: 'notificacao', status: 'notificacao' });
+      });
+      console.log('Notificações encontradas:', multasData.notificacoes.length);
+    }
+    
+    // Multas NIC
+    if (multasData.multasNic && Array.isArray(multasData.multasNic)) {
+      multasData.multasNic.forEach((m: any) => {
+        todasMultas.push({ ...m, categoria: 'nic', status: 'nic' });
+      });
+      console.log('Multas NIC encontradas:', multasData.multasNic.length);
+    }
+    
+    // Multas pagas (histórico)
+    if (multasData.pagas && Array.isArray(multasData.pagas)) {
+      multasData.pagas.forEach((m: any) => {
+        todasMultas.push({ ...m, categoria: 'paga', status: 'pago' });
+      });
+      console.log('Multas pagas encontradas:', multasData.pagas.length);
+    }
+    
+    // Outros
+    if (multasData.outros && Array.isArray(multasData.outros)) {
+      multasData.outros.forEach((m: any) => {
+        todasMultas.push({ ...m, categoria: 'outro', status: 'outro' });
+      });
+      console.log('Outras multas encontradas:', multasData.outros.length);
+    }
+  }
+
+  console.log('=== TOTAL DE MULTAS CONSOLIDADAS:', todasMultas.length, '===');
+
+  // Retornar estrutura completa
+  return {
+    success: true,
+    placa: placa,
+    dados_veiculo: dadosVeiculo,
+    multas: todasMultas,
+    multas_detalhadas: multasData, // Dados brutos categorizados
+    total_multas: todasMultas.length,
+    multas_a_pagar: todasMultas.filter(m => m.categoria === 'a_pagar').length,
+    multas_pagas: todasMultas.filter(m => m.categoria === 'paga').length,
+    notificacoes: todasMultas.filter(m => m.categoria === 'notificacao').length,
+  };
 }
 
 // Listar CNHs
