@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.certadoc]
 verify_jwt = false
+
+[functions.rastreamento-semanal]
+verify_jwt = false
+
+[functions.extrair-ait]
+verify_jwt = false

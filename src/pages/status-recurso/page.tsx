@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRecursos } from '../../hooks/useRecursos';
+import { supabase } from '../../lib/supabase';
+import { useOrganization } from '../../contexts/OrganizationContext';
 
 export default function StatusRecurso() {
   const navigate = useNavigate();
+  const { currentOrganization } = useOrganization();
   const { fetchRecursosDetalhados, atualizarNotificacao, loading } = useRecursos();
   const [recursosList, setRecursosList] = useState<any[]>([]);
+  const [salvandoConhecimento, setSalvandoConhecimento] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     const data = await fetchRecursosDetalhados();
@@ -18,22 +22,15 @@ export default function StatusRecurso() {
 
   // Função para calcular dias desde a última notificação
   const calcularDiasUltimaNotificacao = (dataUltimaNotificacao: string | null) => {
-    if (!dataUltimaNotificacao) return 999; // Se nunca foi notificado, trata como muito urgente
-
-    // Suporta formato ISO (YYYY-MM-DD) ou data simples
+    if (!dataUltimaNotificacao) return 999;
     const dataNotif = new Date(dataUltimaNotificacao);
     const hoje = new Date();
-
-    // Zerar as horas para comparar apenas dias
     hoje.setHours(0, 0, 0, 0);
     dataNotif.setHours(0, 0, 0, 0);
-
     const diffTime = Math.abs(hoje.getTime() - dataNotif.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  // Função para determinar o nível de alerta
   const getNivelAlerta = (dias: number, intervalo: number = 7) => {
     if (dias >= intervalo) return { nivel: 'crítico', cor: 'bg-red-100 border-red-500', icone: 'ri-alarm-warning-fill', textoCor: 'text-red-700' };
     if (dias >= Math.max(1, intervalo - 2)) return { nivel: 'alto', cor: 'bg-orange-100 border-orange-500', icone: 'ri-error-warning-fill', textoCor: 'text-orange-700' };
@@ -71,12 +68,58 @@ export default function StatusRecurso() {
       `Olá, ${nome}! Gostaríamos de informar que seu recurso (Auto: ${auto}) está com status: ${getStatusLabel(recurso.status)}. Estamos acompanhando o processo.`
     );
 
-    // Abre WhatsApp
     window.open(`https://wa.me/55${telefone.replace(/\D/g, '')}?text=${mensagem}`, '_blank');
-
-    // Atualiza data de última notificação no banco
     await atualizarNotificacao(recurso.id);
     loadData();
+  };
+
+  // Salvar recurso deferido na base de conhecimento
+  const salvarNaBaseConhecimento = async (recurso: any) => {
+    if (!currentOrganization) return;
+    
+    setSalvandoConhecimento(recurso.id);
+    try {
+      // Buscar o conteúdo completo do recurso
+      const { data: recursoCompleto } = await supabase
+        .from('recursos')
+        .select('conteudo')
+        .eq('id', recurso.id)
+        .single();
+
+      if (!recursoCompleto?.conteudo) {
+        console.error('Recurso sem conteúdo para salvar');
+        return;
+      }
+
+      // Extrair código de infração do recurso
+      const codigoInfracao = recurso.multas?.codigo_infracao || 'N/A';
+
+      // Salvar na base de conhecimento
+      const { error } = await supabase
+        .from('recursos_conhecimento')
+        .insert({
+          organization_id: currentOrganization.id,
+          codigo_infracao: codigoInfracao,
+          tipo_recurso: recurso.instancia || 'defesa_previa',
+          conteudo: recursoCompleto.conteudo,
+          argumentos_chave: [], // Pode ser preenchido manualmente depois
+          resultado: 'deferido',
+          detran_estado: recurso.multas?.uf_infracao || null,
+          data_deferimento: new Date().toISOString().split('T')[0],
+          is_global: false, // Apenas da organização, super admin pode tornar global
+        });
+
+      if (error) {
+        console.error('Erro ao salvar na base de conhecimento:', error);
+        alert('Erro ao salvar na base de conhecimento');
+      } else {
+        alert('Recurso salvo na base de conhecimento! A IA usará este exemplo para melhorar futuros recursos.');
+      }
+    } catch (err) {
+      console.error('Erro:', err);
+    } finally {
+      setSalvandoConhecimento(null);
+    }
   };
 
   const formatarData = (data: string | null) => {
@@ -84,7 +127,6 @@ export default function StatusRecurso() {
     return new Date(data).toLocaleDateString('pt-BR');
   };
 
-  // Filtrar recursos que precisam de acompanhamento ou notificação
   const recursosFiltrados = recursosList.filter(r =>
     r.status === 'aguardando_julgamento' ||
     r.status === 'indeferido' ||
@@ -108,7 +150,7 @@ export default function StatusRecurso() {
         </button>
       </div>
 
-      {/* Dashboard Cards - Fixo no topo ao rolar */}
+      {/* Dashboard Cards */}
       <div className="sticky top-[80px] z-20 bg-[#F3F4F6] pb-4 mb-2 -mx-4 px-4 pt-2">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:border-blue-300 transition-colors">
@@ -168,6 +210,7 @@ export default function StatusRecurso() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:border-red-300 transition-colors">
             <div className="flex items-center justify-between">
               <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Atrasados</p>
                 <p className="text-xl font-bold text-red-600">
                   {recursosFiltrados.filter(r =>
                     calcularDiasUltimaNotificacao(r.data_ultima_notificacao) >= (r.intervalo_notificacao || 7)
@@ -209,7 +252,7 @@ export default function StatusRecurso() {
                   Alerta Notif.
                 </th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Ação
+                  Ações
                 </th>
               </tr>
             </thead>
@@ -228,7 +271,7 @@ export default function StatusRecurso() {
                   </td>
                 </tr>
               ) : (
-                recursosFiltrados.map((recurso, index) => {
+                recursosFiltrados.map((recurso) => {
                   const diasUltimaNotificacao = calcularDiasUltimaNotificacao(recurso.data_ultima_notificacao);
                   const alerta = getNivelAlerta(diasUltimaNotificacao, recurso.intervalo_notificacao);
                   const cliente = recurso.multas?.veiculos?.clientes;
@@ -279,13 +322,31 @@ export default function StatusRecurso() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleNotificar(recurso)}
-                          className="bg-[#10B981] text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-green-600 transition-colors whitespace-nowrap cursor-pointer flex items-center"
-                        >
-                          <i className="ri-whatsapp-line mr-1"></i>
-                          Notificar
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleNotificar(recurso)}
+                            className="bg-[#10B981] text-white px-2 py-1 rounded text-xs font-medium hover:bg-green-600 transition-colors cursor-pointer flex items-center"
+                            title="Notificar via WhatsApp"
+                          >
+                            <i className="ri-whatsapp-line"></i>
+                          </button>
+                          
+                          {/* Botão para salvar na base de conhecimento (apenas para deferidos) */}
+                          {recurso.status === 'deferido' && (
+                            <button
+                              onClick={() => salvarNaBaseConhecimento(recurso)}
+                              disabled={salvandoConhecimento === recurso.id}
+                              className="bg-purple-500 text-white px-2 py-1 rounded text-xs font-medium hover:bg-purple-600 transition-colors cursor-pointer flex items-center disabled:opacity-50"
+                              title="Salvar na Base de Conhecimento IA"
+                            >
+                              {salvandoConhecimento === recurso.id ? (
+                                <i className="ri-loader-4-line animate-spin"></i>
+                              ) : (
+                                <i className="ri-brain-line"></i>
+                              )}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

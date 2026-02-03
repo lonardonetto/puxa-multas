@@ -130,8 +130,8 @@ export default function RecursosIA() {
         throw new Error(data?.error || 'Erro ao gerar recurso');
       }
 
-      // Salvar recurso no banco
-      const { error: insertError } = await supabase
+      // Salvar recurso no banco com vínculo ao cliente e veículo
+      const { data: recursoSalvo, error: insertError } = await supabase
         .from('recursos')
         .insert({
           status: 'rascunho',
@@ -139,15 +139,21 @@ export default function RecursosIA() {
           conteudo: data.content,
           organization_id: currentOrganization!.id,
           is_ia: true,
-        });
+          ait_url: dados.aitBase64 ? `data:image/jpeg;base64,${dados.aitBase64}` : null,
+          ait_dados_extraidos: dados.aitBase64 ? dados : null,
+        } as any)
+        .select()
+        .single();
 
       if (insertError) {
         console.error('Erro ao salvar recurso:', insertError);
+      } else {
+        console.log('Recurso salvo:', recursoSalvo);
       }
 
       setRecursoGerado(data.content);
       refresh();
-      showToast('Recurso gerado com sucesso!', 'success');
+      showToast('Recurso gerado com sucesso! Vá para "Status do Recurso" para acompanhar.', 'success');
     } catch (err: any) {
       console.error('Erro ao gerar recurso:', err);
       showToast(err.message || 'Erro ao gerar recurso. Tente novamente.', 'error');
