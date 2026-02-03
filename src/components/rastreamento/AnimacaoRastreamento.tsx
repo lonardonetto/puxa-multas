@@ -30,13 +30,24 @@ interface DadosVeiculoAPI {
     roubo_e_furto?: string;
     recall?: string;
   };
+  multas?: {
+    aPagar?: unknown[];
+    notificacoes?: unknown[];
+    pagas?: unknown[];
+    multasNic?: unknown[];
+    outros?: unknown[];
+  };
 }
 
 interface Props {
   isOpen: boolean;
   placa: string;
   tipoPlano: 'mensal' | 'anual';
-  onComplete: (dadosAPI: DadosVeiculoAPI | null) => void;
+  organizationId?: string;
+  clienteNome?: string;
+  clienteDocumento?: string;
+  valorCobrado?: number;
+  onComplete: (dadosAPI: DadosVeiculoAPI | null, veiculoId?: string) => void;
 }
 
 // Etapas com tempos maiores para dar tempo da API responder
@@ -50,7 +61,16 @@ const etapas = [
   { id: 7, texto: 'Finalizando cadastro...', icone: 'ri-check-double-line', duracao: 1500 },
 ];
 
-export default function AnimacaoRastreamento({ isOpen, placa, tipoPlano, onComplete }: Props) {
+export default function AnimacaoRastreamento({ 
+  isOpen, 
+  placa, 
+  tipoPlano, 
+  organizationId,
+  clienteNome,
+  clienteDocumento,
+  valorCobrado,
+  onComplete 
+}: Props) {
   const [etapaAtual, setEtapaAtual] = useState(0);
   const [progresso, setProgresso] = useState(0);
   const [concluido, setConcluido] = useState(false);
@@ -107,9 +127,16 @@ export default function AnimacaoRastreamento({ isOpen, placa, tipoPlano, onCompl
       try {
         const placaFormatada = placa.toUpperCase().replace(/[^A-Z0-9]/g, '');
         console.log('🚗 Iniciando busca para placa:', placaFormatada);
+        console.log('📋 Params:', { organizationId, clienteNome, clienteDocumento, valorCobrado });
         
         const { data, error } = await supabase.functions.invoke('consultar-veiculo', {
-          body: { placa: placaFormatada }
+          body: { 
+            placa: placaFormatada,
+            organization_id: organizationId,
+            cliente_nome: clienteNome,
+            cliente_documento: clienteDocumento,
+            valor_cobrado: valorCobrado,
+          }
         });
         
         if (error) {
