@@ -51,8 +51,10 @@ export default function AnimacaoRastreamento({ isOpen, placa, tipoPlano, onCompl
   const [concluido, setConcluido] = useState(false);
   const dadosAPIRef = useRef<DadosVeiculoAPI | null>(null);
   const apiChamadaRef = useRef(false);
+  const apiConcluidaRef = useRef(false);
   const onCompleteChamadoRef = useRef(false);
   const animacaoIniciadaRef = useRef(false);
+  const animacaoConcluidaRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -62,8 +64,10 @@ export default function AnimacaoRastreamento({ isOpen, placa, tipoPlano, onCompl
       setConcluido(false);
       dadosAPIRef.current = null;
       apiChamadaRef.current = false;
+      apiConcluidaRef.current = false;
       onCompleteChamadoRef.current = false;
       animacaoIniciadaRef.current = false;
+      animacaoConcluidaRef.current = false;
       return;
     }
 
@@ -74,21 +78,38 @@ export default function AnimacaoRastreamento({ isOpen, placa, tipoPlano, onCompl
     let etapaIndex = 0;
     let progressoAtual = 0;
 
+    // Função para verificar se pode chamar onComplete
+    const tentarChamarOnComplete = () => {
+      // Só chama quando AMBOS estão prontos: animação concluída E API retornou
+      if (animacaoConcluidaRef.current && apiConcluidaRef.current && !onCompleteChamadoRef.current) {
+        onCompleteChamadoRef.current = true;
+        console.log('Chamando onComplete com dados:', dadosAPIRef.current);
+        onComplete(dadosAPIRef.current);
+      }
+    };
+
     const buscarDadosAPI = async () => {
       if (apiChamadaRef.current) return;
       apiChamadaRef.current = true;
       
       try {
+        console.log('Buscando dados para placa:', placa);
         // Chamar a API CertaDoc para buscar dados do veículo
         const { data, error } = await supabase.functions.invoke('consultar-veiculo', {
           body: { placa: placa.toUpperCase().replace(/[^A-Z0-9]/g, '') }
         });
         
         if (!error && data?.result) {
+          console.log('Dados recebidos da API:', data.result);
           dadosAPIRef.current = data.result;
+        } else {
+          console.warn('Nenhum dado retornado da API ou erro:', error);
         }
       } catch (err) {
         console.error('Erro ao buscar dados do veículo:', err);
+      } finally {
+        apiConcluidaRef.current = true;
+        tentarChamarOnComplete();
       }
     };
 
@@ -110,13 +131,11 @@ export default function AnimacaoRastreamento({ isOpen, placa, tipoPlano, onCompl
         }, etapas[etapaIndex].duracao);
       } else {
         setConcluido(true);
-        // Garantir que onComplete é chamado apenas uma vez
-        if (!onCompleteChamadoRef.current) {
-          onCompleteChamadoRef.current = true;
-          setTimeout(() => {
-            onComplete(dadosAPIRef.current);
-          }, 800);
-        }
+        animacaoConcluidaRef.current = true;
+        // Aguardar 800ms para efeito visual, depois verificar se pode completar
+        setTimeout(() => {
+          tentarChamarOnComplete();
+        }, 800);
       }
     };
 
