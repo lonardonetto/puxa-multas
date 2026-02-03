@@ -134,11 +134,11 @@ export default function RecursosIA() {
         throw new Error(data?.error || 'Erro ao gerar recurso');
       }
 
-      // Salvar recurso no banco com vínculo ao cliente e veículo
+      // Salvar recurso no banco com status 'aguardando_julgamento' para aparecer na listagem
       const { data: recursoSalvo, error: insertError } = await supabase
         .from('recursos')
         .insert({
-          status: 'rascunho',
+          status: 'aguardando_julgamento',
           instancia: dados.tipoRecurso,
           conteudo: data.content,
           organization_id: currentOrganization!.id,
@@ -253,7 +253,11 @@ export default function RecursosIA() {
       {recursoGerado && (
         <VisualizadorRecurso
           conteudo={recursoGerado}
-          onClose={() => setRecursoGerado(null)}
+          onClose={() => {
+            setRecursoGerado(null);
+            // Voltar para rastreamento ao concluir
+            navigate('/rastreamento');
+          }}
         />
       )}
 
