@@ -13,6 +13,8 @@ interface VeiculoCadastrado {
   rastreamento_ativo: boolean;
   rastreamento_inicio: string | null;
   rastreamento_valor: number;
+  rastreamento_tipo: 'mensal' | 'anual' | null;
+  rastreamento_vencimento: string | null;
   cliente_id: string;
   cliente_nome: string;
   cliente_cpf: string | null;
@@ -24,8 +26,10 @@ interface VeiculoCadastrado {
 
 interface PlanoPrecos {
   preco_rastreamento: number;
-  rastreamento_pf_preco: number;
-  rastreamento_frota_preco: number;
+  rastreamento_mensal_pf_preco: number;
+  rastreamento_anual_pf_preco: number;
+  rastreamento_mensal_frota_preco: number;
+  rastreamento_anual_frota_preco: number;
 }
 
 interface Props {
@@ -59,8 +63,10 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
   const [deletando, setDeletando] = useState<string | null>(null);
   const [precos, setPrecos] = useState<PlanoPrecos>({
     preco_rastreamento: 50,
-    rastreamento_pf_preco: 50,
-    rastreamento_frota_preco: 50,
+    rastreamento_mensal_pf_preco: 25,
+    rastreamento_anual_pf_preco: 250,
+    rastreamento_mensal_frota_preco: 20,
+    rastreamento_anual_frota_preco: 200,
   });
 
   // Buscar preços do plano da organização
@@ -70,7 +76,7 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
       
       const { data: plano } = await supabase
         .from('planos')
-        .select('preco_rastreamento, rastreamento_pf_preco, rastreamento_frota_preco')
+        .select('preco_rastreamento, rastreamento_mensal_pf_preco, rastreamento_anual_pf_preco, rastreamento_mensal_frota_preco, rastreamento_anual_frota_preco')
         .eq('slug', currentOrganization.plano)
         .eq('ativo', true)
         .single();
@@ -78,8 +84,10 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
       if (plano) {
         setPrecos({
           preco_rastreamento: plano.preco_rastreamento || 50,
-          rastreamento_pf_preco: plano.rastreamento_pf_preco || 50,
-          rastreamento_frota_preco: plano.rastreamento_frota_preco || 50,
+          rastreamento_mensal_pf_preco: plano.rastreamento_mensal_pf_preco || 25,
+          rastreamento_anual_pf_preco: plano.rastreamento_anual_pf_preco || 250,
+          rastreamento_mensal_frota_preco: plano.rastreamento_mensal_frota_preco || 20,
+          rastreamento_anual_frota_preco: plano.rastreamento_anual_frota_preco || 200,
         });
       }
     };
@@ -87,11 +95,11 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
     fetchPrecos();
   }, [currentOrganization?.plano]);
 
-  // Calcular preço baseado no tipo (PF ou Frota/PJ)
+  // Calcular preço baseado no tipo (PF ou Frota/PJ) - para consulta avulsa usa mensal
   const getPrecoConsulta = (tipoPessoa: 'fisica' | 'juridica') => {
     return tipoPessoa === 'juridica' 
-      ? precos.rastreamento_frota_preco 
-      : precos.rastreamento_pf_preco;
+      ? precos.rastreamento_mensal_frota_preco 
+      : precos.rastreamento_mensal_pf_preco;
   };
 
   useEffect(() => {
@@ -185,6 +193,8 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
             rastreamento_ativo: v.rastreamento_ativo,
             rastreamento_inicio: v.rastreamento_inicio,
             rastreamento_valor: v.rastreamento_valor || 0,
+            rastreamento_tipo: v.rastreamento_tipo as 'mensal' | 'anual' | null,
+            rastreamento_vencimento: v.rastreamento_vencimento,
             cliente_id: v.cliente_id,
             cliente_nome: cliente?.nome_completo || '',
             cliente_cpf: cliente?.cpf || null,
@@ -367,43 +377,79 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
             <tr className="border-b border-gray-200">
               <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Veículo</th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Cliente</th>
+              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Plano</th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Multas</th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Última Consulta</th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Ações</th>
             </tr>
           </thead>
           <tbody>
-            {veiculos.map((veiculo) => (
-              <tr key={veiculo.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                <td className="py-4 px-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                      <i className="ri-car-line text-white text-lg"></i>
+            {veiculos.map((veiculo) => {
+              // Verificar se vencimento está próximo (3 dias) ou vencido
+              const vencimentoDate = veiculo.rastreamento_vencimento ? new Date(veiculo.rastreamento_vencimento) : null;
+              const hoje = new Date();
+              const diasParaVencer = vencimentoDate ? Math.ceil((vencimentoDate.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24)) : null;
+              const isVencido = diasParaVencer !== null && diasParaVencer < 0;
+              const isProximoVencer = diasParaVencer !== null && diasParaVencer >= 0 && diasParaVencer <= 3;
+
+              return (
+                <tr key={veiculo.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                  <td className="py-4 px-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <i className="ri-car-line text-white text-lg"></i>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">{veiculo.placa}</p>
+                        <p className="text-xs text-gray-500">{veiculo.modelo} {veiculo.ano && `• ${veiculo.ano}`}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">{veiculo.placa}</p>
-                      <p className="text-xs text-gray-500">{veiculo.modelo} {veiculo.ano && `• ${veiculo.ano}`}</p>
+                  </td>
+                  <td className="py-4 px-4">
+                    <p className="text-sm text-gray-700">{veiculo.cliente_nome}</p>
+                    <p className="text-xs text-gray-500">
+                      {veiculo.cliente_cpf || veiculo.cliente_cnpj || '-'}
+                    </p>
+                  </td>
+                  <td className="py-4 px-4">
+                    <div className="flex flex-col gap-1">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                        veiculo.rastreamento_tipo === 'anual' 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        <i className={`mr-1 ${veiculo.rastreamento_tipo === 'anual' ? 'ri-calendar-check-line' : 'ri-calendar-line'}`}></i>
+                        {veiculo.rastreamento_tipo === 'anual' ? 'Anual' : 'Mensal'}
+                      </span>
+                      {vencimentoDate && (
+                        <span className={`text-xs flex items-center gap-1 ${
+                          isVencido 
+                            ? 'text-red-600 font-medium' 
+                            : isProximoVencer 
+                              ? 'text-orange-600' 
+                              : 'text-gray-500'
+                        }`}>
+                          {isVencido ? (
+                            <><i className="ri-error-warning-line"></i> Vencido</>
+                          ) : (
+                            <>Vence: {vencimentoDate.toLocaleDateString('pt-BR')}</>
+                          )}
+                        </span>
+                      )}
                     </div>
-                  </div>
-                </td>
-                <td className="py-4 px-4">
-                  <p className="text-sm text-gray-700">{veiculo.cliente_nome}</p>
-                  <p className="text-xs text-gray-500">
-                    {veiculo.cliente_cpf || veiculo.cliente_cnpj || '-'}
-                  </p>
-                </td>
-                <td className="py-4 px-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    veiculo.multas_count > 0 
-                      ? 'bg-red-100 text-red-700' 
-                      : 'bg-green-100 text-green-700'
-                  }`}>
-                    {veiculo.multas_count} multa{veiculo.multas_count !== 1 ? 's' : ''}
-                  </span>
-                </td>
-                <td className="py-4 px-4">
-                  <p className="text-sm text-gray-600">{formatDate(veiculo.ultima_consulta)}</p>
-                </td>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      veiculo.multas_count > 0 
+                        ? 'bg-red-100 text-red-700' 
+                        : 'bg-green-100 text-green-700'
+                    }`}>
+                      {veiculo.multas_count} multa{veiculo.multas_count !== 1 ? 's' : ''}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4">
+                    <p className="text-sm text-gray-600">{formatDate(veiculo.ultima_consulta)}</p>
+                  </td>
                 <td className="py-4 px-4">
                   <div className="flex items-center space-x-2">
                     <button
@@ -452,7 +498,8 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
