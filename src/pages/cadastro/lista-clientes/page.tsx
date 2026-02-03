@@ -4,6 +4,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useCurrentPlan } from '../../../hooks/useCurrentPlan';
 import { useClientes, useVeiculos, useServicos, useContratos, useDocumentos } from '../../../hooks';
 import { useHistorico } from '../../../hooks/useHistorico';
+import { useRecursos } from '../../../hooks/useRecursos';
 import { useCustomFases } from '../../../hooks/useCustomFases';
 import { useOrganization } from '../../../contexts/OrganizationContext';
 import { getPublicUrl, supabase } from '../../../lib/supabase';
@@ -19,13 +20,14 @@ export default function ListaClientes() {
   const { contratos, fetchContratosByCliente, createContrato, deleteContrato, updateContrato } = useContratos();
   const { documentos, fetchDocumentosByCliente, uploadDocumento, deleteDocumento } = useDocumentos();
   const { activities, fetchActivities, addActivity } = useHistorico();
+  const { recursos, fetchRecursos } = useRecursos();
   const { fases: customFases, addFase } = useCustomFases();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [busca, setBusca] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('todos');
   const [clienteIdSelecionado, setClienteIdSelecionado] = useState<string | null>(null);
-  const [abaAtiva, setAbaAtiva] = useState<'dados' | 'servicos' | 'documentos'>('dados');
+  const [abaAtiva, setAbaAtiva] = useState<'dados' | 'servicos' | 'documentos' | 'recursos'>('dados');
   const [editando, setEditando] = useState(false);
   const [criandoContrato, setCriandoContrato] = useState(false);
   const [salvandoContrato, setSalvandoContrato] = useState(false);
@@ -75,8 +77,36 @@ export default function ListaClientes() {
       fetchContratosByCliente(clienteIdSelecionado);
       fetchDocumentosByCliente(clienteIdSelecionado);
       fetchActivities(clienteIdSelecionado);
+      fetchRecursosByCliente(clienteIdSelecionado);
     }
   }, [clienteIdSelecionado, fetchContratosByCliente, fetchDocumentosByCliente, fetchActivities]);
+
+  // Fetch recursos by cliente_id
+  const [recursosCliente, setRecursosCliente] = useState<any[]>([]);
+  const [loadingRecursos, setLoadingRecursos] = useState(false);
+  
+  const fetchRecursosByCliente = async (clienteId: string) => {
+    setLoadingRecursos(true);
+    try {
+      const { data, error } = await supabase
+        .from('recursos')
+        .select(`
+          *,
+          multas (numero_auto, descricao, valor, pontos),
+          veiculos (placa, modelo)
+        `)
+        .eq('cliente_id', clienteId)
+        .order('created_at', { ascending: false });
+      
+      if (!error && data) {
+        setRecursosCliente(data);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar recursos:', err);
+    } finally {
+      setLoadingRecursos(false);
+    }
+  };
 
   // Handle deep-linking from URL
   useEffect(() => {
@@ -632,6 +662,18 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                 >
                   <i className="ri-folder-open-line mr-2"></i>
                   Documentos
+                </button>
+                <button
+                  onClick={() => setAbaAtiva('recursos')}
+                  className={`px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${abaAtiva === 'recursos' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                >
+                  <i className="ri-file-text-line mr-2"></i>
+                  Recursos Gerados
+                  {recursosCliente.length > 0 && (
+                    <span className="ml-2 px-2 py-0.5 bg-[#10B981] text-white text-xs rounded-full">
+                      {recursosCliente.length}
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
@@ -1639,6 +1681,165 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Aba Recursos Gerados */}
+              {abaAtiva === 'recursos' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-lg font-bold text-gray-800 flex items-center">
+                      <i className="ri-file-text-line mr-2 text-[#10B981]"></i>
+                      Recursos Gerados ({recursosCliente.length})
+                    </h4>
+                  </div>
+
+                  {loadingRecursos ? (
+                    <div className="py-12 text-center text-gray-500">
+                      <i className="ri-loader-4-line animate-spin text-4xl mb-2 block"></i>
+                      <p>Carregando recursos...</p>
+                    </div>
+                  ) : recursosCliente.length === 0 ? (
+                    <div className="py-12 text-center text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                      <i className="ri-file-text-line text-4xl mb-2 block opacity-20"></i>
+                      <p className="font-medium">Nenhum recurso gerado para este cliente.</p>
+                      <p className="text-sm mt-1">Os recursos criados via IA aparecerão aqui.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {recursosCliente.map((recurso) => {
+                        const statusColors: Record<string, string> = {
+                          'rascunho': 'bg-gray-100 text-gray-700',
+                          'protocolado': 'bg-blue-100 text-blue-700',
+                          'aguardando_julgamento': 'bg-yellow-100 text-yellow-700',
+                          'deferido': 'bg-green-100 text-green-700',
+                          'indeferido': 'bg-red-100 text-red-700',
+                        };
+                        const statusLabels: Record<string, string> = {
+                          'rascunho': 'Rascunho',
+                          'protocolado': 'Protocolado',
+                          'aguardando_julgamento': 'Aguardando Julgamento',
+                          'deferido': 'Deferido',
+                          'indeferido': 'Indeferido',
+                        };
+                        const instanciaLabels: Record<string, string> = {
+                          'defesa_previa': 'Defesa Prévia',
+                          'jari': 'JARI',
+                          'cetran': 'CETRAN',
+                        };
+                        
+                        return (
+                          <div 
+                            key={recurso.id} 
+                            className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm hover:border-[#10B981] transition-colors group"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[recurso.status] || 'bg-gray-100 text-gray-700'}`}>
+                                    {statusLabels[recurso.status] || recurso.status}
+                                  </span>
+                                  <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                                    {instanciaLabels[recurso.instancia] || recurso.instancia}
+                                  </span>
+                                  {recurso.is_ia && (
+                                    <span className="px-2 py-1 bg-gradient-to-r from-[#10B981] to-[#059669] text-white rounded-full text-xs font-medium flex items-center gap-1">
+                                      <i className="ri-robot-line"></i>
+                                      IA
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                  <div>
+                                    <span className="text-gray-500">Auto de Infração:</span>
+                                    <span className="font-medium text-gray-800 ml-2">
+                                      {recurso.multas?.numero_auto || 'N/A'}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">Veículo:</span>
+                                    <span className="font-medium text-gray-800 ml-2">
+                                      {recurso.veiculos?.placa || 'N/A'} - {recurso.veiculos?.modelo || ''}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">Protocolo:</span>
+                                    <span className="font-medium text-gray-800 ml-2">
+                                      {recurso.numero_protocolo || 'Não protocolado'}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">Criado em:</span>
+                                    <span className="font-medium text-gray-800 ml-2">
+                                      {formatarData(recurso.created_at)}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {recurso.multas?.descricao && (
+                                  <p className="text-xs text-gray-500 mt-2 line-clamp-2">
+                                    {recurso.multas.descricao}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => {
+                                    if (recurso.conteudo) {
+                                      const printWindow = window.open('', '_blank');
+                                      if (printWindow) {
+                                        printWindow.document.write(`
+                                          <html>
+                                            <head>
+                                              <title>Recurso - ${recurso.numero_protocolo || recurso.id}</title>
+                                              <style>
+                                                body { font-family: Georgia, serif; padding: 40px; line-height: 1.6; }
+                                                h1 { font-size: 18px; margin-bottom: 20px; }
+                                                pre { white-space: pre-wrap; font-family: inherit; }
+                                              </style>
+                                            </head>
+                                            <body>
+                                              <pre>${recurso.conteudo}</pre>
+                                            </body>
+                                          </html>
+                                        `);
+                                        printWindow.document.close();
+                                        printWindow.print();
+                                      }
+                                    }
+                                  }}
+                                  className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#1E3A8A] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Imprimir Recurso"
+                                >
+                                  <i className="ri-printer-line"></i>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (recurso.conteudo) {
+                                      navigator.clipboard.writeText(recurso.conteudo);
+                                      showConfirm({
+                                        title: 'Copiado!',
+                                        message: 'Conteúdo do recurso copiado para a área de transferência.',
+                                        type: 'success',
+                                        confirmLabel: 'OK',
+                                        onConfirm: () => { }
+                                      });
+                                    }
+                                  }}
+                                  className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#10B981] hover:bg-green-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Copiar Conteúdo"
+                                >
+                                  <i className="ri-file-copy-line"></i>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
