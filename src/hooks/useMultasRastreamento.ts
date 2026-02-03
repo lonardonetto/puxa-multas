@@ -16,6 +16,7 @@ export interface MultaRastreada {
   pontos: number;
   gravidade: string;
   veiculoId: string;
+  clienteId?: string;
   clienteNome?: string;
   clienteCpf?: string;
   clienteCnpj?: string;
@@ -126,6 +127,7 @@ export function useMultasRastreamento(): UseMultasRastreamentoReturn {
           pontos: m.pontos || 0,
           gravidade: m.gravidade || '',
           veiculoId: m.veiculo_id || '',
+          clienteId: m.veiculos?.clientes?.id || '',
           clienteNome: m.veiculos?.clientes?.nome_completo || '',
           clienteCpf: m.veiculos?.clientes?.cpf || '',
           clienteCnpj: m.veiculos?.clientes?.cnpj || '',

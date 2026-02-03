@@ -21,6 +21,13 @@ export default function RecursosIA() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
+  // Extrair IDs para vinculação (vindos da página de rastreamento)
+  const idsVinculacao = useMemo(() => ({
+    multaId: searchParams.get('multaId') || null,
+    veiculoId: searchParams.get('veiculoId') || null,
+    clienteId: searchParams.get('clienteId') || null,
+  }), [searchParams]);
+  
   // Extrair dados pré-preenchidos da URL (vindos da página de rastreamento)
   const dadosIniciais = useMemo(() => {
     const placa = searchParams.get('placa');
@@ -135,6 +142,7 @@ export default function RecursosIA() {
       }
 
       // Salvar recurso no banco com status 'aguardando_julgamento' para aparecer na listagem
+      // Incluindo os IDs de vinculação (cliente, veículo, multa)
       const { data: recursoSalvo, error: insertError } = await supabase
         .from('recursos')
         .insert({
@@ -145,6 +153,10 @@ export default function RecursosIA() {
           is_ia: true,
           ait_url: dados.aitBase64 ? `data:image/jpeg;base64,${dados.aitBase64}` : null,
           ait_dados_extraidos: dados.aitBase64 ? dados : null,
+          // IDs de vinculação para rastreabilidade
+          cliente_id: idsVinculacao.clienteId || null,
+          veiculo_id: idsVinculacao.veiculoId || null,
+          multa_id: idsVinculacao.multaId || null,
         } as any)
         .select()
         .single();

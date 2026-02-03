@@ -183,6 +183,10 @@ export default function Rastreamento() {
       clienteCnpj: multa.clienteCnpj || '',
       clienteEmail: multa.clienteEmail || '',
       clienteTelefone: multa.clienteCelular || multa.clienteTelefone || '',
+      // IDs para vincular o recurso corretamente
+      multaId: multa.id || '',
+      veiculoId: multa.veiculoId || '',
+      clienteId: multa.clienteId || '',
     });
     
     // Adicionar endereço se existir
