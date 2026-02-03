@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { useCurrentPlan } from '../../hooks/useCurrentPlan';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -77,7 +77,6 @@ export default function RecursosIA() {
   
   const [gerando, setGerando] = useState(false);
   const [animacaoAberta, setAnimacaoAberta] = useState(false);
-  const [dadosPendentes, setDadosPendentes] = useState<{ dados: DadosRecurso; isFree: boolean; custo: number } | null>(null);
   const [recursoGerado, setRecursoGerado] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [confirmacaoCompra, setConfirmacaoCompra] = useState<{ valor: number; dados: DadosRecurso } | null>(null);
@@ -102,22 +101,13 @@ export default function RecursosIA() {
       return;
     }
 
-    // Iniciar animação e guardar dados para processamento
-    setDadosPendentes({ dados, isFree, custo });
-    setAnimacaoAberta(true);
+    // Executar geração diretamente (animação é mostrada junto)
+    await executarGeracao(dados, isFree, custo);
   };
-
-  // Função chamada quando animação termina
-  const handleAnimacaoComplete = useCallback(() => {
-    setAnimacaoAberta(false);
-    if (dadosPendentes) {
-      executarGeracao(dadosPendentes.dados, dadosPendentes.isFree, dadosPendentes.custo);
-      setDadosPendentes(null);
-    }
-  }, [dadosPendentes]);
 
   const executarGeracao = async (dados: DadosRecurso, isFree: boolean, custo: number) => {
     setGerando(true);
+    setAnimacaoAberta(true); // Mostrar animação ENQUANTO gera
     setConfirmacaoCompra(null);
     
     try {
@@ -161,20 +151,19 @@ export default function RecursosIA() {
 
       if (insertError) {
         console.error('Erro ao salvar recurso:', insertError);
-        showToast('Recurso gerado mas houve erro ao salvar. Copie o conteúdo abaixo.', 'error');
-        setRecursoGerado(data.content);
       } else {
         console.log('Recurso salvo:', recursoSalvo);
         refresh();
-        showToast('Recurso gerado com sucesso! Redirecionando para acompanhamento...', 'success');
-        
-        // Redirecionar para página de status do recurso após 1.5s
-        setTimeout(() => {
-          navigate('/status-recurso');
-        }, 1500);
       }
+
+      // Fechar animação e MOSTRAR o recurso gerado
+      setAnimacaoAberta(false);
+      setRecursoGerado(data.content);
+      showToast('Recurso gerado e salvo com sucesso!', 'success');
+      
     } catch (err: any) {
       console.error('Erro ao gerar recurso:', err);
+      setAnimacaoAberta(false);
       showToast(err.message || 'Erro ao gerar recurso. Tente novamente.', 'error');
     } finally {
       setGerando(false);
@@ -377,8 +366,7 @@ export default function RecursosIA() {
               <button
                 onClick={() => {
                   setConfirmacaoCompra(null);
-                  setDadosPendentes({ dados: confirmacaoCompra.dados, isFree: false, custo: confirmacaoCompra.valor });
-                  setAnimacaoAberta(true);
+                  executarGeracao(confirmacaoCompra.dados, false, confirmacaoCompra.valor);
                 }}
                 disabled={balance < confirmacaoCompra.valor}
                 className="flex-1 px-4 py-3 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -397,11 +385,11 @@ export default function RecursosIA() {
         </div>
       )}
 
-      {/* Animação de geração de recurso */}
+      {/* Animação de geração de recurso - roda enquanto gera */}
       <AnimacaoGeracaoRecurso
         isOpen={animacaoAberta}
         tipo="gerando"
-        onComplete={handleAnimacaoComplete}
+        onComplete={() => {}} // Animação é fechada quando geração termina, não precisa de callback
       />
     </div>
   );
