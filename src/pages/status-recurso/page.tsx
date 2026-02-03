@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRecursos } from '../../hooks/useRecursos';
 
+// Status Recurso Page - v2
+
 export default function StatusRecurso() {
   const navigate = useNavigate();
   const { fetchRecursosDetalhados, atualizarNotificacao, loading } = useRecursos();
