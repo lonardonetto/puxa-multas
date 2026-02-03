@@ -175,12 +175,12 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
         setDados(prev => ({
           ...prev,
           codigoInfracao: infracao.codigo, // Usar o código exato da tabela para o select funcionar
-          // Usar descrição da tabela se não veio do rastreamento
-          descricaoInfracao: dadosIniciais.descricaoInfracao || infracao.descricao,
-          // PRESERVAR valores vindos do rastreamento, usar da tabela apenas como fallback
-          valorMulta: dadosIniciais.valorMulta || infracao.valor,
-          pontos: dadosIniciais.pontos || infracao.pontos,
-          gravidade: dadosIniciais.gravidade || infracao.gravidade,
+          // PRIORIZAR descrição do rastreamento se existir, senão usar da tabela
+          descricaoInfracao: prev.descricaoInfracao || dadosIniciais.descricaoInfracao || infracao.descricao,
+          // PRESERVAR valores vindos do rastreamento (já aplicados no estado inicial), usar da tabela apenas como fallback
+          valorMulta: prev.valorMulta || dadosIniciais.valorMulta || infracao.valor,
+          pontos: prev.pontos || dadosIniciais.pontos || infracao.pontos,
+          gravidade: prev.gravidade || dadosIniciais.gravidade || infracao.gravidade,
         }));
       } else {
         // Se não encontrar na lista, ainda assim setar o código para exibição
@@ -353,8 +353,14 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
     return () => clearTimeout(debounce);
   }, [dados.placa]);
 
-  // Atualizar dados quando selecionar infração
+  // Atualizar dados quando selecionar infração MANUALMENTE
+  // Se veio do rastreamento, preservar os dados originais
   const handleInfracaoChange = (codigo: string) => {
+    // Se está selecionando o código que já veio do rastreamento, não sobrescrever
+    if (viuDadosDoRastreamento && codigo === dadosIniciais?.codigoInfracao) {
+      return;
+    }
+    
     const infracao = infracoes.find(i => i.codigo === codigo);
     if (infracao) {
       setDados(prev => ({
@@ -820,10 +826,17 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
             >
               <option value="">{loadingDados ? 'Carregando...' : 'Selecione a infração'}</option>
               
-              {/* Opção customizada para infrações vindas do rastreamento que não estão na lista */}
-              {dados.codigoInfracao && !infracoes.some(i => i.codigo === dados.codigoInfracao) && (
+              {/* Opção customizada para infrações vindas do rastreamento */}
+              {viuDadosDoRastreamento && dadosIniciais?.codigoInfracao && (
+                <option value={dadosIniciais.codigoInfracao}>
+                  {dadosIniciais.codigoInfracao} - {dadosIniciais.descricaoInfracao || dados.descricaoInfracao || 'Infração do rastreamento'} ({dadosIniciais.gravidade || dados.gravidade || 'N/A'})
+                </option>
+              )}
+              
+              {/* Opção para infrações NÃO vindas do rastreamento que não estão na lista */}
+              {!viuDadosDoRastreamento && dados.codigoInfracao && !infracoes.some(i => i.codigo === dados.codigoInfracao) && (
                 <option value={dados.codigoInfracao}>
-                  {dados.codigoInfracao} - {dados.descricaoInfracao || 'Infração do rastreamento'} ({dados.gravidade || 'N/A'})
+                  {dados.codigoInfracao} - {dados.descricaoInfracao || 'Infração personalizada'} ({dados.gravidade || 'N/A'})
                 </option>
               )}
               
