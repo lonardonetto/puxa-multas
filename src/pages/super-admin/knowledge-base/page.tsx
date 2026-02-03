@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Brain, Plus, Trash2, Edit, Search, FileText, CheckCircle, Upload } from 'lucide-react';
+import { Brain, Plus, Trash2, Edit, Search, FileText, CheckCircle, Clock, XCircle, Check, X, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -27,6 +27,9 @@ interface RecursoConhecimento {
   is_global: boolean | null;
   observacoes: string | null;
   created_at: string | null;
+  status_aprovacao: string | null;
+  recurso_origem_id: string | null;
+  organization_id: string | null;
 }
 
 const TIPOS_RECURSO = [
@@ -43,7 +46,9 @@ const ESTADOS = [
 
 export default function KnowledgeBasePage() {
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<'pendentes' | 'aprovados'>('pendentes');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [viewingRecurso, setViewingRecurso] = useState<RecursoConhecimento | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTipo, setFilterTipo] = useState<string>('all');
@@ -76,6 +81,28 @@ export default function KnowledgeBasePage() {
     },
   });
 
+  // Aprovar/Rejeitar mutation
+  const aprovarMutation = useMutation({
+    mutationFn: async ({ id, status, is_global }: { id: string; status: 'aprovado' | 'rejeitado'; is_global?: boolean }) => {
+      const payload: any = { status_aprovacao: status };
+      if (status === 'aprovado' && is_global !== undefined) {
+        payload.is_global = is_global;
+      }
+      const { error } = await supabase
+        .from('recursos_conhecimento')
+        .update(payload)
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['recursos-conhecimento'] });
+      toast.success(variables.status === 'aprovado' ? 'Recurso aprovado e adicionado à base!' : 'Recurso rejeitado');
+    },
+    onError: (error) => {
+      toast.error('Erro: ' + error.message);
+    },
+  });
+
   // Create/Update mutation
   const saveMutation = useMutation({
     mutationFn: async (data: typeof formData & { id?: string }) => {
@@ -89,6 +116,7 @@ export default function KnowledgeBasePage() {
         data_deferimento: data.data_deferimento || null,
         observacoes: data.observacoes || null,
         is_global: data.is_global,
+        status_aprovacao: 'aprovado', // Quando super admin adiciona manualmente, já vai aprovado
       };
 
       if (data.id) {
@@ -173,8 +201,14 @@ export default function KnowledgeBasePage() {
     saveMutation.mutate(editingId ? { ...formData, id: editingId } : formData);
   };
 
-  // Filter recursos
-  const filteredRecursos = recursos?.filter(r => {
+  // Separar recursos por status
+  const recursosPendentes = recursos?.filter(r => r.status_aprovacao === 'pendente' || !r.status_aprovacao) || [];
+  const recursosAprovados = recursos?.filter(r => r.status_aprovacao === 'aprovado') || [];
+
+  // Filter recursos baseado na aba ativa
+  const currentList = activeTab === 'pendentes' ? recursosPendentes : recursosAprovados;
+  
+  const filteredRecursos = currentList.filter(r => {
     const matchesSearch = searchTerm === '' ||
       r.codigo_infracao.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.conteudo.toLowerCase().includes(searchTerm.toLowerCase());
@@ -184,10 +218,9 @@ export default function KnowledgeBasePage() {
   });
 
   const stats = {
+    pendentes: recursosPendentes.length,
+    aprovados: recursosAprovados.length,
     total: recursos?.length || 0,
-    defesaPrevia: recursos?.filter(r => r.tipo_recurso === 'defesa_previa').length || 0,
-    jari: recursos?.filter(r => r.tipo_recurso === 'jari').length || 0,
-    cetran: recursos?.filter(r => r.tipo_recurso === 'cetran').length || 0,
   };
 
   return (
@@ -201,7 +234,7 @@ export default function KnowledgeBasePage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Base de Conhecimento IA</h1>
             <p className="text-muted-foreground">
-              Gerencie recursos deferidos para treinar a IA na geração de novos recursos
+              Analise recursos deferidos pelos clientes e aprove para treinar a IA
             </p>
           </div>
         </div>
@@ -210,7 +243,7 @@ export default function KnowledgeBasePage() {
           <DialogTrigger asChild>
             <Button className="bg-purple-600 hover:bg-purple-700">
               <Plus className="h-4 w-4 mr-2" />
-              Adicionar Recurso
+              Adicionar Manual
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -330,7 +363,37 @@ export default function KnowledgeBasePage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className={`border-2 cursor-pointer transition-all ${activeTab === 'pendentes' ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20' : 'border-transparent hover:border-orange-300'}`}
+          onClick={() => setActiveTab('pendentes')}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                <Clock className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-orange-600">{stats.pendentes}</p>
+                <p className="text-xs text-muted-foreground">Pendentes de Análise</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className={`border-2 cursor-pointer transition-all ${activeTab === 'aprovados' ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-transparent hover:border-green-300'}`}
+          onClick={() => setActiveTab('aprovados')}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-600">{stats.aprovados}</p>
+                <p className="text-xs text-muted-foreground">Aprovados na Base</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
         <Card className="border-purple-200 dark:border-purple-800">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -339,46 +402,7 @@ export default function KnowledgeBasePage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.total}</p>
-                <p className="text-xs text-muted-foreground">Total na Base</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <FileText className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.defesaPrevia}</p>
-                <p className="text-xs text-muted-foreground">Defesa Prévia</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                <FileText className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.jari}</p>
-                <p className="text-xs text-muted-foreground">JARI</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.cetran}</p>
-                <p className="text-xs text-muted-foreground">CETRAN</p>
+                <p className="text-xs text-muted-foreground">Total Geral</p>
               </div>
             </div>
           </CardContent>
@@ -391,11 +415,11 @@ export default function KnowledgeBasePage() {
           <div className="flex items-start gap-3">
             <Brain className="h-6 w-6 text-purple-600 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-purple-900 dark:text-purple-100">Como funciona a Base de Conhecimento</h3>
+              <h3 className="font-semibold text-purple-900 dark:text-purple-100">Fluxo Automático de Recursos Deferidos</h3>
               <p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
-                A IA utiliza os recursos deferidos cadastrados aqui como referência para gerar novos recursos. 
-                Quanto mais exemplos de sucesso para cada código de infração, melhor será a qualidade dos recursos gerados.
-                Os recursos são automaticamente salvos quando marcados como "Deferido" no acompanhamento de processos.
+                Quando um cliente marca um recurso como <strong>"Deferido"</strong>, ele é automaticamente enviado para esta área de análise.
+                Você pode revisar o conteúdo, adicionar argumentos-chave e aprovar para que a IA use como referência.
+                Apenas recursos <strong>aprovados</strong> são utilizados pela IA para gerar novas defesas.
               </p>
             </div>
           </div>
@@ -446,25 +470,51 @@ export default function KnowledgeBasePage() {
       {/* Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Recursos na Base ({filteredRecursos?.length || 0})</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            {activeTab === 'pendentes' ? (
+              <>
+                <Clock className="h-5 w-5 text-orange-600" />
+                Recursos Pendentes de Aprovação ({filteredRecursos.length})
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                Recursos Aprovados na Base ({filteredRecursos.length})
+              </>
+            )}
+          </CardTitle>
           <CardDescription>
-            Recursos deferidos que a IA usa como referência
+            {activeTab === 'pendentes' 
+              ? 'Recursos deferidos pelos clientes aguardando sua análise'
+              : 'Recursos que a IA usa como referência para gerar defesas'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Carregando...</div>
-          ) : filteredRecursos?.length === 0 ? (
+          ) : filteredRecursos.length === 0 ? (
             <div className="text-center py-12">
-              <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-              <h3 className="font-semibold text-lg mb-1">Base de conhecimento vazia</h3>
-              <p className="text-muted-foreground mb-4">
-                Adicione recursos deferidos para treinar a IA
-              </p>
-              <Button onClick={() => setIsDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Primeiro Recurso
-              </Button>
+              {activeTab === 'pendentes' ? (
+                <>
+                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                  <h3 className="font-semibold text-lg mb-1">Nenhum recurso pendente</h3>
+                  <p className="text-muted-foreground">
+                    Recursos deferidos pelos clientes aparecerão aqui automaticamente
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                  <h3 className="font-semibold text-lg mb-1">Base de conhecimento vazia</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Aprove recursos pendentes ou adicione manualmente
+                  </p>
+                  <Button onClick={() => setIsDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Manualmente
+                  </Button>
+                </>
+              )}
             </div>
           ) : (
             <Table>
@@ -479,7 +529,7 @@ export default function KnowledgeBasePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRecursos?.map((recurso) => (
+                {filteredRecursos.map((recurso) => (
                   <TableRow key={recurso.id}>
                     <TableCell>
                       <Badge variant="outline" className="font-mono">
@@ -510,32 +560,80 @@ export default function KnowledgeBasePage() {
                             +{(recurso.argumentos_chave?.length || 0) - 2}
                           </Badge>
                         )}
+                        {!recurso.argumentos_chave?.length && (
+                          <span className="text-xs text-muted-foreground italic">Sem argumentos</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {recurso.created_at ? format(new Date(recurso.created_at), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-1">
+                        {/* Visualizar */}
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleEdit(recurso)}
+                          onClick={() => setViewingRecurso(recurso)}
+                          title="Visualizar conteúdo"
                         >
-                          <Edit className="h-4 w-4" />
+                          <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => {
-                            if (confirm('Remover este recurso da base?')) {
-                              deleteMutation.mutate(recurso.id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        
+                        {activeTab === 'pendentes' ? (
+                          <>
+                            {/* Aprovar */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => aprovarMutation.mutate({ id: recurso.id, status: 'aprovado', is_global: true })}
+                              disabled={aprovarMutation.isPending}
+                              title="Aprovar e adicionar à base global"
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            {/* Rejeitar */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => {
+                                if (confirm('Rejeitar este recurso? Ele não será usado pela IA.')) {
+                                  aprovarMutation.mutate({ id: recurso.id, status: 'rejeitado' });
+                                }
+                              }}
+                              disabled={aprovarMutation.isPending}
+                              title="Rejeitar"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            {/* Editar */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEdit(recurso)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            {/* Remover */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => {
+                                if (confirm('Remover este recurso da base?')) {
+                                  deleteMutation.mutate(recurso.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -545,6 +643,82 @@ export default function KnowledgeBasePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Visualização */}
+      <Dialog open={!!viewingRecurso} onOpenChange={(open) => !open && setViewingRecurso(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-purple-600" />
+              Visualizar Recurso - {viewingRecurso?.codigo_infracao}
+            </DialogTitle>
+            <DialogDescription>
+              {TIPOS_RECURSO.find(t => t.value === viewingRecurso?.tipo_recurso)?.label} | 
+              Estado: {viewingRecurso?.detran_estado || 'Nacional'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="bg-muted/50 p-4 rounded-lg">
+              <h4 className="font-semibold mb-2">Conteúdo do Recurso:</h4>
+              <pre className="whitespace-pre-wrap text-sm font-mono bg-background p-4 rounded border max-h-[400px] overflow-y-auto">
+                {viewingRecurso?.conteudo}
+              </pre>
+            </div>
+
+            {viewingRecurso?.argumentos_chave?.length ? (
+              <div>
+                <h4 className="font-semibold mb-2">Argumentos-Chave:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {viewingRecurso.argumentos_chave.map((arg, i) => (
+                    <Badge key={i} variant="secondary">{arg}</Badge>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {viewingRecurso?.observacoes && (
+              <div>
+                <h4 className="font-semibold mb-2">Observações:</h4>
+                <p className="text-muted-foreground">{viewingRecurso.observacoes}</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            {viewingRecurso?.status_aprovacao === 'pendente' && (
+              <>
+                <Button
+                  variant="outline"
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={() => {
+                    aprovarMutation.mutate({ id: viewingRecurso.id, status: 'rejeitado' });
+                    setViewingRecurso(null);
+                  }}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Rejeitar
+                </Button>
+                <Button
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    aprovarMutation.mutate({ id: viewingRecurso.id, status: 'aprovado', is_global: true });
+                    setViewingRecurso(null);
+                  }}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Aprovar para Base Global
+                </Button>
+              </>
+            )}
+            {viewingRecurso?.status_aprovacao !== 'pendente' && (
+              <Button variant="outline" onClick={() => setViewingRecurso(null)}>
+                Fechar
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

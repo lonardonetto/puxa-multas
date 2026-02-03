@@ -1270,7 +1270,9 @@ export type Database = {
           is_global: boolean | null
           observacoes: string | null
           organization_id: string | null
+          recurso_origem_id: string | null
           resultado: string | null
+          status_aprovacao: string | null
           tipo_recurso: string
           updated_at: string | null
         }
@@ -1285,7 +1287,9 @@ export type Database = {
           is_global?: boolean | null
           observacoes?: string | null
           organization_id?: string | null
+          recurso_origem_id?: string | null
           resultado?: string | null
+          status_aprovacao?: string | null
           tipo_recurso: string
           updated_at?: string | null
         }
@@ -1300,7 +1304,9 @@ export type Database = {
           is_global?: boolean | null
           observacoes?: string | null
           organization_id?: string | null
+          recurso_origem_id?: string | null
           resultado?: string | null
+          status_aprovacao?: string | null
           tipo_recurso?: string
           updated_at?: string | null
         }
@@ -1310,6 +1316,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recursos_conhecimento_recurso_origem_id_fkey"
+            columns: ["recurso_origem_id"]
+            isOneToOne: false
+            referencedRelation: "recursos"
             referencedColumns: ["id"]
           },
         ]
