@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import { supabase } from '../../lib/supabase';
 import RichTextEditor from '../contracts/RichTextEditor';
 
@@ -36,6 +37,7 @@ export default function VisualizadorRecurso({
   const [concluindo, setConcluindo] = useState(false);
   const [salvandoPDF, setSalvandoPDF] = useState(false);
   const [etapaConclusao, setEtapaConclusao] = useState<'gerando' | 'salvando' | 'concluido'>('gerando');
+  const pdfContainerRef = useRef<HTMLDivElement>(null);
 
   // Extrair texto puro do HTML para copiar e para o PDF
   const extrairTextoPuro = (html: string) => {
@@ -104,45 +106,96 @@ export default function VisualizadorRecurso({
   };
 
   const gerarPDF = async (): Promise<Blob> => {
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
+    // Criar container temporário invisível para renderizar o HTML
+    const container = document.createElement('div');
+    container.style.cssText = `
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      width: 210mm;
+      padding: 25mm 20mm;
+      background: white;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      color: #000;
+    `;
+    
+    // Adicionar estilos inline para formatação
+    container.innerHTML = `
+      <style>
+        * { box-sizing: border-box; }
+        p { margin-bottom: 12px; text-align: justify; }
+        strong, b { font-weight: bold; }
+        em, i { font-style: italic; }
+        u { text-decoration: underline; }
+        hr { margin: 20px 0; border: none; border-top: 1px solid #999; }
+      </style>
+      ${textoEditado}
+    `;
+    
+    document.body.appendChild(container);
 
-    // Configurar fonte
-    doc.setFont('times', 'normal');
-    doc.setFontSize(12);
+    try {
+      // Renderizar HTML para canvas
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: 794, // A4 width in pixels at 96dpi
+      });
 
-    // Margens
-    const marginLeft = 25;
-    const marginTop = 30;
-    const pageWidth = 210;
-    const pageHeight = 297;
-    const maxWidth = pageWidth - marginLeft * 2;
-    const lineHeight = 7;
-    
-    // Extrair texto puro do HTML para o PDF
-    const textoPuro = extrairTextoPuro(textoEditado);
-    
-    // Quebrar texto em linhas
-    const lines = doc.splitTextToSize(textoPuro, maxWidth);
-    
-    let y = marginTop;
-    
-    for (let i = 0; i < lines.length; i++) {
-      // Nova página se necessário
-      if (y > pageHeight - 30) {
-        doc.addPage();
-        y = marginTop;
-      }
+      // Criar PDF
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const imgWidth = pageWidth - 20; // margens de 10mm cada lado
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      doc.text(lines[i], marginLeft, y);
-      y += lineHeight;
-    }
+      // Se a imagem é maior que uma página, dividir em múltiplas páginas
+      let heightLeft = imgHeight;
+      let position = 10; // margem superior
+      const marginLeft = 10;
 
-    return doc.output('blob');
+      // Primeira página
+      doc.addImage(
+        canvas.toDataURL('image/jpeg', 0.95),
+        'JPEG',
+        marginLeft,
+        position,
+        imgWidth,
+        imgHeight
+      );
+      heightLeft -= (pageHeight - 20); // descontar margens
+
+      // Páginas adicionais se necessário
+      while (heightLeft > 0) {
+        doc.addPage();
+        position = -(pageHeight - 20) * (Math.ceil((imgHeight - heightLeft) / (pageHeight - 20))) + 10;
+        doc.addImage(
+          canvas.toDataURL('image/jpeg', 0.95),
+          'JPEG',
+          marginLeft,
+          position,
+          imgWidth,
+          imgHeight
+        );
+        heightLeft -= (pageHeight - 20);
+      }
+
+      return doc.output('blob');
+    } finally {
+      // Remover container temporário
+      document.body.removeChild(container);
+    }
   };
+
 
   const handleConcluir = async () => {
     setConcluindo(true);
