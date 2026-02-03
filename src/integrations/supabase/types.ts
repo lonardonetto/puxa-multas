@@ -777,6 +777,7 @@ export type Database = {
           numero_resolucao: string | null
           palavras_chave: string[] | null
           tipo: string
+          tipo_conteudo: string | null
           titulo: string
           updated_at: string | null
         }
@@ -794,6 +795,7 @@ export type Database = {
           numero_resolucao?: string | null
           palavras_chave?: string[] | null
           tipo: string
+          tipo_conteudo?: string | null
           titulo: string
           updated_at?: string | null
         }
@@ -811,6 +813,7 @@ export type Database = {
           numero_resolucao?: string | null
           palavras_chave?: string[] | null
           tipo?: string
+          tipo_conteudo?: string | null
           titulo?: string
           updated_at?: string | null
         }

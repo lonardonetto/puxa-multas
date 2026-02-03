@@ -234,15 +234,52 @@ serve(async (req) => {
 
     console.log('Recursos deferidos encontrados na base:', recursosDeferidos?.length || 0);
 
-    // Buscar legislação da base (CTB e CONTRAN)
-    const { data: legislacaoBase } = await supabase
+    // Buscar TODA legislação da base (CTB, CONTRAN e Jurisprudências)
+    // Primeiro buscar legislação relacionada ao código da infração
+    const codigoPrefix = dados.codigoInfracao?.substring(0, 3) || '';
+    
+    // Buscar legislação específica para a infração + legislação geral
+    const { data: legislacaoRelevante } = await supabase
+      .from('legislacao_base')
+      .select('tipo, titulo, conteudo, artigos_relacionados, palavras_chave, tipo_conteudo')
+      .eq('ativo', true)
+      .eq('is_global', true)
+      .or(`artigos_relacionados.cs.{${dados.codigoInfracao}},titulo.ilike.%${codigoPrefix}%`);
+
+    // Buscar jurisprudências relevantes
+    const { data: jurisprudencias } = await supabase
       .from('legislacao_base')
       .select('tipo, titulo, conteudo, artigos_relacionados, palavras_chave')
       .eq('ativo', true)
       .eq('is_global', true)
-      .limit(20);
+      .eq('tipo', 'jurisprudencia');
 
-    console.log('Legislação encontrada na base:', legislacaoBase?.length || 0);
+    // Buscar CTB e CONTRAN gerais (principais artigos)
+    const { data: legislacaoGeral } = await supabase
+      .from('legislacao_base')
+      .select('tipo, titulo, conteudo, artigos_relacionados, palavras_chave')
+      .eq('ativo', true)
+      .eq('is_global', true)
+      .in('tipo', ['ctb', 'contran']);
+
+    // Combinar legislação (relevante + geral, sem duplicatas)
+    const legislacaoIds = new Set<string>();
+    const legislacaoBase: any[] = [];
+    
+    [legislacaoRelevante, jurisprudencias, legislacaoGeral].forEach(list => {
+      list?.forEach(item => {
+        const key = item.titulo;
+        if (!legislacaoIds.has(key)) {
+          legislacaoIds.add(key);
+          legislacaoBase.push(item);
+        }
+      });
+    });
+
+    console.log('Legislação total encontrada:', legislacaoBase.length);
+    console.log('- Relevante para infração:', legislacaoRelevante?.length || 0);
+    console.log('- Jurisprudências:', jurisprudencias?.length || 0);
+    console.log('- CTB/CONTRAN geral:', legislacaoGeral?.length || 0);
 
     // ANALISAR AIT COM IA (se enviado)
     let analiseAit: any = null;
@@ -255,25 +292,32 @@ serve(async (req) => {
     const template = templates?.[0];
     const fundamentosText = fundamentos?.map(f => `• ${f.titulo}: ${f.conteudo}`).join('\n\n') || '';
 
-    // Preparar legislação para o prompt
+    // Preparar legislação para o prompt - agora inclui jurisprudência
     let legislacaoTexto = '';
     if (legislacaoBase && legislacaoBase.length > 0) {
       const ctb = legislacaoBase.filter((l: any) => l.tipo === 'ctb');
       const contran = legislacaoBase.filter((l: any) => l.tipo === 'contran');
+      const jurisp = legislacaoBase.filter((l: any) => l.tipo === 'jurisprudencia');
       
       legislacaoTexto = `
-=== BASE DE LEGISLAÇÃO DISPONÍVEL ===
+=== BASE DE LEGISLAÇÃO COMPLETA DISPONÍVEL ===
 
-📖 CÓDIGO DE TRÂNSITO BRASILEIRO (CTB):
+📖 CÓDIGO DE TRÂNSITO BRASILEIRO (CTB) - ${ctb.length} artigos:
 ${ctb.map((l: any) => `
 • ${l.titulo}
-${l.conteudo?.substring(0, 1000)}${l.conteudo?.length > 1000 ? '...' : ''}
+${l.conteudo?.substring(0, 800)}${l.conteudo?.length > 800 ? '...' : ''}
 `).join('\n')}
 
-📜 RESOLUÇÕES DO CONTRAN:
+📜 RESOLUÇÕES DO CONTRAN - ${contran.length} resoluções:
 ${contran.map((l: any) => `
-• ${l.titulo}${l.numero_resolucao ? ` (${l.numero_resolucao})` : ''}
-${l.conteudo?.substring(0, 800)}${l.conteudo?.length > 800 ? '...' : ''}
+• ${l.titulo}
+${l.conteudo?.substring(0, 600)}${l.conteudo?.length > 600 ? '...' : ''}
+`).join('\n')}
+
+⚖️ JURISPRUDÊNCIA (STJ, STF, TJs) - ${jurisp.length} decisões:
+${jurisp.map((l: any) => `
+• ${l.titulo}
+${l.conteudo}
 `).join('\n')}
 ===
 
@@ -367,7 +411,7 @@ ${recursosDeferidos && recursosDeferidos.length > 0
   : 'Não há recursos deferidos anteriores para esta infração - seja criativo e use as melhores práticas jurídicas.'}
 
 ${legislacaoBase && legislacaoBase.length > 0 
-  ? `📚 IMPORTANTE: Utilize a BASE DE LEGISLAÇÃO fornecida acima (CTB e Resoluções CONTRAN) para fundamentar juridicamente o recurso. Cite os artigos específicos!`
+  ? `📚 IMPORTANTE: Utilize TODA a BASE DE LEGISLAÇÃO fornecida acima (CTB, Resoluções CONTRAN e JURISPRUDÊNCIA) para fundamentar juridicamente o recurso. Cite os artigos específicos, resoluções e decisões judiciais aplicáveis!`
   : ''}
 
 Por favor, CONTINUE o recurso acima gerando:
