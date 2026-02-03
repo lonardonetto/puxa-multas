@@ -5,6 +5,7 @@ import ModalDetalhesMulta from '../../components/rastreamento/ModalDetalhesMulta
 import ModalHistoricoConsultas from '../../components/rastreamento/ModalHistoricoConsultas';
 import ModalEditarVeiculo from '../../components/rastreamento/ModalEditarVeiculo';
 import ModalEditarMulta from '../../components/rastreamento/ModalEditarMulta';
+import ModalPreviewDadosVeiculo from '../../components/rastreamento/ModalPreviewDadosVeiculo';
 import ListaVeiculosCadastrados from '../../components/rastreamento/ListaVeiculosCadastrados';
 import { useClientes } from '../../hooks/useClientes';
 import { useVeiculos } from '../../hooks/useVeiculos';
@@ -60,6 +61,12 @@ export default function Rastreamento() {
     cliente_nome: string;
     cliente_documento: string | null;
   } | null>(null);
+  const [previewDadosAberto, setPreviewDadosAberto] = useState(false);
+  const [dadosVeiculoAPI, setDadosVeiculoAPI] = useState<{
+    dados: unknown;
+    veiculoId: string;
+    clienteId: string | null;
+  } | null>(null);
   const [formData, setFormData] = useState({
     nomeCliente: '',
     cpfCnpj: '',
@@ -69,6 +76,12 @@ export default function Rastreamento() {
     nomeEmpresa: '',
     numeroVeiculos: '',
   });
+
+  // Função para abrir o modal de preview com dados da API
+  const handleDadosVeiculoRecebidos = (dados: unknown, veiculoId: string, clienteId: string | null) => {
+    setDadosVeiculoAPI({ dados, veiculoId, clienteId });
+    setPreviewDadosAberto(true);
+  };
 
   // Função para navegar para recursos-ia com todos os dados completos
   const navegarParaRecursoIA = (multa: MultaRastreada) => {
@@ -542,6 +555,7 @@ export default function Rastreamento() {
           });
           setHistoricoModalAberto(true);
         }}
+        onDadosVeiculoRecebidos={handleDadosVeiculoRecebidos}
       />
 
       {/* Modal de Editar Veículo */}
@@ -788,6 +802,60 @@ export default function Rastreamento() {
           refresh();
         }}
       />
+
+      {/* Modal de Preview de Dados do Veículo */}
+      {dadosVeiculoAPI && currentOrganization && user && (
+        <ModalPreviewDadosVeiculo
+          aberto={previewDadosAberto}
+          onClose={() => {
+            setPreviewDadosAberto(false);
+            setDadosVeiculoAPI(null);
+          }}
+          dadosAPI={dadosVeiculoAPI.dados as {
+            dados_do_veiculo: {
+              uf: string;
+              cor: string;
+              marca: string;
+              placa: string;
+              chassi: string;
+              modelo: string;
+              renavam: string;
+              municipio: string;
+              anofabricacao: string;
+            };
+            restricoes_e_impedimentos: {
+              recall: string;
+              sinistro: string | null;
+              multa_renainf: string;
+              roubo_e_furto: string;
+              situacao_veiculo: string;
+              intencao_de_financiamento?: {
+                agente: string;
+                ncontrato: string;
+                nomedofinanciado: string;
+                documentofinanciado: string;
+              };
+            };
+            informacoes_tecnicas_e_adicionais: {
+              motor: string;
+              especie: string;
+              potencia: string;
+              cilindradas: string;
+              caixadecambio: string;
+              nomeproprietario: string;
+              quantidadedeeixos: string;
+              documentoproprietario: string;
+              capacidadedepassageiros: string;
+              tipodocumentoproprietario: string;
+            };
+          }}
+          veiculoId={dadosVeiculoAPI.veiculoId}
+          clienteId={dadosVeiculoAPI.clienteId}
+          organizationId={currentOrganization.id}
+          userId={user.id}
+          onSuccess={() => refresh()}
+        />
+      )}
     </div>
   );
 }
