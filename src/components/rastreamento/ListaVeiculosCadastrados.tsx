@@ -286,11 +286,14 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
         }
       } else if (dados && typeof dados === 'object') {
         // API retornou dados do veículo (consulta veicular completa)
-        // Verificar se tem dados_do_veiculo (estrutura de consulta veicular)
-        if ('dados_do_veiculo' in dados && dados.dados_do_veiculo) {
+        // A estrutura pode vir como { result: { dados_do_veiculo: {...} } } ou diretamente
+        const dadosVeiculo = dados.result || dados;
+        
+        if (dadosVeiculo && 'dados_do_veiculo' in dadosVeiculo && dadosVeiculo.dados_do_veiculo) {
           toast.success('Dados do veículo obtidos com sucesso!');
+          console.log('Abrindo modal com dados:', dadosVeiculo);
           // Notificar o componente pai para exibir modal de preview
-          onDadosVeiculoRecebidos?.(dados, veiculo.id, veiculo.cliente_id);
+          onDadosVeiculoRecebidos?.(dadosVeiculo, veiculo.id, veiculo.cliente_id);
         } else {
           toast.info('Consulta realizada. Nenhuma multa pendente encontrada.');
         }
