@@ -26,6 +26,9 @@ interface DadosVeiculoAPI {
   };
   restricoes_e_impedimentos?: {
     situacao_veiculo?: string;
+    multa_renainf?: string;
+    roubo_e_furto?: string;
+    recall?: string;
   };
 }
 
@@ -36,112 +39,142 @@ interface Props {
   onComplete: (dadosAPI: DadosVeiculoAPI | null) => void;
 }
 
+// Etapas com tempos maiores para dar tempo da API responder
 const etapas = [
-  { id: 1, texto: 'Conectando ao sistema...', icone: 'ri-wifi-line', duracao: 800 },
-  { id: 2, texto: 'Buscando dados do veículo...', icone: 'ri-car-line', duracao: 1200, isAPICall: true },
-  { id: 3, texto: 'Consultando base do DETRAN...', icone: 'ri-building-2-line', duracao: 1500 },
-  { id: 4, texto: 'Verificando multas pendentes...', icone: 'ri-file-search-line', duracao: 1500 },
-  { id: 5, texto: 'Analisando restrições...', icone: 'ri-shield-check-line', duracao: 1200 },
-  { id: 6, texto: 'Finalizando cadastro...', icone: 'ri-check-double-line', duracao: 1000 },
+  { id: 1, texto: 'Conectando ao sistema...', icone: 'ri-wifi-line', duracao: 1500 },
+  { id: 2, texto: 'Autenticando credenciais...', icone: 'ri-key-2-line', duracao: 2000 },
+  { id: 3, texto: 'Consultando base do DETRAN...', icone: 'ri-building-2-line', duracao: 2500 },
+  { id: 4, texto: 'Buscando dados do veículo...', icone: 'ri-car-line', duracao: 2500 },
+  { id: 5, texto: 'Verificando multas pendentes...', icone: 'ri-file-search-line', duracao: 2000 },
+  { id: 6, texto: 'Analisando restrições...', icone: 'ri-shield-check-line', duracao: 1500 },
+  { id: 7, texto: 'Finalizando cadastro...', icone: 'ri-check-double-line', duracao: 1500 },
 ];
 
 export default function AnimacaoRastreamento({ isOpen, placa, tipoPlano, onComplete }: Props) {
   const [etapaAtual, setEtapaAtual] = useState(0);
   const [progresso, setProgresso] = useState(0);
   const [concluido, setConcluido] = useState(false);
+  const [aguardandoAPI, setAguardandoAPI] = useState(false);
+  
+  // Refs para controlar estados
   const dadosAPIRef = useRef<DadosVeiculoAPI | null>(null);
-  const apiChamadaRef = useRef(false);
   const apiConcluidaRef = useRef(false);
-  const onCompleteChamadoRef = useRef(false);
-  const animacaoIniciadaRef = useRef(false);
   const animacaoConcluidaRef = useRef(false);
+  const onCompleteChamadoRef = useRef(false);
+  const processandoRef = useRef(false);
 
+  // Função para verificar se pode finalizar
+  const tentarFinalizar = () => {
+    if (onCompleteChamadoRef.current) return;
+    
+    // Só finaliza quando AMBOS terminarem
+    if (animacaoConcluidaRef.current && apiConcluidaRef.current) {
+      onCompleteChamadoRef.current = true;
+      console.log('✅ Finalizando com dados:', dadosAPIRef.current);
+      
+      // Delay final para mostrar a mensagem de sucesso
+      setTimeout(() => {
+        onComplete(dadosAPIRef.current);
+      }, 1000);
+    } else if (animacaoConcluidaRef.current && !apiConcluidaRef.current) {
+      // Animação terminou mas API ainda não retornou
+      setAguardandoAPI(true);
+    }
+  };
+
+  // Efeito principal
   useEffect(() => {
     if (!isOpen) {
-      // Reset quando fecha
+      // Reset completo quando fecha
       setEtapaAtual(0);
       setProgresso(0);
       setConcluido(false);
+      setAguardandoAPI(false);
       dadosAPIRef.current = null;
-      apiChamadaRef.current = false;
       apiConcluidaRef.current = false;
-      onCompleteChamadoRef.current = false;
-      animacaoIniciadaRef.current = false;
       animacaoConcluidaRef.current = false;
+      onCompleteChamadoRef.current = false;
+      processandoRef.current = false;
       return;
     }
 
-    // Evitar re-execução se já iniciou
-    if (animacaoIniciadaRef.current) return;
-    animacaoIniciadaRef.current = true;
+    // Evitar re-execução
+    if (processandoRef.current) return;
+    processandoRef.current = true;
 
+    // Chamar API IMEDIATAMENTE ao abrir
+    const buscarDadosAPI = async () => {
+      try {
+        const placaFormatada = placa.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        console.log('🚗 Iniciando busca para placa:', placaFormatada);
+        
+        const { data, error } = await supabase.functions.invoke('consultar-veiculo', {
+          body: { placa: placaFormatada }
+        });
+        
+        if (error) {
+          console.error('❌ Erro na API:', error);
+        } else if (data?.result) {
+          console.log('✅ Dados recebidos:', data.result);
+          dadosAPIRef.current = data.result;
+        } else {
+          console.warn('⚠️ Nenhum dado retornado');
+        }
+      } catch (err) {
+        console.error('❌ Erro ao buscar dados:', err);
+      } finally {
+        apiConcluidaRef.current = true;
+        console.log('📡 API concluída, aguardandoAPI:', aguardandoAPI);
+        
+        // Se já estava aguardando, finalizar agora
+        if (animacaoConcluidaRef.current) {
+          setAguardandoAPI(false);
+          tentarFinalizar();
+        }
+      }
+    };
+
+    // Iniciar busca da API
+    buscarDadosAPI();
+
+    // Executar animação das etapas
     let etapaIndex = 0;
     let progressoAtual = 0;
 
-    // Função para verificar se pode chamar onComplete
-    const tentarChamarOnComplete = () => {
-      // Só chama quando AMBOS estão prontos: animação concluída E API retornou
-      if (animacaoConcluidaRef.current && apiConcluidaRef.current && !onCompleteChamadoRef.current) {
-        onCompleteChamadoRef.current = true;
-        console.log('Chamando onComplete com dados:', dadosAPIRef.current);
-        onComplete(dadosAPIRef.current);
-      }
-    };
-
-    const buscarDadosAPI = async () => {
-      if (apiChamadaRef.current) return;
-      apiChamadaRef.current = true;
-      
-      try {
-        console.log('Buscando dados para placa:', placa);
-        // Chamar a API CertaDoc para buscar dados do veículo
-        const { data, error } = await supabase.functions.invoke('consultar-veiculo', {
-          body: { placa: placa.toUpperCase().replace(/[^A-Z0-9]/g, '') }
-        });
-        
-        if (!error && data?.result) {
-          console.log('Dados recebidos da API:', data.result);
-          dadosAPIRef.current = data.result;
-        } else {
-          console.warn('Nenhum dado retornado da API ou erro:', error);
-        }
-      } catch (err) {
-        console.error('Erro ao buscar dados do veículo:', err);
-      } finally {
-        apiConcluidaRef.current = true;
-        tentarChamarOnComplete();
-      }
-    };
-
-    const avancarEtapa = () => {
+    const executarProximaEtapa = () => {
       if (etapaIndex < etapas.length) {
+        const etapa = etapas[etapaIndex];
         setEtapaAtual(etapaIndex + 1);
-        const incrementoProgresso = 100 / etapas.length;
-        progressoAtual += incrementoProgresso;
+        
+        const incremento = 100 / etapas.length;
+        progressoAtual += incremento;
         setProgresso(Math.min(progressoAtual, 100));
         
-        // Chamar API na etapa 2
-        if (etapas[etapaIndex].isAPICall) {
-          buscarDadosAPI();
-        }
+        etapaIndex++;
         
-        setTimeout(() => {
-          etapaIndex++;
-          avancarEtapa();
-        }, etapas[etapaIndex].duracao);
+        setTimeout(executarProximaEtapa, etapa.duracao);
       } else {
+        // Todas as etapas concluídas
         setConcluido(true);
         animacaoConcluidaRef.current = true;
-        // Aguardar 800ms para efeito visual, depois verificar se pode completar
-        setTimeout(() => {
-          tentarChamarOnComplete();
-        }, 800);
+        console.log('🎬 Animação concluída');
+        
+        // Tentar finalizar
+        tentarFinalizar();
       }
     };
 
-    // Iniciar após um pequeno delay
-    setTimeout(avancarEtapa, 300);
-  }, [isOpen, placa]); // Removido onComplete das deps para evitar re-execução
+    // Iniciar após pequeno delay
+    setTimeout(executarProximaEtapa, 500);
+  }, [isOpen, placa]);
+
+  // Efeito para quando API terminar enquanto aguardando
+  useEffect(() => {
+    if (aguardandoAPI && apiConcluidaRef.current) {
+      setAguardandoAPI(false);
+      tentarFinalizar();
+    }
+  }, [aguardandoAPI]);
 
   if (!isOpen) return null;
 
@@ -231,8 +264,19 @@ export default function AnimacaoRastreamento({ isOpen, placa, tipoPlano, onCompl
             })}
           </div>
 
+          {/* Mensagem de aguardando API */}
+          {aguardandoAPI && (
+            <div className="flex items-center justify-center gap-3 p-4 bg-blue-100 border border-blue-300 rounded-xl animate-fade-in">
+              <i className="ri-loader-4-line animate-spin text-blue-600 text-2xl"></i>
+              <div>
+                <p className="font-bold text-blue-800">Recebendo dados do DETRAN...</p>
+                <p className="text-sm text-blue-600">Aguarde mais alguns segundos</p>
+              </div>
+            </div>
+          )}
+
           {/* Mensagem de conclusão */}
-          {concluido && (
+          {concluido && !aguardandoAPI && (
             <div className="flex items-center justify-center gap-3 p-4 bg-green-100 border border-green-300 rounded-xl animate-fade-in">
               <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
                 <i className="ri-check-line text-white text-xl"></i>
@@ -248,9 +292,11 @@ export default function AnimacaoRastreamento({ isOpen, placa, tipoPlano, onCompl
         {/* Footer */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
           <p className="text-xs text-center text-gray-500">
-            {concluido 
-              ? 'Você receberá notificações de novas multas automaticamente'
-              : 'Por favor, aguarde enquanto configuramos o rastreamento...'
+            {aguardandoAPI 
+              ? 'Finalizando consulta ao DETRAN...'
+              : concluido 
+                ? 'Você receberá notificações de novas multas automaticamente'
+                : 'Por favor, aguarde enquanto configuramos o rastreamento...'
             }
           </p>
         </div>
