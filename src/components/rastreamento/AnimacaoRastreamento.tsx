@@ -1,36 +1,87 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { supabase } from '../../lib/supabase';
+
+interface DadosVeiculoAPI {
+  dados_do_veiculo?: {
+    uf?: string;
+    cor?: string;
+    marca?: string;
+    placa?: string;
+    chassi?: string;
+    modelo?: string;
+    renavam?: string;
+    municipio?: string;
+    anofabricacao?: string;
+  };
+  informacoes_tecnicas_e_adicionais?: {
+    motor?: string;
+    especie?: string;
+    potencia?: string;
+    cilindradas?: string;
+    caixadecambio?: string;
+    nomeproprietario?: string;
+    quantidadedeeixos?: string;
+    documentoproprietario?: string;
+    capacidadedepassageiros?: string;
+  };
+  restricoes_e_impedimentos?: {
+    situacao_veiculo?: string;
+  };
+}
 
 interface Props {
   isOpen: boolean;
   placa: string;
   tipoPlano: 'mensal' | 'anual';
-  onComplete: () => void;
+  onComplete: (dadosAPI: DadosVeiculoAPI | null) => void;
 }
 
 const etapas = [
-  { id: 1, texto: 'Conectando ao sistema...', icone: 'ri-wifi-line', duracao: 1000 },
-  { id: 2, texto: 'Buscando dados do veículo...', icone: 'ri-car-line', duracao: 1500 },
-  { id: 3, texto: 'Consultando base do DETRAN...', icone: 'ri-building-2-line', duracao: 2000 },
-  { id: 4, texto: 'Verificando multas pendentes...', icone: 'ri-file-search-line', duracao: 2000 },
-  { id: 5, texto: 'Analisando restrições...', icone: 'ri-shield-check-line', duracao: 1500 },
-  { id: 6, texto: 'Finalizando cadastro...', icone: 'ri-check-double-line', duracao: 2000 },
+  { id: 1, texto: 'Conectando ao sistema...', icone: 'ri-wifi-line', duracao: 800 },
+  { id: 2, texto: 'Buscando dados do veículo...', icone: 'ri-car-line', duracao: 1200, isAPICall: true },
+  { id: 3, texto: 'Consultando base do DETRAN...', icone: 'ri-building-2-line', duracao: 1500 },
+  { id: 4, texto: 'Verificando multas pendentes...', icone: 'ri-file-search-line', duracao: 1500 },
+  { id: 5, texto: 'Analisando restrições...', icone: 'ri-shield-check-line', duracao: 1200 },
+  { id: 6, texto: 'Finalizando cadastro...', icone: 'ri-check-double-line', duracao: 1000 },
 ];
 
 export default function AnimacaoRastreamento({ isOpen, placa, tipoPlano, onComplete }: Props) {
   const [etapaAtual, setEtapaAtual] = useState(0);
   const [progresso, setProgresso] = useState(0);
   const [concluido, setConcluido] = useState(false);
+  const dadosAPIRef = useRef<DadosVeiculoAPI | null>(null);
+  const apiChamadaRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) {
       setEtapaAtual(0);
       setProgresso(0);
       setConcluido(false);
+      dadosAPIRef.current = null;
+      apiChamadaRef.current = false;
       return;
     }
 
     let etapaIndex = 0;
     let progressoAtual = 0;
+
+    const buscarDadosAPI = async () => {
+      if (apiChamadaRef.current) return;
+      apiChamadaRef.current = true;
+      
+      try {
+        // Chamar a API CertaDoc para buscar dados do veículo
+        const { data, error } = await supabase.functions.invoke('consultar-veiculo', {
+          body: { placa: placa.toUpperCase().replace(/[^A-Z0-9]/g, '') }
+        });
+        
+        if (!error && data?.result) {
+          dadosAPIRef.current = data.result;
+        }
+      } catch (err) {
+        console.error('Erro ao buscar dados do veículo:', err);
+      }
+    };
 
     const avancarEtapa = () => {
       if (etapaIndex < etapas.length) {
@@ -39,6 +90,11 @@ export default function AnimacaoRastreamento({ isOpen, placa, tipoPlano, onCompl
         progressoAtual += incrementoProgresso;
         setProgresso(Math.min(progressoAtual, 100));
         
+        // Chamar API na etapa 2
+        if (etapas[etapaIndex].isAPICall) {
+          buscarDadosAPI();
+        }
+        
         setTimeout(() => {
           etapaIndex++;
           avancarEtapa();
@@ -46,14 +102,14 @@ export default function AnimacaoRastreamento({ isOpen, placa, tipoPlano, onCompl
       } else {
         setConcluido(true);
         setTimeout(() => {
-          onComplete();
-        }, 1000);
+          onComplete(dadosAPIRef.current);
+        }, 800);
       }
     };
 
     // Iniciar após um pequeno delay
-    setTimeout(avancarEtapa, 500);
-  }, [isOpen, onComplete]);
+    setTimeout(avancarEtapa, 300);
+  }, [isOpen, placa, onComplete]);
 
   if (!isOpen) return null;
 
@@ -99,7 +155,6 @@ export default function AnimacaoRastreamento({ isOpen, placa, tipoPlano, onCompl
             {etapas.map((etapa, index) => {
               const isAtiva = etapaAtual === index + 1;
               const isConcluida = etapaAtual > index + 1;
-              const isPendente = etapaAtual < index + 1;
 
               return (
                 <div 

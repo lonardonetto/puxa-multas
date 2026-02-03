@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMultasRastreamento, MultaRastreada } from '../../hooks/useMultasRastreamento';
 import ModalDetalhesMulta from '../../components/rastreamento/ModalDetalhesMulta';
@@ -8,7 +8,7 @@ import ModalEditarMulta from '../../components/rastreamento/ModalEditarMulta';
 import ModalPreviewDadosVeiculo from '../../components/rastreamento/ModalPreviewDadosVeiculo';
 import ModalSelecionarPlanoRastreamento from '../../components/rastreamento/ModalSelecionarPlanoRastreamento';
 import AnimacaoRastreamento from '../../components/rastreamento/AnimacaoRastreamento';
-import ListaVeiculosCadastrados from '../../components/rastreamento/ListaVeiculosCadastrados';
+import ListaVeiculosCadastrados, { ListaVeiculosRef } from '../../components/rastreamento/ListaVeiculosCadastrados';
 import { useClientes } from '../../hooks/useClientes';
 import { useVeiculos } from '../../hooks/useVeiculos';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -36,6 +36,8 @@ export default function Rastreamento() {
   const { user } = useAuth();
   const { balance, checkBalance, deductCredits } = useWallet();
   
+  // Ref para a lista de veículos
+  const listaVeiculosRef = useRef<ListaVeiculosRef>(null);
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [filtroTipo, setFiltroTipo] = useState('todos');
   const [busca, setBusca] = useState('');
@@ -335,8 +337,34 @@ export default function Rastreamento() {
     setAnimacaoAberta(true);
   };
 
-  // Função chamada quando a animação termina
-  const handleAnimacaoComplete = async () => {
+  // Função chamada quando a animação termina (com dados da API)
+  const handleAnimacaoComplete = async (dadosAPI: {
+    dados_do_veiculo?: {
+      uf?: string;
+      cor?: string;
+      marca?: string;
+      placa?: string;
+      chassi?: string;
+      modelo?: string;
+      renavam?: string;
+      municipio?: string;
+      anofabricacao?: string;
+    };
+    informacoes_tecnicas_e_adicionais?: {
+      motor?: string;
+      especie?: string;
+      potencia?: string;
+      cilindradas?: string;
+      caixadecambio?: string;
+      nomeproprietario?: string;
+      quantidadedeeixos?: string;
+      documentoproprietario?: string;
+      capacidadedepassageiros?: string;
+    };
+    restricoes_e_impedimentos?: {
+      situacao_veiculo?: string;
+    };
+  } | null) => {
     if (!dadosPendentes || !currentOrganization || !planoRastreamentoSelecionado) {
       setAnimacaoAberta(false);
       return;
@@ -363,21 +391,41 @@ export default function Rastreamento() {
         vencimento.setFullYear(vencimento.getFullYear() + 1);
       }
 
-      // Criar os veículos com rastreamento ativo
-      const veiculosData = placasValidas.map(p => ({
-        placa: p.placa.toUpperCase().replace(/[^A-Z0-9]/g, ''),
-        modelo: p.modelo || 'Não informado',
-        ano: p.ano || null,
-        renavam: p.renavam || null,
-        cliente_id: clienteIdFinal,
-        rastreamento_ativo: true,
-        rastreamento_inicio: new Date().toISOString(),
-        rastreamento_tipo: tipo,
-        rastreamento_valor: preco,
-        rastreamento_vencimento: vencimento.toISOString().split('T')[0],
-        rastreamento_notificado: false,
-        ativo: true,
-      }));
+      // Criar os veículos com rastreamento ativo, usando dados da API se disponíveis
+      const veiculosData = placasValidas.map((p, index) => {
+        // Usar dados da API apenas para o primeiro veículo (quando há apenas 1)
+        const usarDadosAPI = index === 0 && dadosAPI?.dados_do_veiculo;
+        const dadosVeiculo = dadosAPI?.dados_do_veiculo;
+        const dadosTecnicos = dadosAPI?.informacoes_tecnicas_e_adicionais;
+        const restricoes = dadosAPI?.restricoes_e_impedimentos;
+
+        return {
+          placa: p.placa.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+          modelo: usarDadosAPI && dadosVeiculo?.modelo ? dadosVeiculo.modelo : (p.modelo || 'Não informado'),
+          ano: usarDadosAPI && dadosVeiculo?.anofabricacao ? dadosVeiculo.anofabricacao : (p.ano || null),
+          renavam: usarDadosAPI && dadosVeiculo?.renavam ? dadosVeiculo.renavam : (p.renavam || null),
+          chassi: usarDadosAPI && dadosVeiculo?.chassi ? dadosVeiculo.chassi : null,
+          cor: usarDadosAPI && dadosVeiculo?.cor ? dadosVeiculo.cor : null,
+          uf: usarDadosAPI && dadosVeiculo?.uf ? dadosVeiculo.uf : null,
+          municipio: usarDadosAPI && dadosVeiculo?.municipio ? dadosVeiculo.municipio : null,
+          motor: usarDadosAPI && dadosTecnicos?.motor ? dadosTecnicos.motor : null,
+          especie: usarDadosAPI && dadosTecnicos?.especie ? dadosTecnicos.especie : null,
+          potencia: usarDadosAPI && dadosTecnicos?.potencia ? dadosTecnicos.potencia : null,
+          cilindradas: usarDadosAPI && dadosTecnicos?.cilindradas ? dadosTecnicos.cilindradas : null,
+          caixa_cambio: usarDadosAPI && dadosTecnicos?.caixadecambio ? dadosTecnicos.caixadecambio : null,
+          quantidade_eixos: usarDadosAPI && dadosTecnicos?.quantidadedeeixos ? dadosTecnicos.quantidadedeeixos : null,
+          capacidade_passageiros: usarDadosAPI && dadosTecnicos?.capacidadedepassageiros ? dadosTecnicos.capacidadedepassageiros : null,
+          situacao_veiculo: usarDadosAPI && restricoes?.situacao_veiculo ? restricoes.situacao_veiculo : null,
+          cliente_id: clienteIdFinal,
+          rastreamento_ativo: true,
+          rastreamento_inicio: new Date().toISOString(),
+          rastreamento_tipo: tipo,
+          rastreamento_valor: preco,
+          rastreamento_vencimento: vencimento.toISOString().split('T')[0],
+          rastreamento_notificado: false,
+          ativo: true,
+        };
+      });
 
       if (veiculosData.length === 1) {
         await createVeiculo(veiculosData[0]);
@@ -390,7 +438,10 @@ export default function Rastreamento() {
       setDadosPendentes(null);
       setPlanoRastreamentoSelecionado(null);
       fecharModal();
+      
+      // Atualizar lista de veículos e multas
       refresh();
+      listaVeiculosRef.current?.refresh();
       
     } catch (error) {
       console.error('Erro ao ativar rastreamento:', error);
@@ -772,7 +823,8 @@ export default function Rastreamento() {
 
       {/* Lista de Veículos Cadastrados com opção de Rastrear Multas */}
       <ListaVeiculosCadastrados 
-        onRefreshMultas={refresh} 
+        ref={listaVeiculosRef}
+        onRefreshMultas={refresh}
         onEditVeiculo={(veiculo) => {
           setVeiculoParaEditar({
             id: veiculo.id,
