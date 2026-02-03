@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCurrentPlan } from '../../hooks/useCurrentPlan';
 import { supabase } from '../../lib/supabase';
+import logoCentralMulta from '@/assets/logo-central-multa.png';
 
 interface SidebarProps {
   darkMode: boolean;
@@ -76,17 +77,24 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
     { path: '/planos', icon: 'ri-price-tag-3-line', label: 'Planos' },
   ];
 
+  // Cores do tema Central da Multa
+  const bgPrimary = darkMode ? 'bg-[#1A1A1A]' : 'bg-[#1F1F1F]';
+  const bgHover = darkMode ? 'hover:bg-[#2D2D2D]' : 'hover:bg-[#2D2D2D]';
+  const bgActive = darkMode ? 'bg-[#2D2D2D]' : 'bg-[#2D2D2D]';
+  const borderColor = darkMode ? 'border-[#333]' : 'border-[#333]';
+  const subMenuBg = darkMode ? 'bg-[#252525]' : 'bg-[#252525]';
+
   return (
-    <aside className={`w-72 ${darkMode ? 'bg-[#0D1B2A]' : 'bg-[#1E3A8A]'} h-screen fixed left-0 top-0 flex flex-col transition-all duration-300 z-[60] ${isCollapsed ? '-translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}`}>
-      <div className={`py-5 px-4 border-b ${darkMode ? 'border-[#1B2838]' : 'border-blue-700'} flex items-center justify-between`}>
+    <aside className={`w-72 ${bgPrimary} h-screen fixed left-0 top-0 flex flex-col transition-all duration-300 z-[60] ${isCollapsed ? '-translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}`}>
+      <div className={`py-5 px-4 border-b ${borderColor} flex items-center justify-between`}>
         <img
-          src="https://static.readdy.ai/image/c2ffb6ae5c67efb323410a310538f1c7/407ecee98bb0a50e8684ee592ed4bf26.png"
-          alt="Logo"
-          className="h-8 w-auto"
+          src={logoCentralMulta}
+          alt="Central da Multa"
+          className="h-12 w-auto"
         />
         <button
           onClick={toggleDarkMode}
-          className={`p-2 rounded-lg ${darkMode ? 'bg-[#1B2838] text-yellow-400' : 'bg-blue-700 text-white'} hover:opacity-80 transition-all cursor-pointer`}
+          className={`p-2 rounded-lg bg-[#2D2D2D] text-primary hover:bg-[#3D3D3D] transition-all cursor-pointer`}
           title={darkMode ? 'Modo Claro' : 'Modo Noturno'}
         >
           <i className={`${darkMode ? 'ri-sun-line' : 'ri-moon-line'} text-lg`}></i>
@@ -98,10 +106,10 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
           <Link
             key={item.path}
             to={item.path}
-            className={`flex items-center px-4 py-2 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors relative ${location.pathname === item.path ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+            className={`flex items-center px-4 py-2.5 text-gray-200 ${bgHover} transition-colors relative ${location.pathname === item.path ? `${bgActive} border-l-4 border-primary` : 'border-l-4 border-transparent'
               }`}
           >
-            <i className={`${item.icon} text-lg mr-3`}></i>
+            <i className={`${item.icon} text-lg mr-3 ${location.pathname === item.path ? 'text-primary' : ''}`}></i>
             <span className="text-sm font-medium">{item.label}</span>
           </Link>
         ))}
@@ -110,23 +118,23 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
         <div>
           <button
             onClick={() => setAtendimentoOpen(!atendimentoOpen)}
-            className={`w-full flex items-center justify-between px-4 py-2 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname.startsWith('/atendimento') ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+            className={`w-full flex items-center justify-between px-4 py-2.5 text-gray-200 ${bgHover} transition-colors ${location.pathname.startsWith('/atendimento') ? `${bgActive} border-l-4 border-primary` : 'border-l-4 border-transparent'
               }`}
           >
             <div className="flex items-center">
-              <i className="ri-customer-service-2-line text-lg mr-3"></i>
+              <i className={`ri-customer-service-2-line text-lg mr-3 ${location.pathname.startsWith('/atendimento') ? 'text-primary' : ''}`}></i>
               <span className="text-sm font-medium">Atendimento</span>
             </div>
             <i className={`ri-arrow-${atendimentoOpen ? 'up' : 'down'}-s-line text-base transition-transform`}></i>
           </button>
 
           {atendimentoOpen && (
-            <div className={darkMode ? 'bg-[#1B2838]/50' : 'bg-blue-800/50'}>
+            <div className={subMenuBg}>
               {atendimentoItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center px-4 py-2 pl-10 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname === item.path ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+                  className={`flex items-center px-4 py-2 pl-10 text-gray-300 ${bgHover} transition-colors ${location.pathname === item.path ? `${bgActive} text-primary` : ''
                     }`}
                 >
                   <i className={`${item.icon} text-base mr-3`}></i>
@@ -141,23 +149,23 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
         <div>
           <button
             onClick={() => setCadastroOpen(!cadastroOpen)}
-            className={`w-full flex items-center justify-between px-4 py-2 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname.startsWith('/cadastro') ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+            className={`w-full flex items-center justify-between px-4 py-2.5 text-gray-200 ${bgHover} transition-colors ${location.pathname.startsWith('/cadastro') ? `${bgActive} border-l-4 border-primary` : 'border-l-4 border-transparent'
               }`}
           >
             <div className="flex items-center">
-              <i className="ri-user-settings-line text-lg mr-3"></i>
+              <i className={`ri-user-settings-line text-lg mr-3 ${location.pathname.startsWith('/cadastro') ? 'text-primary' : ''}`}></i>
               <span className="text-sm font-medium">Cadastro de Clientes</span>
             </div>
             <i className={`ri-arrow-${cadastroOpen ? 'up' : 'down'}-s-line text-base transition-transform`}></i>
           </button>
 
           {cadastroOpen && (
-            <div className={darkMode ? 'bg-[#1B2838]/50' : 'bg-blue-800/50'}>
+            <div className={subMenuBg}>
               {cadastroItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center px-4 py-2 pl-10 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname === item.path ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+                  className={`flex items-center px-4 py-2 pl-10 text-gray-300 ${bgHover} transition-colors ${location.pathname === item.path ? `${bgActive} text-primary` : ''
                     }`}
                 >
                   <i className={`${item.icon} text-base mr-3`}></i>
@@ -172,23 +180,23 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
         <div>
           <button
             onClick={() => setConfigOpen(!configOpen)}
-            className={`w-full flex items-center justify-between px-4 py-2 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname.startsWith('/servicos') ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+            className={`w-full flex items-center justify-between px-4 py-2.5 text-gray-200 ${bgHover} transition-colors ${location.pathname.startsWith('/servicos') ? `${bgActive} border-l-4 border-primary` : 'border-l-4 border-transparent'
               }`}
           >
             <div className="flex items-center">
-              <i className="ri-settings-4-line text-lg mr-3"></i>
+              <i className={`ri-settings-4-line text-lg mr-3 ${location.pathname.startsWith('/servicos') ? 'text-primary' : ''}`}></i>
               <span className="text-sm font-medium">Configurações</span>
             </div>
             <i className={`ri-arrow-${configOpen ? 'up' : 'down'}-s-line text-base transition-transform`}></i>
           </button>
 
           {configOpen && (
-            <div className={darkMode ? 'bg-[#1B2838]/50' : 'bg-blue-800/50'}>
+            <div className={subMenuBg}>
               {configItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center px-4 py-2 pl-10 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname === item.path ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+                  className={`flex items-center px-4 py-2 pl-10 text-gray-300 ${bgHover} transition-colors ${location.pathname === item.path ? `${bgActive} text-primary` : ''
                     }`}
                 >
                   <i className={`${item.icon} text-base mr-3`}></i>
@@ -202,7 +210,7 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
         {/* Links Externos CRM e Disparador */}
         <div className="mt-4 border-t border-white/10 pt-4">
           <div className={`px-4 py-1 flex items-center justify-between`}>
-            <span className="text-[10px] uppercase tracking-wider text-white/50 font-bold">Ferramentas Extras</span>
+            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Ferramentas Extras</span>
           </div>
 
           {/* CRM + IA */}
@@ -211,16 +219,16 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
               href={hasCRM ? "https://crm.zapmatic.com.br" : "/planos"}
               target={hasCRM ? "_blank" : "_self"}
               rel="noopener noreferrer"
-              className={`flex items-center px-4 py-2 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${!hasCRM ? 'opacity-60' : ''}`}
+              className={`flex items-center px-4 py-2.5 text-gray-200 ${bgHover} transition-colors ${!hasCRM ? 'opacity-60' : ''}`}
             >
               <i className="ri-robot-line text-lg mr-3"></i>
-              <span className="text-sm font-medium text-white">CRM + IA</span>
+              <span className="text-sm font-medium">CRM + IA</span>
               {hasCRM ? (
                 <i className="ri-external-link-line text-xs ml-auto opacity-50"></i>
               ) : (
                 <div className="ml-auto flex items-center space-x-1">
                   <i className="ri-lock-line text-xs"></i>
-                  <span className="text-[9px] bg-blue-600 px-1.5 py-0.5 rounded text-white font-bold">CONTRATAR</span>
+                  <span className="text-[9px] bg-primary text-black px-1.5 py-0.5 rounded font-bold">CONTRATAR</span>
                 </div>
               )}
             </a>
@@ -232,16 +240,16 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
               href={hasDisparador ? "https://disparador.zapmatic.com.br" : "/planos"}
               target={hasDisparador ? "_blank" : "_self"}
               rel="noopener noreferrer"
-              className={`flex items-center px-4 py-2 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${!hasDisparador ? 'opacity-60' : ''}`}
+              className={`flex items-center px-4 py-2.5 text-gray-200 ${bgHover} transition-colors ${!hasDisparador ? 'opacity-60' : ''}`}
             >
               <i className="ri-send-plane-line text-lg mr-3"></i>
-              <span className="text-sm font-medium text-white">Acesso ao Disparador</span>
+              <span className="text-sm font-medium">Acesso ao Disparador</span>
               {hasDisparador ? (
                 <i className="ri-external-link-line text-xs ml-auto opacity-50"></i>
               ) : (
                 <div className="ml-auto flex items-center space-x-1">
                   <i className="ri-lock-line text-xs"></i>
-                  <span className="text-[9px] bg-blue-600 px-1.5 py-0.5 rounded text-white font-bold">CONTRATAR</span>
+                  <span className="text-[9px] bg-primary text-black px-1.5 py-0.5 rounded font-bold">CONTRATAR</span>
                 </div>
               )}
             </a>
@@ -253,21 +261,21 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
           <div className="mt-4 border-t border-white/10 pt-4">
             <button
               onClick={() => setSuperAdminOpen(!superAdminOpen)}
-              className={`w-full flex items-center justify-between px-4 py-2 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname.startsWith('/super-admin') ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+              className={`w-full flex items-center justify-between px-4 py-2.5 text-gray-200 ${bgHover} transition-colors ${location.pathname.startsWith('/super-admin') ? `${bgActive} border-l-4 border-primary` : 'border-l-4 border-transparent'
                 }`}
             >
               <div className="flex items-center">
-                <i className="ri-shield-star-line text-lg mr-3"></i>
+                <i className={`ri-shield-star-line text-lg mr-3 ${location.pathname.startsWith('/super-admin') ? 'text-primary' : ''}`}></i>
                 <span className="text-sm font-medium">Super Admin</span>
               </div>
               <i className={`ri-arrow-${superAdminOpen ? 'up' : 'down'}-s-line text-base transition-transform`}></i>
             </button>
 
           {superAdminOpen && (
-            <div className={darkMode ? 'bg-[#1B2838]/50' : 'bg-blue-800/50'}>
+            <div className={subMenuBg}>
               <Link
                 to="/super-admin/dashboard"
-                className={`flex items-center px-4 py-2 pl-10 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname.startsWith('/super-admin/dashboard') ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+                className={`flex items-center px-4 py-2 pl-10 text-gray-300 ${bgHover} transition-colors ${location.pathname.startsWith('/super-admin/dashboard') ? `${bgActive} text-primary` : ''
                   }`}
               >
                 <i className="ri-dashboard-3-line text-base mr-3"></i>
@@ -275,7 +283,7 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
               </Link>
               <Link
                 to="/super-admin/organizations"
-                className={`flex items-center px-4 py-2 pl-10 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname === '/super-admin/organizations' ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+                className={`flex items-center px-4 py-2 pl-10 text-gray-300 ${bgHover} transition-colors ${location.pathname === '/super-admin/organizations' ? `${bgActive} text-primary` : ''
                   }`}
               >
                 <i className="ri-building-line text-base mr-3"></i>
@@ -283,7 +291,7 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
               </Link>
                 <Link
                   to="/super-admin/users"
-                  className={`flex items-center px-4 py-2 pl-10 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname === '/super-admin/users' ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+                  className={`flex items-center px-4 py-2 pl-10 text-gray-300 ${bgHover} transition-colors ${location.pathname === '/super-admin/users' ? `${bgActive} text-primary` : ''
                     }`}
                 >
                   <i className="ri-user-star-line text-base mr-3"></i>
@@ -291,7 +299,7 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
                 </Link>
                 <Link
                   to="/super-admin/settings"
-                  className={`flex items-center px-4 py-2 pl-10 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname === '/super-admin/settings' ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+                  className={`flex items-center px-4 py-2 pl-10 text-gray-300 ${bgHover} transition-colors ${location.pathname === '/super-admin/settings' ? `${bgActive} text-primary` : ''
                     }`}
                 >
                   <i className="ri-shield-keyhole-line text-base mr-3"></i>
@@ -299,7 +307,7 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
                 </Link>
                 <Link
                   to="/super-admin/plans"
-                  className={`flex items-center px-4 py-2 pl-10 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname === '/super-admin/plans' ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+                  className={`flex items-center px-4 py-2 pl-10 text-gray-300 ${bgHover} transition-colors ${location.pathname === '/super-admin/plans' ? `${bgActive} text-primary` : ''
                     }`}
                 >
                   <i className="ri-price-tag-3-line text-base mr-3"></i>
@@ -307,7 +315,7 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
                 </Link>
                 <Link
                   to="/super-admin/editais"
-                  className={`flex items-center px-4 py-2 pl-10 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname === '/super-admin/editais' ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+                  className={`flex items-center px-4 py-2 pl-10 text-gray-300 ${bgHover} transition-colors ${location.pathname === '/super-admin/editais' ? `${bgActive} text-primary` : ''
                     }`}
                 >
                   <i className="ri-file-list-3-line text-base mr-3"></i>
@@ -315,7 +323,7 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
                 </Link>
                 <Link
                   to="/super-admin/knowledge-base"
-                  className={`flex items-center px-4 py-2 pl-10 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors ${location.pathname === '/super-admin/knowledge-base' ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+                  className={`flex items-center px-4 py-2 pl-10 text-gray-300 ${bgHover} transition-colors ${location.pathname === '/super-admin/knowledge-base' ? `${bgActive} text-primary` : ''
                     }`}
                 >
                   <i className="ri-brain-line text-base mr-3"></i>
@@ -331,13 +339,13 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
           <Link
             key={item.path}
             to={item.path}
-            className={`flex items-center px-4 py-2 text-white ${darkMode ? 'hover:bg-[#1B2838]' : 'hover:bg-blue-700'} transition-colors relative ${location.pathname === item.path ? (darkMode ? 'bg-[#1B2838]' : 'bg-blue-700') : ''
+            className={`flex items-center px-4 py-2.5 text-gray-200 ${bgHover} transition-colors relative ${location.pathname === item.path ? `${bgActive} border-l-4 border-primary` : 'border-l-4 border-transparent'
               }`}
           >
-            <i className={`${item.icon} text-lg mr-3`}></i>
+            <i className={`${item.icon} text-lg mr-3 ${location.pathname === item.path ? 'text-primary' : ''}`}></i>
             <span className="text-sm font-medium">{item.label}</span>
             {item.premium && (
-              <span className="ml-auto bg-[#F59E0B] text-white text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
+              <span className="ml-auto bg-primary text-black text-xs px-2 py-0.5 rounded-full whitespace-nowrap font-bold">
                 Premium
               </span>
             )}
