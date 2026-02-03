@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { toast } from 'sonner';
@@ -30,6 +30,10 @@ interface Props {
   onViewHistorico?: (veiculo: VeiculoCadastrado) => void;
 }
 
+export interface ListaVeiculosRef {
+  refresh: () => Promise<void>;
+}
+
 const formatDate = (dateString: string | null) => {
   if (!dateString) return 'Nunca';
   return new Date(dateString).toLocaleDateString('pt-BR', {
@@ -41,7 +45,7 @@ const formatDate = (dateString: string | null) => {
   });
 };
 
-export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeiculo, onViewHistorico }: Props) {
+const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefreshMultas, onEditVeiculo, onViewHistorico }, ref) => {
   const { currentOrganization } = useOrganization();
   const [veiculos, setVeiculos] = useState<VeiculoCadastrado[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +54,11 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
   // Estado para o modal de confirmação
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [veiculoParaExcluir, setVeiculoParaExcluir] = useState<{ id: string; placa: string } | null>(null);
+
+  // Expor a função refresh para o componente pai
+  useImperativeHandle(ref, () => ({
+    refresh: fetchVeiculos
+  }));
 
   useEffect(() => {
     if (currentOrganization?.id) {
@@ -330,6 +339,9 @@ export default function ListaVeiculosCadastrados({ onRefreshMultas, onEditVeicul
       />
     </div>
   );
-}
+});
 
+ListaVeiculosCadastrados.displayName = 'ListaVeiculosCadastrados';
+
+export default ListaVeiculosCadastrados;
 export { ListaVeiculosCadastrados };
