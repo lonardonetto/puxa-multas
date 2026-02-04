@@ -28,6 +28,7 @@ interface Props {
   onRefreshMultas: () => void;
   onEditVeiculo?: (veiculo: VeiculoCadastrado) => void;
   onViewHistorico?: (veiculo: VeiculoCadastrado) => void;
+  onUpgradePlano?: (veiculo: VeiculoCadastrado) => void;
 }
 
 export interface ListaVeiculosRef {
@@ -45,7 +46,7 @@ const formatDate = (dateString: string | null) => {
   });
 };
 
-const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefreshMultas, onEditVeiculo, onViewHistorico }, ref) => {
+const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefreshMultas, onEditVeiculo, onViewHistorico, onUpgradePlano }, ref) => {
   const { currentOrganization } = useOrganization();
   const [veiculos, setVeiculos] = useState<VeiculoCadastrado[]>([]);
   const [loading, setLoading] = useState(true);
@@ -307,6 +308,17 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center space-x-2">
+                      {/* Botão de Upgrade - apenas para planos mensal e anual */}
+                      {veiculo.rastreamento_tipo !== 'placa_protegida' && (
+                        <button
+                          onClick={() => onUpgradePlano?.(veiculo)}
+                          className="px-2 py-1 flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200"
+                          title={`Upgrade para ${veiculo.rastreamento_tipo === 'mensal' ? 'Anual ou Placa Protegida' : 'Placa Protegida'}`}
+                        >
+                          <i className="ri-arrow-up-circle-line"></i>
+                          Upgrade
+                        </button>
+                      )}
                       <button
                         onClick={() => onViewHistorico?.(veiculo)}
                         className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
