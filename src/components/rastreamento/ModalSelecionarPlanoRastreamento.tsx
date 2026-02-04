@@ -87,8 +87,8 @@ export default function ModalSelecionarPlanoRastreamento({
     : ['mensal', 'anual', 'placa_protegida'] as TipoPlano[];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col my-4">
         {/* Header */}
         <div className="gradient-gold px-6 py-4">
           <div className="flex items-center justify-between">
@@ -117,7 +117,7 @@ export default function ModalSelecionarPlanoRastreamento({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
           {planLoading ? (
             <div className="flex items-center justify-center py-8">
               <i className="ri-loader-4-line animate-spin text-2xl text-amber-600"></i>
