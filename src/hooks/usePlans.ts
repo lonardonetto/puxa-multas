@@ -57,12 +57,12 @@ export function usePlans() {
                 .from('planos')
                 .update(updates)
                 .eq('id', id)
-                .select()
-                .single();
+                .select();
 
             if (updateError) throw updateError;
-            if (data) setPlans(prev => prev.map(p => p.id === id ? (data as Plano) : p));
-            return data as Plano;
+            const updated = data?.[0] as Plano | undefined;
+            if (updated) setPlans(prev => prev.map(p => p.id === id ? updated : p));
+            return updated || null;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao atualizar plano'));
             return null;
