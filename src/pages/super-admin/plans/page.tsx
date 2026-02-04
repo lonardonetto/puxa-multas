@@ -3,6 +3,7 @@ import { usePlans } from '../../../hooks/usePlans';
 import type { Plano } from '../../../types/database';
 
 interface PlanoExtended extends Plano {
+    preco?: number;
     rastreamento_mensal_pf_preco?: number | null;
     rastreamento_anual_pf_preco?: number | null;
     rastreamento_mensal_frota_preco?: number | null;
@@ -112,6 +113,7 @@ export default function PlansManagement() {
             nome: '',
             slug: '',
             descricao: '',
+            preco: 0, // Campo obrigatório
             preco_mensal: 0,
             preco_anual: 0,
             limite_usuarios: 5,
