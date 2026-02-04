@@ -10,6 +10,10 @@ interface FormularioRecursoProps {
 }
 
 export interface DadosRecurso {
+  // Cliente selecionado ou a ser criado
+  clienteId?: string | null;
+  criarNovoCliente?: boolean;
+  
   // Dados do Recorrente
   nomeRecorrente: string;
   cpfCnpj: string;
@@ -60,27 +64,31 @@ interface Infracao {
   categoria: string;
 }
 
+interface ClienteBusca {
+  id: string;
+  nome_completo: string;
+  cpf: string | null;
+  cnpj: string | null;
+  celular: string | null;
+  telefone: string | null;
+  email: string | null;
+  endereco: any;
+}
+
 interface VeiculoEncontrado {
   id: string;
   placa: string;
   modelo: string;
   renavam: string | null;
-  cliente: {
-    id: string;
-    nome_completo: string;
-    cpf: string | null;
-    cnpj: string | null;
-    celular: string | null;
-    telefone: string | null;
-    email: string | null;
-    endereco: any;
-  } | null;
+  cliente: ClienteBusca | null;
 }
 
 export default function FormularioRecurso({ onSubmit, gerando, organizationId, dadosIniciais }: FormularioRecursoProps) {
   // Estados do formulário - inicializar com dados iniciais completos
   const [dados, setDados] = useState<DadosRecurso>(() => {
     const defaultDados: DadosRecurso = {
+      clienteId: null,
+      criarNovoCliente: true, // Por padrão, criar novo cliente se não selecionar
       nomeRecorrente: '',
       cpfCnpj: '',
       endereco: '',
@@ -126,11 +134,19 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
   const [veiculoEncontrado, setVeiculoEncontrado] = useState<VeiculoEncontrado | null>(null);
   const [detranDetectado, setDetranDetectado] = useState<any | null>(null);
   
+  // Estados para busca de cliente
+  const [buscaCliente, setBuscaCliente] = useState('');
+  const [clientesEncontrados, setClientesEncontrados] = useState<ClienteBusca[]>([]);
+  const [buscandoCliente, setBuscandoCliente] = useState(false);
+  const [clienteSelecionado, setClienteSelecionado] = useState<ClienteBusca | null>(null);
+  const [mostrarDropdownClientes, setMostrarDropdownClientes] = useState(false);
+  
   // Estados para upload de AIT
   const [aitFile, setAitFile] = useState<File | null>(null);
   const [processandoAit, setProcessandoAit] = useState(false);
   const [erroAit, setErroAit] = useState<string | null>(null);
   const aitInputRef = useRef<HTMLInputElement>(null);
+  const buscaClienteRef = useRef<HTMLDivElement>(null);
 
   // Carregar infrações
   useEffect(() => {
@@ -156,7 +172,84 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
     carregarInfracoes();
   }, []);
 
-  // Pré-selecionar infração quando dados iniciais são fornecidos
+  // Buscar clientes quando digitar no campo de busca
+  useEffect(() => {
+    if (!buscaCliente || buscaCliente.length < 2) {
+      setClientesEncontrados([]);
+      setMostrarDropdownClientes(false);
+      return;
+    }
+
+    const buscarClientes = async () => {
+      setBuscandoCliente(true);
+      try {
+        const { data, error } = await supabase
+          .from('clientes')
+          .select('id, nome_completo, cpf, cnpj, celular, telefone, email, endereco')
+          .eq('organization_id', organizationId)
+          .or(`nome_completo.ilike.%${buscaCliente}%,cpf.ilike.%${buscaCliente}%,cnpj.ilike.%${buscaCliente}%`)
+          .limit(10);
+
+        if (error) throw error;
+        setClientesEncontrados(data || []);
+        setMostrarDropdownClientes(true);
+      } catch (err) {
+        console.error('Erro ao buscar clientes:', err);
+      } finally {
+        setBuscandoCliente(false);
+      }
+    };
+
+    const debounce = setTimeout(buscarClientes, 300);
+    return () => clearTimeout(debounce);
+  }, [buscaCliente, organizationId]);
+
+  // Fechar dropdown quando clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (buscaClienteRef.current && !buscaClienteRef.current.contains(event.target as Node)) {
+        setMostrarDropdownClientes(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Função para selecionar cliente existente
+  const handleSelecionarCliente = (cliente: ClienteBusca) => {
+    setClienteSelecionado(cliente);
+    setMostrarDropdownClientes(false);
+    setBuscaCliente('');
+    
+    const endereco = cliente.endereco || {};
+    setDados(prev => ({
+      ...prev,
+      clienteId: cliente.id,
+      criarNovoCliente: false,
+      nomeRecorrente: cliente.nome_completo,
+      cpfCnpj: cliente.cpf || cliente.cnpj || prev.cpfCnpj,
+      telefone: cliente.celular || cliente.telefone || prev.telefone,
+      email: cliente.email || prev.email,
+      endereco: endereco.logradouro 
+        ? `${endereco.logradouro}, ${endereco.numero || 'S/N'}${endereco.complemento ? ` - ${endereco.complemento}` : ''}` 
+        : prev.endereco,
+      cidade: endereco.cidade || prev.cidade,
+      estado: endereco.estado || prev.estado,
+      cep: endereco.cep || prev.cep,
+    }));
+  };
+
+  // Função para limpar cliente selecionado e criar novo
+  const handleCriarNovoCliente = () => {
+    setClienteSelecionado(null);
+    setDados(prev => ({
+      ...prev,
+      clienteId: null,
+      criarNovoCliente: true,
+    }));
+  };
+
   // Mas PRESERVAR os valores vindos do rastreamento (valorMulta, pontos, gravidade reais)
   useEffect(() => {
     if (dadosIniciais?.codigoInfracao && infracoes.length > 0) {
@@ -667,13 +760,107 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
           Dados do Recorrente
         </h4>
         
+        {/* Seletor de Cliente Existente */}
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-blue-800 flex items-center gap-2">
+              <i className="ri-search-line"></i>
+              Buscar Cliente Cadastrado
+            </label>
+            {clienteSelecionado && (
+              <button
+                type="button"
+                onClick={handleCriarNovoCliente}
+                className="text-xs text-blue-600 hover:text-blue-800 underline"
+              >
+                Limpar seleção
+              </button>
+            )}
+          </div>
+          
+          {/* Cliente selecionado */}
+          {clienteSelecionado ? (
+            <div className="flex items-center gap-3 p-3 bg-green-100 border border-green-300 rounded-lg">
+              <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold">
+                {clienteSelecionado.nome_completo.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-green-800">{clienteSelecionado.nome_completo}</p>
+                <p className="text-xs text-green-600">
+                  {clienteSelecionado.cpf || clienteSelecionado.cnpj || 'Sem documento'}
+                  {clienteSelecionado.email && ` • ${clienteSelecionado.email}`}
+                </p>
+              </div>
+              <i className="ri-checkbox-circle-fill text-green-600 text-xl"></i>
+            </div>
+          ) : (
+            <div ref={buscaClienteRef} className="relative">
+              <input
+                type="text"
+                value={buscaCliente}
+                onChange={(e) => setBuscaCliente(e.target.value)}
+                onFocus={() => clientesEncontrados.length > 0 && setMostrarDropdownClientes(true)}
+                placeholder="Digite nome, CPF ou CNPJ para buscar..."
+                className="w-full px-4 py-2.5 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              />
+              {buscandoCliente && (
+                <div className="absolute right-3 top-2.5">
+                  <i className="ri-loader-4-line animate-spin text-blue-500"></i>
+                </div>
+              )}
+              
+              {/* Dropdown de resultados */}
+              {mostrarDropdownClientes && clientesEncontrados.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {clientesEncontrados.map((cliente) => (
+                    <button
+                      key={cliente.id}
+                      type="button"
+                      onClick={() => handleSelecionarCliente(cliente)}
+                      className="w-full px-4 py-2 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                    >
+                      <p className="font-medium text-gray-800 text-sm">{cliente.nome_completo}</p>
+                      <p className="text-xs text-gray-500">
+                        {cliente.cpf || cliente.cnpj || 'Sem documento'}
+                        {cliente.email && ` • ${cliente.email}`}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+              
+              {/* Mensagem quando não encontrar */}
+              {mostrarDropdownClientes && buscaCliente.length >= 2 && clientesEncontrados.length === 0 && !buscandoCliente && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                  <p className="text-sm text-gray-500 flex items-center gap-2">
+                    <i className="ri-information-line"></i>
+                    Nenhum cliente encontrado. Preencha os dados abaixo para criar um novo.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <p className="text-xs text-blue-600 mt-2">
+            {clienteSelecionado 
+              ? '✓ Cliente vinculado ao recurso' 
+              : 'Busque um cliente existente ou preencha os dados abaixo para criar um novo automaticamente.'}
+          </p>
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
             <input
               type="text"
               value={dados.nomeRecorrente}
-              onChange={(e) => setDados(prev => ({ ...prev, nomeRecorrente: e.target.value }))}
+              onChange={(e) => {
+                setDados(prev => ({ ...prev, nomeRecorrente: e.target.value }));
+                if (clienteSelecionado) {
+                  setClienteSelecionado(null);
+                  setDados(prev => ({ ...prev, clienteId: null, criarNovoCliente: true }));
+                }
+              }}
               placeholder="Nome do proprietário/recorrente"
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
@@ -685,7 +872,13 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
             <input
               type="text"
               value={dados.cpfCnpj}
-              onChange={(e) => setDados(prev => ({ ...prev, cpfCnpj: e.target.value }))}
+              onChange={(e) => {
+                setDados(prev => ({ ...prev, cpfCnpj: e.target.value }));
+                if (clienteSelecionado) {
+                  setClienteSelecionado(null);
+                  setDados(prev => ({ ...prev, clienteId: null, criarNovoCliente: true }));
+                }
+              }}
               placeholder="000.000.000-00"
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               required

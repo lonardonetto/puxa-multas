@@ -176,6 +176,82 @@ export default function RecursosIA() {
         );
       }
 
+      // Determinar o cliente_id a ser usado no recurso
+      let clienteIdFinal: string | null = null;
+      
+      // 1. Se veio da URL (rastreamento), usar esse
+      if (idsVinculacao.clienteId) {
+        clienteIdFinal = idsVinculacao.clienteId;
+        console.log('Usando cliente da URL (rastreamento):', clienteIdFinal);
+      }
+      // 2. Se selecionou um cliente existente no formulário
+      else if (dados.clienteId) {
+        clienteIdFinal = dados.clienteId;
+        console.log('Usando cliente selecionado:', clienteIdFinal);
+      }
+      // 3. Se marcou para criar novo cliente e tem dados mínimos
+      else if (dados.criarNovoCliente && dados.nomeRecorrente && dados.cpfCnpj) {
+        console.log('Criando novo cliente...');
+        
+        // Verificar se já existe cliente com mesmo CPF/CNPJ na organização
+        const cpfCnpjLimpo = dados.cpfCnpj.replace(/[^\d]/g, '');
+        const isCpf = cpfCnpjLimpo.length <= 11;
+        
+        const { data: clienteExistente } = await supabase
+          .from('clientes')
+          .select('id')
+          .eq('organization_id', currentOrganization!.id)
+          .or(isCpf ? `cpf.eq.${cpfCnpjLimpo}` : `cnpj.eq.${cpfCnpjLimpo}`)
+          .limit(1);
+        
+        if (clienteExistente && clienteExistente.length > 0) {
+          // Cliente já existe, usar o existente
+          clienteIdFinal = clienteExistente[0].id;
+          console.log('Cliente já existia, usando:', clienteIdFinal);
+        } else {
+          // Criar novo cliente
+          const novoCliente: any = {
+            organization_id: currentOrganization!.id,
+            nome_completo: dados.nomeRecorrente,
+            tipo_pessoa: isCpf ? 'fisica' : 'juridica',
+            ativo: true,
+          };
+          
+          if (isCpf) {
+            novoCliente.cpf = cpfCnpjLimpo;
+          } else {
+            novoCliente.cnpj = cpfCnpjLimpo;
+          }
+          
+          if (dados.email) novoCliente.email = dados.email;
+          if (dados.telefone) novoCliente.celular = dados.telefone;
+          
+          // Montar endereço se tiver dados
+          if (dados.endereco || dados.cidade || dados.estado || dados.cep) {
+            novoCliente.endereco = {
+              logradouro: dados.endereco || '',
+              cidade: dados.cidade || '',
+              estado: dados.estado || '',
+              cep: dados.cep || '',
+            };
+          }
+          
+          const { data: clienteCriado, error: erroCliente } = await supabase
+            .from('clientes')
+            .insert(novoCliente)
+            .select('id')
+            .single();
+          
+          if (erroCliente) {
+            console.error('Erro ao criar cliente:', erroCliente);
+            // Não vamos parar o fluxo, apenas logamos
+          } else {
+            clienteIdFinal = clienteCriado.id;
+            console.log('Cliente criado com sucesso:', clienteIdFinal);
+          }
+        }
+      }
+
       // Chamar a edge function
       const { data, error } = await supabase.functions.invoke('generate-recurso', {
         body: {
@@ -202,8 +278,8 @@ export default function RecursosIA() {
           is_ia: true,
           ait_url: dados.aitBase64 ? `data:image/jpeg;base64,${dados.aitBase64}` : null,
           ait_dados_extraidos: dados.aitBase64 ? dados : null,
-          // IDs de vinculação para rastreabilidade
-          cliente_id: idsVinculacao.clienteId || null,
+          // IDs de vinculação para rastreabilidade - usar cliente_id final (criado ou selecionado)
+          cliente_id: clienteIdFinal,
           veiculo_id: idsVinculacao.veiculoId || null,
           multa_id: idsVinculacao.multaId || null,
         } as any)
@@ -220,12 +296,12 @@ export default function RecursosIA() {
       // Fechar animação e MOSTRAR o recurso gerado (SEM abrir impressão)
       console.log('✅ Geração concluída, mostrando visualizador...');
       console.log('RecursoId:', recursoSalvo?.id);
-      console.log('ClienteId:', idsVinculacao.clienteId);
+      console.log('ClienteId:', clienteIdFinal);
       setAnimacaoAberta(false);
       setRecursoGerado({ 
         conteudo: data.content, 
         recursoId: recursoSalvo?.id || '',
-        clienteId: idsVinculacao.clienteId || undefined
+        clienteId: clienteIdFinal || undefined
       });
       showToast('Recurso gerado com sucesso! Finalize para salvar o PDF.', 'success');
       
