@@ -33,6 +33,12 @@ export default function ListaClientes() {
   const [salvandoContrato, setSalvandoContrato] = useState(false);
   const [contratoVisualizado, setContratoVisualizado] = useState<Contrato | null>(null);
   const [excluindoCliente, setExcluindoCliente] = useState<string | null>(null);
+  const [statusAnimation, setStatusAnimation] = useState<{
+    isActive: boolean;
+    clienteId: string | null;
+    novoStatus: boolean;
+    etapa: number;
+  }>({ isActive: false, clienteId: null, novoStatus: false, etapa: 0 });
 
   // Estados para Contrato Avançado
   const [servicoSelecionadoParaContrato, setServicoSelecionadoParaContrato] = useState<Servico | null>(null);
@@ -528,15 +534,40 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                               type: 'warning',
                               confirmLabel: cliente.ativo ? 'Desativar' : 'Ativar',
                               onConfirm: async () => {
-                                setConfirmModal(prev => ({ ...prev, loading: true }));
-                                const success = await updateCliente(cliente.id, { ativo: !cliente.ativo } as any);
-                                setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false }));
+                                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                const novoStatus = !cliente.ativo;
+                                
+                                // Inicia animação de 4 segundos
+                                setStatusAnimation({ isActive: true, clienteId: cliente.id, novoStatus, etapa: 0 });
+                                
+                                // Etapa 1: Verificando (1s)
+                                await new Promise(r => setTimeout(r, 1000));
+                                setStatusAnimation(prev => ({ ...prev, etapa: 1 }));
+                                
+                                // Etapa 2: Atualizando (1s)
+                                await new Promise(r => setTimeout(r, 1000));
+                                setStatusAnimation(prev => ({ ...prev, etapa: 2 }));
+                                
+                                // Executa a atualização real
+                                const success = await updateCliente(cliente.id, { ativo: novoStatus } as any);
+                                
+                                // Etapa 3: Sincronizando (1s)
+                                setStatusAnimation(prev => ({ ...prev, etapa: 3 }));
+                                await new Promise(r => setTimeout(r, 1000));
+                                
+                                // Etapa 4: Conclusão (1s)
+                                setStatusAnimation(prev => ({ ...prev, etapa: 4 }));
+                                await new Promise(r => setTimeout(r, 1000));
+                                
+                                // Finaliza animação
+                                setStatusAnimation({ isActive: false, clienteId: null, novoStatus: false, etapa: 0 });
+                                
                                 if (success) {
                                   addActivity({
                                     cliente_id: cliente.id,
                                     tipo: 'status_alterado',
-                                    descricao: `Cliente ${!cliente.ativo ? 'ativado' : 'desativado'}`,
-                                    metadata: { novo_status: !cliente.ativo }
+                                    descricao: `Cliente ${novoStatus ? 'ativado' : 'desativado'}`,
+                                    metadata: { novo_status: novoStatus }
                                   });
                                 }
                               }
@@ -2193,6 +2224,99 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
           </div>
         )
       }
+
+      {/* Modal de Animação de Status */}
+      {statusAnimation.isActive && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[110] animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-scale-in">
+            <div className="p-8 text-center">
+              {/* Ícone animado */}
+              <div className="relative w-24 h-24 mx-auto mb-6">
+                {/* Círculo de progresso */}
+                <svg className="w-24 h-24 transform -rotate-90">
+                  <circle
+                    cx="48"
+                    cy="48"
+                    r="44"
+                    stroke="#e5e7eb"
+                    strokeWidth="6"
+                    fill="none"
+                  />
+                  <circle
+                    cx="48"
+                    cy="48"
+                    r="44"
+                    stroke={statusAnimation.novoStatus ? '#10B981' : '#EF4444'}
+                    strokeWidth="6"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeDasharray={276}
+                    strokeDashoffset={276 - (276 * ((statusAnimation.etapa + 1) / 5))}
+                    className="transition-all duration-700 ease-out"
+                  />
+                </svg>
+                {/* Ícone central */}
+                <div className={`absolute inset-4 rounded-full flex items-center justify-center transition-colors duration-500 ${
+                  statusAnimation.novoStatus ? 'bg-green-100' : 'bg-red-100'
+                }`}>
+                  <i className={`text-3xl transition-all duration-300 ${
+                    statusAnimation.etapa === 4 
+                      ? 'ri-checkbox-circle-fill text-green-500 animate-scale-in' 
+                      : statusAnimation.novoStatus 
+                        ? 'ri-user-follow-line text-green-600 animate-pulse' 
+                        : 'ri-user-unfollow-line text-red-600 animate-pulse'
+                  }`}></i>
+                </div>
+              </div>
+
+              {/* Título */}
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                {statusAnimation.novoStatus ? 'Ativando Cliente' : 'Desativando Cliente'}
+              </h3>
+
+              {/* Etapas de progresso */}
+              <div className="space-y-3 mt-6">
+                {[
+                  { label: 'Verificando dados...', icon: 'ri-search-line' },
+                  { label: 'Atualizando status...', icon: 'ri-refresh-line' },
+                  { label: 'Sincronizando registros...', icon: 'ri-database-2-line' },
+                  { label: 'Finalizando...', icon: 'ri-check-double-line' },
+                  { label: 'Concluído!', icon: 'ri-checkbox-circle-line' }
+                ].map((step, idx) => (
+                  <div 
+                    key={idx}
+                    className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-300 ${
+                      statusAnimation.etapa === idx 
+                        ? 'bg-blue-50 text-blue-700 scale-105' 
+                        : statusAnimation.etapa > idx 
+                          ? 'text-green-600' 
+                          : 'text-gray-300'
+                    }`}
+                  >
+                    <i className={`${step.icon} text-lg ${
+                      statusAnimation.etapa === idx ? 'animate-spin' : ''
+                    }`}></i>
+                    <span className="text-sm font-medium">{step.label}</span>
+                    {statusAnimation.etapa > idx && (
+                      <i className="ri-check-line ml-auto text-green-500"></i>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Barra de progresso geral */}
+              <div className="mt-6 h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-700 ease-out ${
+                    statusAnimation.novoStatus ? 'bg-gradient-to-r from-green-400 to-green-600' : 'bg-gradient-to-r from-red-400 to-red-600'
+                  }`}
+                  style={{ width: `${((statusAnimation.etapa + 1) / 5) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Estilos para Impressão */}
       <style>{`
