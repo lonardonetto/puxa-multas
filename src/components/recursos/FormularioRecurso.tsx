@@ -390,8 +390,24 @@ export default function FormularioRecurso({ onSubmit, gerando, organizationId, d
           // MAS preservar dados da INFRAÇÃO que possam ter vindo do rastreamento
           if (cliente) {
             const endereco = cliente.endereco || {};
+            
+            // Também selecionar o cliente automaticamente
+            setClienteSelecionado({
+              id: cliente.id,
+              nome_completo: cliente.nome_completo,
+              cpf: cliente.cpf,
+              cnpj: cliente.cnpj,
+              celular: cliente.celular,
+              telefone: cliente.telefone,
+              email: cliente.email,
+              endereco: cliente.endereco,
+            });
+            
             setDados(prev => ({
               ...prev,
+              // ✅ VINCULAR cliente_id para salvar no recurso
+              clienteId: cliente.id,
+              criarNovoCliente: false,
               // Dados do cliente - usar do banco
               nomeRecorrente: cliente.nome_completo || prev.nomeRecorrente,
               cpfCnpj: cliente.cpf || cliente.cnpj || prev.cpfCnpj,
