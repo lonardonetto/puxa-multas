@@ -341,7 +341,31 @@ export default function RecursosIA() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {/* Contador de recursos gratuitos */}
+          {plan?.recursos_ia_inclusos && plan.recursos_ia_inclusos > 0 && (
+            <div className="bg-gradient-to-br from-emerald-50 to-green-50 px-4 py-2 rounded-xl border border-emerald-200 shadow-sm">
+              <p className="text-[10px] text-emerald-600 font-black uppercase tracking-widest leading-tight">Recursos Grátis</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xl font-black text-emerald-700 leading-tight font-mono">
+                  {prices?.ia_remaining_free || 0}
+                  <span className="text-sm font-medium text-emerald-500">/{plan.recursos_ia_inclusos}</span>
+                </p>
+                {(prices?.ia_remaining_free || 0) === 0 && (
+                  <span className="text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-bold">
+                    ESGOTADO
+                  </span>
+                )}
+              </div>
+              {/* Barra de progresso */}
+              <div className="mt-1 h-1.5 bg-emerald-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-emerald-400 to-green-500 rounded-full transition-all duration-500"
+                  style={{ width: `${((prices?.ia_remaining_free || 0) / plan.recursos_ia_inclusos) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
           <div className="bg-white px-4 py-2 rounded-xl border border-gray-100 shadow-sm text-right">
             <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest leading-tight">Saldo</p>
             <p className="text-xl font-black text-blue-700 leading-tight font-mono">
@@ -498,10 +522,22 @@ export default function RecursosIA() {
             </div>
 
             {balance < confirmacaoCompra.valor && (
-              <p className="text-center text-sm text-red-500 mt-4">
-                <i className="ri-error-warning-line mr-1"></i>
-                Saldo insuficiente. Adicione créditos para continuar.
-              </p>
+              <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
+                <p className="text-sm text-red-600 mb-3 flex items-center gap-2">
+                  <i className="ri-error-warning-fill text-lg"></i>
+                  <span><strong>Saldo insuficiente.</strong> Você precisa de mais {formatCurrency(confirmacaoCompra.valor - balance)} para continuar.</span>
+                </p>
+                <button
+                  onClick={() => {
+                    setConfirmacaoCompra(null);
+                    navigate('/checkout');
+                  }}
+                  className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all flex items-center justify-center gap-2"
+                >
+                  <i className="ri-add-circle-line"></i>
+                  Adicionar Créditos Agora
+                </button>
+              </div>
             )}
           </div>
         </div>
