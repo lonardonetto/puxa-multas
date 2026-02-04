@@ -97,6 +97,14 @@ export default function Rastreamento() {
     placasValidas: { placa: string; modelo: string; ano: string; renavam: string }[];
   } | null>(null);
   
+  // Estado para upgrade de rastreamento
+  const [upgradeVeiculo, setUpgradeVeiculo] = useState<{
+    id: string;
+    placa: string;
+    rastreamento_tipo: 'mensal' | 'anual' | 'placa_protegida' | null;
+    tipo_pessoa: 'fisica' | 'juridica';
+  } | null>(null);
+  
   // Estado para seleção de cliente existente
   const [modoCliente, setModoCliente] = useState<'novo' | 'existente'>('novo');
   const [clienteSelecionadoId, setClienteSelecionadoId] = useState<string | null>(null);
@@ -337,6 +345,11 @@ export default function Rastreamento() {
 
   // Função chamada após seleção do plano de rastreamento
   const handlePlanoSelecionado = async (tipo: 'mensal' | 'anual' | 'placa_protegida', preco: number) => {
+    // Verificar se é um upgrade
+    if (upgradeVeiculo) {
+      return handleUpgradeRastreamento(tipo, preco);
+    }
+    
     if (!dadosPendentes || !currentOrganization) {
       toast.error('Dados incompletos');
       return;
@@ -359,6 +372,63 @@ export default function Rastreamento() {
     setTipoPlanoAnimacao(tipo);
     setModalPlanoAberto(false);
     setAnimacaoAberta(true);
+  };
+  
+  // Função para processar upgrade de rastreamento
+  const handleUpgradeRastreamento = async (tipo: 'mensal' | 'anual' | 'placa_protegida', preco: number) => {
+    if (!upgradeVeiculo || !currentOrganization) {
+      toast.error('Dados incompletos para upgrade');
+      return;
+    }
+
+    // Verificar saldo
+    if (!checkBalance(preco)) {
+      toast.error(`Saldo insuficiente. Necessário: R$ ${preco.toFixed(2)}, Disponível: R$ ${balance.toFixed(2)}`);
+      return;
+    }
+
+    setSalvando(true);
+    
+    try {
+      // Deduzir créditos da carteira
+      await deductCredits(
+        preco,
+        `Upgrade para ${tipo === 'placa_protegida' ? 'Placa Protegida' : 'Anual'} - ${upgradeVeiculo.placa}`,
+        'rastreamento'
+      );
+
+      // Calcular nova data de vencimento (1 ano a partir de hoje para upgrade)
+      const novoVencimento = new Date();
+      novoVencimento.setFullYear(novoVencimento.getFullYear() + 1);
+
+      // Atualizar veículo no banco
+      const { error } = await supabase
+        .from('veiculos')
+        .update({
+          rastreamento_tipo: tipo,
+          rastreamento_valor: preco,
+          rastreamento_vencimento: novoVencimento.toISOString().split('T')[0],
+        })
+        .eq('id', upgradeVeiculo.id);
+
+      if (error) throw error;
+
+      toast.success(`Upgrade para ${tipo === 'placa_protegida' ? 'Placa Protegida' : 'Anual'} realizado com sucesso!`);
+      
+      // Fechar modal e limpar estado
+      setModalPlanoAberto(false);
+      setUpgradeVeiculo(null);
+      
+      // Atualizar listas
+      await listaVeiculosRef.current?.refresh();
+      refresh();
+      
+    } catch (error) {
+      console.error('Erro ao fazer upgrade:', error);
+      toast.error('Erro ao processar upgrade');
+    } finally {
+      setSalvando(false);
+    }
   };
 
   // Ref para evitar execução duplicada do handleAnimacaoComplete
@@ -961,6 +1031,15 @@ export default function Rastreamento() {
           });
           setHistoricoModalAberto(true);
         }}
+        onUpgradePlano={(veiculo) => {
+          setUpgradeVeiculo({
+            id: veiculo.id,
+            placa: veiculo.placa,
+            rastreamento_tipo: veiculo.rastreamento_tipo,
+            tipo_pessoa: veiculo.tipo_pessoa,
+          });
+          setModalPlanoAberto(true);
+        }}
       />
 
       {/* Modal de Editar Veículo */}
@@ -1289,11 +1368,14 @@ export default function Rastreamento() {
         onClose={() => {
           setModalPlanoAberto(false);
           setDadosPendentes(null);
+          setUpgradeVeiculo(null);
           setSalvando(false);
         }}
         onConfirm={handlePlanoSelecionado}
-        tipoVeiculo={tipoRastreamento === 'frota' ? 'frota' : 'individual'}
+        tipoVeiculo={upgradeVeiculo ? (upgradeVeiculo.tipo_pessoa === 'juridica' ? 'frota' : 'individual') : (tipoRastreamento === 'frota' ? 'frota' : 'individual')}
         loading={salvando}
+        planoAtual={upgradeVeiculo?.rastreamento_tipo || null}
+        veiculoId={upgradeVeiculo?.id}
       />
 
       {/* Animação de rastreamento após seleção do plano */}
