@@ -3,7 +3,10 @@ import { usePlans } from '../../../hooks/usePlans';
 import type { Plano } from '../../../types/database';
 
 interface PlanoExtended extends Plano {
-    // All fields are now in the base Plano type
+    rastreamento_mensal_pf_preco?: number | null;
+    rastreamento_anual_pf_preco?: number | null;
+    rastreamento_mensal_frota_preco?: number | null;
+    rastreamento_anual_frota_preco?: number | null;
 }
 
 export default function PlansManagement() {
@@ -39,7 +42,11 @@ export default function PlansManagement() {
             acesso_institucional: false,
             rastreamento_pf_preco: 0,
             rastreamento_frota_preco: 0,
-            rastreamento_garantido_preco: 0
+            rastreamento_garantido_preco: 0,
+            rastreamento_mensal_pf_preco: 0,
+            rastreamento_anual_pf_preco: 0,
+            rastreamento_mensal_frota_preco: 0,
+            rastreamento_anual_frota_preco: 0
         });
         setShowModal(true);
     };
@@ -143,8 +150,20 @@ export default function PlansManagement() {
                                                 </span>
                                             </li>
                                             <li className="flex items-center justify-between text-sm border-t border-gray-50 pt-2 mt-2">
-                                                <span className="text-gray-600">Rastreamento PF</span>
-                                                <span className="font-bold text-gray-800">{formatCurrency(p.rastreamento_pf_preco || 0)}</span>
+                                                <span className="text-gray-600">Rastreamento PF Mensal</span>
+                                                <span className="font-bold text-gray-800">{formatCurrency((p as any).rastreamento_mensal_pf_preco || 0)}</span>
+                                            </li>
+                                            <li className="flex items-center justify-between text-sm">
+                                                <span className="text-gray-600">Rastreamento PF Anual</span>
+                                                <span className="font-bold text-amber-600">{formatCurrency((p as any).rastreamento_anual_pf_preco || 0)}</span>
+                                            </li>
+                                            <li className="flex items-center justify-between text-sm">
+                                                <span className="text-gray-600">Rastreamento Frota Mensal</span>
+                                                <span className="font-bold text-gray-800">{formatCurrency((p as any).rastreamento_mensal_frota_preco || 0)}</span>
+                                            </li>
+                                            <li className="flex items-center justify-between text-sm">
+                                                <span className="text-gray-600">Rastreamento Frota Anual</span>
+                                                <span className="font-bold text-green-600">{formatCurrency((p as any).rastreamento_anual_frota_preco || 0)}</span>
                                             </li>
                                         </ul>
                                     </div>
