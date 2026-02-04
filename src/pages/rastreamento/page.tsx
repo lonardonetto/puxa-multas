@@ -78,14 +78,14 @@ export default function Rastreamento() {
   
   // Estado para seleção de plano de rastreamento
   const [planoRastreamentoSelecionado, setPlanoRastreamentoSelecionado] = useState<{
-    tipo: 'mensal' | 'anual';
+    tipo: 'mensal' | 'anual' | 'placa_protegida';
     preco: number;
   } | null>(null);
   
   // Estado para animação de rastreamento
   const [animacaoAberta, setAnimacaoAberta] = useState(false);
   const [placaAnimacao, setPlacaAnimacao] = useState('');
-  const [tipoPlanoAnimacao, setTipoPlanoAnimacao] = useState<'mensal' | 'anual'>('mensal');
+  const [tipoPlanoAnimacao, setTipoPlanoAnimacao] = useState<'mensal' | 'anual' | 'placa_protegida'>('mensal');
   
   // Estado para animação de geração de recurso
   const [animacaoRecursoAberta, setAnimacaoRecursoAberta] = useState(false);
@@ -336,7 +336,7 @@ export default function Rastreamento() {
   };
 
   // Função chamada após seleção do plano de rastreamento
-  const handlePlanoSelecionado = async (tipo: 'mensal' | 'anual', preco: number) => {
+  const handlePlanoSelecionado = async (tipo: 'mensal' | 'anual' | 'placa_protegida', preco: number) => {
     if (!dadosPendentes || !currentOrganization) {
       toast.error('Dados incompletos');
       return;
@@ -440,11 +440,12 @@ export default function Rastreamento() {
         'rastreamento'
       );
 
-      // Calcular data de vencimento
+      // Calcular data de vencimento (placa_protegida é sempre anual)
       const vencimento = new Date();
       if (tipo === 'mensal') {
         vencimento.setMonth(vencimento.getMonth() + 1);
       } else {
+        // Tanto 'anual' quanto 'placa_protegida' são anuais
         vencimento.setFullYear(vencimento.getFullYear() + 1);
       }
 

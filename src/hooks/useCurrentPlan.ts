@@ -20,6 +20,8 @@ export interface PlanDetails {
     rastreamento_anual_pf_preco: number;
     rastreamento_mensal_frota_preco: number;
     rastreamento_anual_frota_preco: number;
+    rastreamento_placa_protegida_pf_preco: number;
+    rastreamento_placa_protegida_frota_preco: number;
     acesso_crm: boolean;
     acesso_disparador: boolean;
     limite_usuarios: number;
@@ -65,6 +67,8 @@ export function useCurrentPlan() {
                     rastreamento_anual_pf_preco: p.rastreamento_anual_pf_preco || 150,
                     rastreamento_mensal_frota_preco: p.rastreamento_mensal_frota_preco || 10,
                     rastreamento_anual_frota_preco: p.rastreamento_anual_frota_preco || 100,
+                    rastreamento_placa_protegida_pf_preco: p.rastreamento_placa_protegida_pf_preco || 300,
+                    rastreamento_placa_protegida_frota_preco: p.rastreamento_placa_protegida_frota_preco || 250,
                     acesso_crm: (currentOrganization as any).acesso_crm ?? p.acesso_crm,
                     acesso_disparador: (currentOrganization as any).acesso_disparador ?? p.acesso_disparador,
                     limite_usuarios: p.limite_usuarios || 0,
@@ -113,6 +117,8 @@ export function useCurrentPlan() {
             rastreamento_anual_pf: planDetails.rastreamento_anual_pf_preco,
             rastreamento_mensal_frota: planDetails.rastreamento_mensal_frota_preco,
             rastreamento_anual_frota: planDetails.rastreamento_anual_frota_preco,
+            rastreamento_placa_protegida_pf: planDetails.rastreamento_placa_protegida_pf_preco,
+            rastreamento_placa_protegida_frota: planDetails.rastreamento_placa_protegida_frota_preco,
             edital: planDetails.preco_edital,
             ia_used_this_month: usageStats.ia_used_this_month,
             ia_remaining_free: Math.max(0, (planDetails.recursos_ia_inclusos || 0) - usageStats.ia_used_this_month)

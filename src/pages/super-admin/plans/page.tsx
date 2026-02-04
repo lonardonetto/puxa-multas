@@ -7,6 +7,8 @@ interface PlanoExtended extends Plano {
     rastreamento_anual_pf_preco?: number | null;
     rastreamento_mensal_frota_preco?: number | null;
     rastreamento_anual_frota_preco?: number | null;
+    rastreamento_placa_protegida_pf_preco?: number | null;
+    rastreamento_placa_protegida_frota_preco?: number | null;
     preco_anual?: number | null;
 }
 
@@ -48,7 +50,9 @@ export default function PlansManagement() {
             rastreamento_mensal_pf_preco: 0,
             rastreamento_anual_pf_preco: 0,
             rastreamento_mensal_frota_preco: 0,
-            rastreamento_anual_frota_preco: 0
+            rastreamento_anual_frota_preco: 0,
+            rastreamento_placa_protegida_pf_preco: 0,
+            rastreamento_placa_protegida_frota_preco: 0
         });
         setShowModal(true);
     };
@@ -174,6 +178,20 @@ export default function PlansManagement() {
                                             <li className="flex items-center justify-between text-sm">
                                                 <span className="text-gray-600">Rastreamento Frota Anual</span>
                                                 <span className="font-bold text-green-600">{formatCurrency((p as any).rastreamento_anual_frota_preco || 0)}</span>
+                                            </li>
+                                            <li className="flex items-center justify-between text-sm border-t border-gray-100 pt-2 mt-2">
+                                                <span className="text-gray-600 flex items-center gap-1">
+                                                    <i className="ri-shield-star-line text-purple-500"></i>
+                                                    Placa Protegida PF
+                                                </span>
+                                                <span className="font-bold text-purple-600">{formatCurrency((p as any).rastreamento_placa_protegida_pf_preco || 0)}</span>
+                                            </li>
+                                            <li className="flex items-center justify-between text-sm">
+                                                <span className="text-gray-600 flex items-center gap-1">
+                                                    <i className="ri-shield-star-line text-purple-500"></i>
+                                                    Placa Protegida Frota
+                                                </span>
+                                                <span className="font-bold text-purple-600">{formatCurrency((p as any).rastreamento_placa_protegida_frota_preco || 0)}</span>
                                             </li>
                                         </ul>
                                     </div>
@@ -430,6 +448,42 @@ export default function PlansManagement() {
                                                         value={(editingPlan as any).rastreamento_anual_frota_preco || 0}
                                                         onChange={(e) => setEditingPlan({ ...editingPlan, rastreamento_anual_frota_preco: parseFloat(e.target.value) } as any)}
                                                         className="w-full px-4 py-2 bg-white border border-green-200 rounded-xl"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Placa Protegida - PREMIUM */}
+                                        <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-200 relative overflow-hidden">
+                                            <div className="absolute top-2 right-2 px-2 py-0.5 bg-purple-600 text-white text-[8px] font-bold rounded-full uppercase">
+                                                Premium
+                                            </div>
+                                            <p className="text-[10px] font-bold text-purple-800 uppercase border-b border-purple-100 pb-1 mb-3 flex items-center gap-2">
+                                                <i className="ri-shield-star-line"></i>
+                                                Placa Protegida (Recursos IA Ilimitados)
+                                            </p>
+                                            <p className="text-[9px] text-purple-600 mb-3">
+                                                Rastreamento anual + todos os recursos IA inclusos. O cliente pode gerar quantos recursos quiser sem pagar adicional.
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-gray-600 mb-1">PF (R$/ano)</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={(editingPlan as any).rastreamento_placa_protegida_pf_preco || 0}
+                                                        onChange={(e) => setEditingPlan({ ...editingPlan, rastreamento_placa_protegida_pf_preco: parseFloat(e.target.value) } as any)}
+                                                        className="w-full px-4 py-2 bg-white border border-purple-200 rounded-xl"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-gray-600 mb-1">FROTA (R$/placa/ano)</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={(editingPlan as any).rastreamento_placa_protegida_frota_preco || 0}
+                                                        onChange={(e) => setEditingPlan({ ...editingPlan, rastreamento_placa_protegida_frota_preco: parseFloat(e.target.value) } as any)}
+                                                        className="w-full px-4 py-2 bg-white border border-purple-200 rounded-xl"
                                                     />
                                                 </div>
                                             </div>

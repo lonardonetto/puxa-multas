@@ -135,8 +135,21 @@ export default function RecursosIA() {
       return;
     }
 
+    // Verificar se o veículo tem placa_protegida (recursos ilimitados)
+    let isPlacaProtegida = false;
+    if (idsVinculacao.veiculoId) {
+      const { data: veiculo } = await supabase
+        .from('veiculos')
+        .select('rastreamento_tipo')
+        .eq('id', idsVinculacao.veiculoId)
+        .single();
+      
+      isPlacaProtegida = veiculo?.rastreamento_tipo === 'placa_protegida';
+    }
+
     // Verificar se é gratuito ou pago
-    const isFree = (prices?.ia === 0) || (prices && (prices.ia_remaining_free || 0) > 0);
+    // Gratuito se: placa_protegida, preço IA = 0, ou tem créditos gratuitos
+    const isFree = isPlacaProtegida || (prices?.ia === 0) || (prices && (prices.ia_remaining_free || 0) > 0);
     const custo = prices?.ia || 15.00;
 
     if (!isFree) {
