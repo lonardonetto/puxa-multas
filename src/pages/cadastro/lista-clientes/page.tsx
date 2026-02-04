@@ -528,7 +528,9 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                               type: 'warning',
                               confirmLabel: cliente.ativo ? 'Desativar' : 'Ativar',
                               onConfirm: async () => {
+                                setConfirmModal(prev => ({ ...prev, loading: true }));
                                 const success = await updateCliente(cliente.id, { ativo: !cliente.ativo } as any);
+                                setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false }));
                                 if (success) {
                                   addActivity({
                                     cliente_id: cliente.id,
