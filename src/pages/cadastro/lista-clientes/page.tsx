@@ -551,8 +551,8 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                         <button
                           onClick={async () => {
                             showConfirm({
-                              title: 'Excluir Cliente',
-                              message: 'Tem certeza que deseja EXCLUIR este cliente permanentemente? Todos os dados, contratos e documentos vinculados serão perdidos.',
+                              title: 'Excluir Cliente Permanentemente',
+                              message: '⚠️ ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\nSerão excluídos permanentemente:\n• Todos os veículos cadastrados\n• Todas as multas vinculadas\n• Todos os recursos gerados\n• Todos os contratos\n• Todos os documentos\n• Todo o histórico de atividades\n\nDeseja continuar?',
                               type: 'danger',
                               confirmLabel: 'Sim, Excluir',
                               onConfirm: async () => {
@@ -638,8 +638,8 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                 <button
                   onClick={async () => {
                     showConfirm({
-                      title: 'Excluir Cliente',
-                      message: 'Tem certeza que deseja EXCLUIR este cliente permanentemente?',
+                      title: 'Excluir Cliente Permanentemente',
+                      message: '⚠️ ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\nSerão excluídos permanentemente:\n• Todos os veículos cadastrados\n• Todas as multas vinculadas\n• Todos os recursos gerados\n• Todos os contratos\n• Todos os documentos\n• Todo o histórico de atividades\n\nDeseja continuar?',
                       type: 'danger',
                       confirmLabel: 'Excluir permanentemente',
                       onConfirm: async () => {
@@ -2114,17 +2114,28 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
               <div className="p-6 text-center">
                 {confirmModal.loading ? (
-                  // Animação de loading durante exclusão
-                  <div className="flex flex-col items-center justify-center py-4">
-                    <div className="relative w-20 h-20 mb-4">
-                      <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
-                      <div className="absolute inset-0 border-4 border-t-red-500 rounded-full animate-spin"></div>
-                      <div className="absolute inset-2 bg-red-50 rounded-full flex items-center justify-center">
-                        <i className="ri-delete-bin-line text-2xl text-red-500 animate-pulse"></i>
+                  // Animação de loading durante exclusão em cascata
+                  <div className="flex flex-col items-center justify-center py-6">
+                    <div className="relative w-24 h-24 mb-5">
+                      {/* Círculo externo animado */}
+                      <div className="absolute inset-0 border-4 border-gray-100 rounded-full"></div>
+                      <div className="absolute inset-0 border-4 border-t-red-500 border-r-red-300 rounded-full animate-spin"></div>
+                      {/* Ícone central pulsante */}
+                      <div className="absolute inset-3 bg-gradient-to-br from-red-50 to-red-100 rounded-full flex items-center justify-center shadow-inner">
+                        <i className="ri-delete-bin-line text-3xl text-red-500 animate-pulse"></i>
                       </div>
+                      {/* Partículas de exclusão */}
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-400 rounded-full animate-ping opacity-75"></div>
+                      <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-red-300 rounded-full animate-ping opacity-50" style={{ animationDelay: '0.3s' }}></div>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Excluindo cliente...</h3>
-                    <p className="text-sm text-gray-500">Por favor, aguarde</p>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">Excluindo dados...</h3>
+                    <div className="space-y-1 text-sm text-gray-500">
+                      <p className="flex items-center gap-2">
+                        <i className="ri-loader-4-line animate-spin text-red-400"></i>
+                        Removendo veículos, multas e recursos...
+                      </p>
+                      <p className="text-xs text-gray-400">Esta operação pode levar alguns segundos</p>
+                    </div>
                   </div>
                 ) : (
                   <>
@@ -2139,8 +2150,14 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                             'ri-information-line'
                         }`}></i>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{confirmModal.title}</h3>
-                    <p className="text-gray-600 leading-relaxed">{confirmModal.message}</p>
+                    <h3 className="text-xl font-bold text-gray-900 mb-3">{confirmModal.title}</h3>
+                    <div className="text-gray-600 leading-relaxed text-left">
+                      {confirmModal.message.split('\n').map((line, idx) => (
+                        <p key={idx} className={`${line.startsWith('•') ? 'pl-2 py-0.5 text-sm' : line.startsWith('⚠️') ? 'text-red-600 font-semibold text-center mb-2' : ''}`}>
+                          {line}
+                        </p>
+                      ))}
+                    </div>
                   </>
                 )}
               </div>

@@ -161,20 +161,77 @@ export function useClientes(): UseClientesReturn {
         setLoading(true);
         setError(null);
         try {
+            // 1. Buscar veículos do cliente para deletar registros dependentes
+            const { data: veiculosCliente } = await supabase
+                .from('veiculos')
+                .select('id')
+                .eq('cliente_id', id);
+            
+            const veiculoIds = veiculosCliente?.map(v => v.id) || [];
+            
+            if (veiculoIds.length > 0) {
+                // 2. Deletar multas dos veículos
+                await supabase
+                    .from('multas')
+                    .delete()
+                    .in('veiculo_id', veiculoIds);
+                
+                // 3. Deletar notificações de multas dos veículos
+                await supabase
+                    .from('notificacoes_multas')
+                    .delete()
+                    .in('veiculo_id', veiculoIds);
+                
+                // 4. Deletar consultas de rastreamento dos veículos
+                await supabase
+                    .from('consultas_rastreamento')
+                    .delete()
+                    .in('veiculo_id', veiculoIds);
+                
+                // 5. Deletar cobranças de rastreamento dos veículos
+                await supabase
+                    .from('rastreamento_cobrancas')
+                    .delete()
+                    .in('veiculo_id', veiculoIds);
+                
+                // 6. Deletar veículos do cliente
+                await supabase
+                    .from('veiculos')
+                    .delete()
+                    .eq('cliente_id', id);
+            }
+            
+            // 7. Deletar recursos do cliente
+            await supabase
+                .from('recursos')
+                .delete()
+                .eq('cliente_id', id);
+            
+            // 8. Deletar contratos do cliente
+            await supabase
+                .from('contratos')
+                .delete()
+                .eq('cliente_id', id);
+            
+            // 9. Deletar documentos do cliente
+            await supabase
+                .from('documentos')
+                .delete()
+                .eq('cliente_id', id);
+            
+            // 10. Deletar histórico de atividades do cliente
+            await supabase
+                .from('historico_atividades')
+                .delete()
+                .eq('cliente_id', id);
+            
+            // 11. Finalmente, deletar o cliente
             const { error: deleteError } = await supabase
                 .from('clientes')
                 .delete()
                 .eq('id', id);
 
             if (deleteError) {
-                // Verificar se é erro de conflito (FK constraint)
-                if (deleteError.code === '23503' || deleteError.message?.includes('violates foreign key constraint')) {
-                    return { 
-                        success: false, 
-                        errorCode: 'FK_CONSTRAINT',
-                        errorMessage: 'Este cliente possui registros vinculados (recursos, contratos, veículos, etc.) e não pode ser excluído diretamente.'
-                    };
-                }
                 throw deleteError;
             }
 
