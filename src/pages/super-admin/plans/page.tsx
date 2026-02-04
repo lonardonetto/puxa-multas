@@ -7,6 +7,7 @@ interface PlanoExtended extends Plano {
     rastreamento_anual_pf_preco?: number | null;
     rastreamento_mensal_frota_preco?: number | null;
     rastreamento_anual_frota_preco?: number | null;
+    preco_anual?: number | null;
 }
 
 export default function PlansManagement() {
@@ -24,6 +25,7 @@ export default function PlansManagement() {
             slug: '',
             descricao: '',
             preco_mensal: 0,
+            preco_anual: 0,
             limite_usuarios: 5,
             limite_clientes: 100,
             ativo: true,
@@ -107,6 +109,14 @@ export default function PlansManagement() {
                                         </span>
                                         <span className="text-blue-200 text-sm">/mês</span>
                                     </div>
+                                    {(p as any).preco_anual > 0 && (
+                                        <div className="mt-1">
+                                            <span className="text-lg font-bold text-blue-200">
+                                                {formatCurrency((p as any).preco_anual)}
+                                            </span>
+                                            <span className="text-blue-300 text-xs">/ano</span>
+                                        </div>
+                                    )}
                                     <p className="text-blue-100 text-sm mt-2 line-clamp-2">{plan.descricao}</p>
                                 </div>
 
@@ -259,18 +269,37 @@ export default function PlansManagement() {
                                 {/* Preço e Limites */}
                                 <section>
                                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center">
-                                        <span className="mr-2">02</span> Mensalidade e Limites
+                                        <span className="mr-2">02</span> Valores de Assinatura
                                     </h3>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-600 mb-1 uppercase">Valor Mensal (R$)</label>
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                                            <label className="block text-xs font-bold text-blue-700 mb-1 uppercase">Valor Mensal (R$)</label>
                                             <input
                                                 type="number"
                                                 value={editingPlan.preco_mensal}
                                                 onChange={(e) => setEditingPlan({ ...editingPlan, preco_mensal: parseFloat(e.target.value) })}
-                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 font-mono"
+                                                className="w-full px-4 py-2 bg-white border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 font-mono text-lg"
                                             />
                                         </div>
+                                        <div className="bg-green-50/50 p-4 rounded-2xl border border-green-100">
+                                            <label className="block text-xs font-bold text-green-700 mb-1 uppercase">Valor Anual (R$)</label>
+                                            <input
+                                                type="number"
+                                                value={(editingPlan as PlanoExtended).preco_anual || 0}
+                                                onChange={(e) => setEditingPlan({ ...editingPlan, preco_anual: parseFloat(e.target.value) } as PlanoExtended)}
+                                                className="w-full px-4 py-2 bg-white border border-green-200 rounded-xl focus:ring-2 focus:ring-green-500 font-mono text-lg"
+                                            />
+                                            <p className="text-[10px] text-green-600 mt-1">Recomendado: 10x o mensal (2 meses grátis)</p>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* Limites */}
+                                <section>
+                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center">
+                                        <span className="mr-2">03</span> Limites Estruturais
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-600 mb-1 uppercase">Usuários Inclusos</label>
                                             <input
@@ -293,10 +322,9 @@ export default function PlansManagement() {
                                     </div>
                                 </section>
 
-                                {/* Inteligência Artificial */}
                                 <section>
                                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center">
-                                        <span className="mr-2">03</span> Inteligência Artificial
+                                        <span className="mr-2">04</span> Inteligência Artificial
                                     </h3>
                                     <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 grid grid-cols-2 gap-x-8 gap-y-4">
                                         <div className="space-y-4">
@@ -348,10 +376,9 @@ export default function PlansManagement() {
                                     </div>
                                 </section>
 
-                                {/* Rastreamento e Editais */}
                                 <section>
                                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center">
-                                        <span className="mr-2">04</span> Rastreamento e Prospecção
+                                        <span className="mr-2">05</span> Rastreamento e Prospecção
                                     </h3>
                                     <div className="space-y-4">
                                         {/* Rastreamento PF */}
@@ -461,10 +488,9 @@ export default function PlansManagement() {
                                     </div>
                                 </section>
 
-                                {/* Outros Serviços */}
                                 <section>
                                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center">
-                                        <span className="mr-2">05</span> Outros Serviços e Status
+                                        <span className="mr-2">06</span> Outros Serviços e Status
                                     </h3>
                                     <div className="space-y-4">
                                         <div>
