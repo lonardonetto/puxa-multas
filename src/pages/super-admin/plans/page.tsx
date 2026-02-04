@@ -69,12 +69,43 @@ export default function PlansManagement() {
     const [savePhase, setSavePhase] = useState(0);
     const [confirmDeactivate, setConfirmDeactivate] = useState<{ id: string; nome: string } | null>(null);
     const [confirmDelete, setConfirmDelete] = useState<{ id: string; nome: string } | null>(null);
+    const [confirmReactivate, setConfirmReactivate] = useState<{ id: string; nome: string } | null>(null);
     const [deactivating, setDeactivating] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [reactivating, setReactivating] = useState(false);
+    const [showInactive, setShowInactive] = useState(false);
 
     useEffect(() => {
         fetchPlans();
     }, [fetchPlans]);
+
+    const handleReactivate = async () => {
+        if (!confirmReactivate) return;
+        
+        setReactivating(true);
+        setSavePhase(0);
+        setConfirmReactivate(null);
+
+        try {
+            await new Promise(r => setTimeout(r, 1500));
+            setSavePhase(1);
+
+            await updatePlan(confirmReactivate.id, { ativo: true } as any);
+            await new Promise(r => setTimeout(r, 2000));
+            setSavePhase(2);
+
+            await fetchPlans();
+            await new Promise(r => setTimeout(r, 2000));
+            setSavePhase(3);
+
+            await new Promise(r => setTimeout(r, 1500));
+        } catch (error) {
+            console.error('Erro ao reativar plano:', error);
+        } finally {
+            setReactivating(false);
+            setSavePhase(0);
+        }
+    };
 
     const handleCreate = () => {
         setEditingPlan({
@@ -354,19 +385,100 @@ export default function PlansManagement() {
                 </div>
             )}
             
+            {/* Modal de confirmação de reativação */}
+            {confirmReactivate && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md animate-scale-in">
+                        <div className="text-center mb-6">
+                            <div className="mx-auto w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
+                                <i className="ri-eye-line text-3xl text-green-600"></i>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-800 mb-2">Reativar Plano?</h3>
+                            <p className="text-gray-600">
+                                Deseja reativar o plano <strong className="text-gray-900">"{confirmReactivate.nome}"</strong>?
+                            </p>
+                            <p className="text-sm text-green-600 mt-2">
+                                <i className="ri-information-line mr-1"></i>
+                                O plano ficará visível novamente para novos usuários.
+                            </p>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setConfirmReactivate(null)}
+                                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleReactivate}
+                                className="flex-1 px-4 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <i className="ri-eye-line"></i>
+                                Reativar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Animação de reativação */}
+            {reactivating && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[200]">
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center animate-scale-in">
+                        <div className="relative mx-auto w-24 h-24 mb-6">
+                            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 animate-pulse opacity-30"></div>
+                            <div className="absolute inset-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center">
+                                <i className={`ri-eye-line text-4xl text-white ${savePhase < 3 ? 'animate-pulse' : ''}`}></i>
+                            </div>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">Reativando Plano</h3>
+                        <p className="text-green-600 font-semibold mb-6">
+                            {savePhase === 0 && 'Validando...'}
+                            {savePhase === 1 && 'Atualizando banco de dados...'}
+                            {savePhase === 2 && 'Sincronizando sistema...'}
+                            {savePhase === 3 && 'Concluído!'}
+                        </p>
+                        <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div 
+                                className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full transition-all duration-500 ease-out"
+                                style={{ width: `${((savePhase + 1) / 4) * 100}%` }}
+                            ></div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="p-8">
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800">Gestão de Planos</h1>
                     <p className="text-gray-600 mt-1">Configure os preços e limites do sistema</p>
                 </div>
-                <button
-                    onClick={handleCreate}
-                    className="flex items-center px-4 py-2 bg-[#10B981] text-white rounded-lg hover:bg-green-600 transition-colors"
-                >
-                    <i className="ri-add-line mr-2"></i>
-                    Novo Plano
-                </button>
+                <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={showInactive}
+                            onChange={(e) => setShowInactive(e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                        />
+                        <span className="text-sm text-gray-600">
+                            Mostrar inativos
+                            {plans.filter(p => !p.ativo).length > 0 && (
+                                <span className="ml-1 px-1.5 py-0.5 bg-orange-100 text-orange-600 text-xs rounded-full font-bold">
+                                    {plans.filter(p => !p.ativo).length}
+                                </span>
+                            )}
+                        </span>
+                    </label>
+                    <button
+                        onClick={handleCreate}
+                        className="flex items-center px-4 py-2 bg-[#10B981] text-white rounded-lg hover:bg-green-600 transition-colors"
+                    >
+                        <i className="ri-add-line mr-2"></i>
+                        Novo Plano
+                    </button>
+                </div>
             </div>
 
             {loading && plans.length === 0 ? (
@@ -375,28 +487,34 @@ export default function PlansManagement() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {plans.filter(p => p.ativo).map((plan) => {
+                    {plans.filter(p => showInactive ? true : p.ativo).map((plan) => {
                         const p = plan as PlanoExtended;
                         return (
-                            <div key={plan.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden flex flex-col transition-hover hover:shadow-xl duration-300">
+                            <div key={plan.id} className={`bg-white rounded-2xl shadow-lg border overflow-hidden flex flex-col transition-hover hover:shadow-xl duration-300 ${!plan.ativo ? 'border-orange-300 opacity-75' : 'border-gray-100'}`}>
+                                {/* Badge de inativo */}
+                                {!plan.ativo && (
+                                    <div className="bg-orange-500 text-white text-xs font-bold py-1 px-3 text-center">
+                                        <i className="ri-eye-off-line mr-1"></i> PLANO INATIVO
+                                    </div>
+                                )}
                                 {/* Header com nome e preço */}
-                                <div className="bg-gradient-to-br from-[#1E3A8A] to-blue-600 p-6 text-white">
+                                <div className={`p-6 text-white ${!plan.ativo ? 'bg-gradient-to-br from-gray-500 to-gray-600' : 'bg-gradient-to-br from-[#1E3A8A] to-blue-600'}`}>
                                     <h3 className="text-2xl font-bold">{plan.nome}</h3>
                                     <div className="mt-2">
                                         <span className="text-4xl font-black">
                                             {formatCurrency(plan.preco_mensal)}
                                         </span>
-                                        <span className="text-blue-200 text-sm">/mês</span>
+                                        <span className={`text-sm ${!plan.ativo ? 'text-gray-300' : 'text-blue-200'}`}>/mês</span>
                                     </div>
                                     {(p as any).preco_anual > 0 && (
                                         <div className="mt-1">
-                                            <span className="text-lg font-bold text-blue-200">
+                                            <span className={`text-lg font-bold ${!plan.ativo ? 'text-gray-300' : 'text-blue-200'}`}>
                                                 {formatCurrency((p as any).preco_anual)}
                                             </span>
-                                            <span className="text-blue-300 text-xs">/ano</span>
+                                            <span className={`text-xs ${!plan.ativo ? 'text-gray-400' : 'text-blue-300'}`}>/ano</span>
                                         </div>
                                     )}
-                                    <p className="text-blue-100 text-sm mt-2 line-clamp-2">{plan.descricao}</p>
+                                    <p className={`text-sm mt-2 line-clamp-2 ${!plan.ativo ? 'text-gray-300' : 'text-blue-100'}`}>{plan.descricao}</p>
                                 </div>
 
                                 {/* Conteúdo */}
@@ -492,13 +610,23 @@ export default function PlansManagement() {
                                         <i className="ri-edit-line mr-1"></i> Configurar
                                     </button>
                                     <div className="flex gap-3">
-                                        <button
-                                            onClick={() => setConfirmDeactivate({ id: plan.id, nome: plan.nome })}
-                                            className="text-orange-500 hover:text-orange-600 font-medium text-sm flex items-center transition-colors"
-                                            title="Oculta o plano para clientes, mas mantém no sistema"
-                                        >
-                                            <i className="ri-eye-off-line mr-1"></i> Desativar
-                                        </button>
+                                        {plan.ativo ? (
+                                            <button
+                                                onClick={() => setConfirmDeactivate({ id: plan.id, nome: plan.nome })}
+                                                className="text-orange-500 hover:text-orange-600 font-medium text-sm flex items-center transition-colors"
+                                                title="Oculta o plano para clientes, mas mantém no sistema"
+                                            >
+                                                <i className="ri-eye-off-line mr-1"></i> Desativar
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => setConfirmReactivate({ id: plan.id, nome: plan.nome })}
+                                                className="text-green-500 hover:text-green-600 font-medium text-sm flex items-center transition-colors"
+                                                title="Torna o plano visível novamente para clientes"
+                                            >
+                                                <i className="ri-eye-line mr-1"></i> Reativar
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => setConfirmDelete({ id: plan.id, nome: plan.nome })}
                                             className="text-red-400 hover:text-red-600 font-medium text-sm flex items-center transition-colors"
