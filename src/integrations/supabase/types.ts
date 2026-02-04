@@ -1141,6 +1141,7 @@ export type Database = {
           nome: string
           organization_id: string | null
           preco: number
+          preco_anual: number | null
           preco_edital: number | null
           preco_mensal: number | null
           preco_rastreamento: number | null
@@ -1175,6 +1176,7 @@ export type Database = {
           nome: string
           organization_id?: string | null
           preco: number
+          preco_anual?: number | null
           preco_edital?: number | null
           preco_mensal?: number | null
           preco_rastreamento?: number | null
@@ -1209,6 +1211,7 @@ export type Database = {
           nome?: string
           organization_id?: string | null
           preco?: number
+          preco_anual?: number | null
           preco_edital?: number | null
           preco_mensal?: number | null
           preco_rastreamento?: number | null
