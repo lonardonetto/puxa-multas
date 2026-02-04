@@ -1153,6 +1153,8 @@ export type Database = {
           rastreamento_mensal_frota_preco: number | null
           rastreamento_mensal_pf_preco: number | null
           rastreamento_pf_preco: number | null
+          rastreamento_placa_protegida_frota_preco: number | null
+          rastreamento_placa_protegida_pf_preco: number | null
           recursos: Json | null
           recursos_ia_inclusos: number | null
           recursos_ia_suspensao_inclusos: number | null
@@ -1188,6 +1190,8 @@ export type Database = {
           rastreamento_mensal_frota_preco?: number | null
           rastreamento_mensal_pf_preco?: number | null
           rastreamento_pf_preco?: number | null
+          rastreamento_placa_protegida_frota_preco?: number | null
+          rastreamento_placa_protegida_pf_preco?: number | null
           recursos?: Json | null
           recursos_ia_inclusos?: number | null
           recursos_ia_suspensao_inclusos?: number | null
@@ -1223,6 +1227,8 @@ export type Database = {
           rastreamento_mensal_frota_preco?: number | null
           rastreamento_mensal_pf_preco?: number | null
           rastreamento_pf_preco?: number | null
+          rastreamento_placa_protegida_frota_preco?: number | null
+          rastreamento_placa_protegida_pf_preco?: number | null
           recursos?: Json | null
           recursos_ia_inclusos?: number | null
           recursos_ia_suspensao_inclusos?: number | null

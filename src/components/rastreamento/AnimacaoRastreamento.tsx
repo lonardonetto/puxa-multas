@@ -42,7 +42,7 @@ interface DadosVeiculoAPI {
 interface Props {
   isOpen: boolean;
   placa: string;
-  tipoPlano: 'mensal' | 'anual';
+  tipoPlano: 'mensal' | 'anual' | 'placa_protegida';
   organizationId?: string;
   clienteNome?: string;
   clienteDocumento?: string;

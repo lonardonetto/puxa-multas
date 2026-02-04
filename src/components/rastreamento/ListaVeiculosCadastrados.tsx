@@ -13,7 +13,7 @@ interface VeiculoCadastrado {
   rastreamento_ativo: boolean;
   rastreamento_inicio: string | null;
   rastreamento_valor: number;
-  rastreamento_tipo: 'mensal' | 'anual' | null;
+  rastreamento_tipo: 'mensal' | 'anual' | 'placa_protegida' | null;
   rastreamento_vencimento: string | null;
   cliente_id: string;
   cliente_nome: string;
@@ -252,12 +252,24 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
                   <td className="py-4 px-4">
                     <div className="flex flex-col gap-1">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                        veiculo.rastreamento_tipo === 'anual' 
-                          ? 'bg-success/10 text-success' 
-                          : 'bg-primary/10 text-primary'
+                        veiculo.rastreamento_tipo === 'placa_protegida'
+                          ? 'bg-purple-100 text-purple-700'
+                          : veiculo.rastreamento_tipo === 'anual' 
+                            ? 'bg-success/10 text-success' 
+                            : 'bg-primary/10 text-primary'
                       }`}>
-                        <i className={`mr-1 ${veiculo.rastreamento_tipo === 'anual' ? 'ri-calendar-check-line' : 'ri-calendar-line'}`}></i>
-                        {veiculo.rastreamento_tipo === 'anual' ? 'Anual' : 'Mensal'}
+                        <i className={`mr-1 ${
+                          veiculo.rastreamento_tipo === 'placa_protegida' 
+                            ? 'ri-shield-star-line' 
+                            : veiculo.rastreamento_tipo === 'anual' 
+                              ? 'ri-calendar-check-line' 
+                              : 'ri-calendar-line'
+                        }`}></i>
+                        {veiculo.rastreamento_tipo === 'placa_protegida' 
+                          ? 'Placa Protegida' 
+                          : veiculo.rastreamento_tipo === 'anual' 
+                            ? 'Anual' 
+                            : 'Mensal'}
                       </span>
                       {vencimentoDate && (
                         <span className={`text-xs flex items-center gap-1 ${
@@ -272,6 +284,11 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
                           ) : (
                             <>Vence: {vencimentoDate.toLocaleDateString('pt-BR')}</>
                           )}
+                        </span>
+                      )}
+                      {veiculo.rastreamento_tipo === 'placa_protegida' && (
+                        <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                          <i className="ri-infinity-line"></i> IA Ilimitada
                         </span>
                       )}
                     </div>
