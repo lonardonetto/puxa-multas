@@ -2174,7 +2174,8 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                   <button
                     onClick={() => {
                       confirmModal.onConfirm();
-                      if (confirmModal.type === 'success' || confirmModal.type === 'info') {
+                      // Fecha o modal para todos os tipos, exceto danger (que é a confirmação inicial)
+                      if (confirmModal.type !== 'danger') {
                         setConfirmModal(prev => ({ ...prev, isOpen: false }));
                       }
                     }}
