@@ -4,6 +4,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import type { Cliente, ClienteInsert, ClienteUpdate } from '../types/database';
 
+interface DeleteResult {
+    success: boolean;
+    errorCode?: string;
+    errorMessage?: string;
+}
+
 interface UseClientesReturn {
     clientes: Cliente[];
     loading: boolean;
@@ -13,7 +19,7 @@ interface UseClientesReturn {
     getCliente: (id: string) => Promise<Cliente | null>;
     createCliente: (cliente: ClienteInsert) => Promise<Cliente | null>;
     updateCliente: (id: string, updates: ClienteUpdate) => Promise<Cliente | null>;
-    deleteCliente: (id: string) => Promise<boolean>;
+    deleteCliente: (id: string) => Promise<DeleteResult>;
     searchClientes: (query: string) => Promise<Cliente[]>;
 }
 
@@ -151,7 +157,7 @@ export function useClientes(): UseClientesReturn {
         }
     }, []);
 
-    const deleteCliente = useCallback(async (id: string): Promise<boolean> => {
+    const deleteCliente = useCallback(async (id: string): Promise<{ success: boolean; errorCode?: string; errorMessage?: string }> => {
         setLoading(true);
         setError(null);
         try {
@@ -160,15 +166,26 @@ export function useClientes(): UseClientesReturn {
                 .delete()
                 .eq('id', id);
 
-            if (deleteError) throw deleteError;
+            if (deleteError) {
+                // Verificar se é erro de conflito (FK constraint)
+                if (deleteError.code === '23503' || deleteError.message?.includes('violates foreign key constraint')) {
+                    return { 
+                        success: false, 
+                        errorCode: 'FK_CONSTRAINT',
+                        errorMessage: 'Este cliente possui registros vinculados (recursos, contratos, veículos, etc.) e não pode ser excluído diretamente.'
+                    };
+                }
+                throw deleteError;
+            }
 
             // Update local state
             setClientes(prev => prev.filter(c => c.id !== id));
 
-            return true;
-        } catch (err) {
-            setError(err instanceof Error ? err : new Error('Erro ao deletar cliente'));
-            return false;
+            return { success: true };
+        } catch (err: any) {
+            const errorMessage = err?.message || 'Erro ao deletar cliente';
+            setError(err instanceof Error ? err : new Error(errorMessage));
+            return { success: false, errorCode: 'UNKNOWN', errorMessage };
         } finally {
             setLoading(false);
         }
