@@ -32,6 +32,7 @@ export default function ListaClientes() {
   const [criandoContrato, setCriandoContrato] = useState(false);
   const [salvandoContrato, setSalvandoContrato] = useState(false);
   const [contratoVisualizado, setContratoVisualizado] = useState<Contrato | null>(null);
+  const [excluindoCliente, setExcluindoCliente] = useState<string | null>(null);
 
   // Estados para Contrato Avançado
   const [servicoSelecionadoParaContrato, setServicoSelecionadoParaContrato] = useState<Servico | null>(null);
@@ -52,16 +53,18 @@ export default function ListaClientes() {
     type: 'danger' | 'warning' | 'info' | 'success';
     confirmLabel?: string;
     cancelLabel?: string;
+    loading?: boolean;
   }>({
     isOpen: false,
     title: '',
     message: '',
     onConfirm: () => { },
-    type: 'danger'
+    type: 'danger',
+    loading: false
   });
 
-  const showConfirm = (config: Omit<typeof confirmModal, 'isOpen'>) => {
-    setConfirmModal({ ...config, isOpen: true });
+  const showConfirm = (config: Omit<typeof confirmModal, 'isOpen' | 'loading'>) => {
+    setConfirmModal({ ...config, isOpen: true, loading: false });
   };
 
   useEffect(() => {
@@ -551,12 +554,33 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                               type: 'danger',
                               confirmLabel: 'Sim, Excluir',
                               onConfirm: async () => {
-                                const success = await deleteCliente(cliente.id);
-                                if (success) {
+                                setExcluindoCliente(cliente.id);
+                                setConfirmModal(prev => ({ ...prev, loading: true }));
+                                const result = await deleteCliente(cliente.id);
+                                setExcluindoCliente(null);
+                                setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false }));
+                                
+                                if (result.success) {
                                   showConfirm({
                                     title: 'Sucesso',
                                     message: 'Cliente excluído com sucesso.',
                                     type: 'success',
+                                    confirmLabel: 'OK',
+                                    onConfirm: () => { }
+                                  });
+                                } else if (result.errorCode === 'FK_CONSTRAINT') {
+                                  showConfirm({
+                                    title: 'Não é possível excluir',
+                                    message: result.errorMessage || 'Este cliente possui registros vinculados e não pode ser excluído.',
+                                    type: 'warning',
+                                    confirmLabel: 'Entendido',
+                                    onConfirm: () => { }
+                                  });
+                                } else {
+                                  showConfirm({
+                                    title: 'Erro',
+                                    message: result.errorMessage || 'Erro ao excluir cliente.',
+                                    type: 'danger',
                                     confirmLabel: 'OK',
                                     onConfirm: () => { }
                                   });
@@ -617,8 +641,13 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                       type: 'danger',
                       confirmLabel: 'Excluir permanentemente',
                       onConfirm: async () => {
-                        const success = await deleteCliente(clienteAtual.id);
-                        if (success) {
+                        setExcluindoCliente(clienteAtual.id);
+                        setConfirmModal(prev => ({ ...prev, loading: true }));
+                        const result = await deleteCliente(clienteAtual.id);
+                        setExcluindoCliente(null);
+                        setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false }));
+                        
+                        if (result.success) {
                           showConfirm({
                             title: 'Sucesso',
                             message: 'Cliente excluído com sucesso.',
@@ -627,6 +656,22 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                             onConfirm: () => {
                               fecharPastaCliente();
                             }
+                          });
+                        } else if (result.errorCode === 'FK_CONSTRAINT') {
+                          showConfirm({
+                            title: 'Não é possível excluir',
+                            message: result.errorMessage || 'Este cliente possui registros vinculados e não pode ser excluído.',
+                            type: 'warning',
+                            confirmLabel: 'Entendido',
+                            onConfirm: () => { }
+                          });
+                        } else {
+                          showConfirm({
+                            title: 'Erro',
+                            message: result.errorMessage || 'Erro ao excluir cliente.',
+                            type: 'danger',
+                            confirmLabel: 'OK',
+                            onConfirm: () => { }
                           });
                         }
                       }
@@ -2066,43 +2111,64 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
               <div className="p-6 text-center">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${confirmModal.type === 'danger' ? 'bg-red-100 text-red-600' :
-                  confirmModal.type === 'warning' ? 'bg-orange-100 text-orange-600' :
-                    confirmModal.type === 'success' ? 'bg-green-100 text-green-600' :
-                      'bg-blue-100 text-blue-600'
-                  }`}>
-                  <i className={`text-3xl ${confirmModal.type === 'danger' ? 'ri-error-warning-line' :
-                    confirmModal.type === 'warning' ? 'ri-alert-line' :
-                      confirmModal.type === 'success' ? 'ri-checkbox-circle-line' :
-                        'ri-information-line'
-                    }`}></i>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{confirmModal.title}</h3>
-                <p className="text-gray-600 leading-relaxed">{confirmModal.message}</p>
-              </div>
-              <div className="p-4 bg-gray-50 flex gap-3">
-                {confirmModal.type !== 'success' && (
-                  <button
-                    onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                    className="flex-1 py-3 px-4 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-100 transition-colors cursor-pointer"
-                  >
-                    {confirmModal.cancelLabel || 'Cancelar'}
-                  </button>
+                {confirmModal.loading ? (
+                  // Animação de loading durante exclusão
+                  <div className="flex flex-col items-center justify-center py-4">
+                    <div className="relative w-20 h-20 mb-4">
+                      <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
+                      <div className="absolute inset-0 border-4 border-t-red-500 rounded-full animate-spin"></div>
+                      <div className="absolute inset-2 bg-red-50 rounded-full flex items-center justify-center">
+                        <i className="ri-delete-bin-line text-2xl text-red-500 animate-pulse"></i>
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Excluindo cliente...</h3>
+                    <p className="text-sm text-gray-500">Por favor, aguarde</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${confirmModal.type === 'danger' ? 'bg-red-100 text-red-600' :
+                      confirmModal.type === 'warning' ? 'bg-orange-100 text-orange-600' :
+                        confirmModal.type === 'success' ? 'bg-green-100 text-green-600' :
+                          'bg-blue-100 text-blue-600'
+                      }`}>
+                      <i className={`text-3xl ${confirmModal.type === 'danger' ? 'ri-error-warning-line' :
+                        confirmModal.type === 'warning' ? 'ri-alert-line' :
+                          confirmModal.type === 'success' ? 'ri-checkbox-circle-line' :
+                            'ri-information-line'
+                        }`}></i>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{confirmModal.title}</h3>
+                    <p className="text-gray-600 leading-relaxed">{confirmModal.message}</p>
+                  </>
                 )}
-                <button
-                  onClick={() => {
-                    confirmModal.onConfirm();
-                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                  }}
-                  className={`flex-1 py-3 px-4 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg cursor-pointer ${confirmModal.type === 'danger' ? 'bg-red-600 hover:bg-red-700' :
-                    confirmModal.type === 'warning' ? 'bg-orange-500 hover:bg-orange-600' :
-                      confirmModal.type === 'success' ? 'bg-[#10B981] hover:bg-green-600' :
-                        'bg-[#1E3A8A] hover:bg-blue-800'
-                    }`}
-                >
-                  {confirmModal.confirmLabel || 'Confirmar'}
-                </button>
               </div>
+              {!confirmModal.loading && (
+                <div className="p-4 bg-gray-50 flex gap-3">
+                  {confirmModal.type !== 'success' && (
+                    <button
+                      onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                      className="flex-1 py-3 px-4 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-100 transition-colors cursor-pointer"
+                    >
+                      {confirmModal.cancelLabel || 'Cancelar'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      confirmModal.onConfirm();
+                      if (confirmModal.type === 'success' || confirmModal.type === 'info') {
+                        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                      }
+                    }}
+                    className={`flex-1 py-3 px-4 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg cursor-pointer ${confirmModal.type === 'danger' ? 'bg-red-600 hover:bg-red-700' :
+                      confirmModal.type === 'warning' ? 'bg-orange-500 hover:bg-orange-600' :
+                        confirmModal.type === 'success' ? 'bg-[#10B981] hover:bg-green-600' :
+                          'bg-[#1E3A8A] hover:bg-blue-800'
+                      }`}
+                  >
+                    {confirmModal.confirmLabel || 'Confirmar'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )
