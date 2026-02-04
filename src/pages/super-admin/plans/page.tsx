@@ -16,6 +16,7 @@ export default function PlansManagement() {
     const { plans, loading, fetchPlans, createPlan, updatePlan, deletePlan } = usePlans();
     const [showModal, setShowModal] = useState(false);
     const [editingPlan, setEditingPlan] = useState<Partial<PlanoExtended> | null>(null);
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         fetchPlans();
@@ -65,13 +66,19 @@ export default function PlansManagement() {
     const handleSave = async () => {
         if (!editingPlan || !editingPlan.nome || !editingPlan.slug) return;
 
-        if (editingPlan.id) {
-            await updatePlan(editingPlan.id, editingPlan as any);
-        } else {
-            await createPlan(editingPlan as any);
+        setSaving(true);
+        try {
+            if (editingPlan.id) {
+                await updatePlan(editingPlan.id, editingPlan as any);
+            } else {
+                await createPlan(editingPlan as any);
+            }
+            await fetchPlans();
+            setShowModal(false);
+            setEditingPlan(null);
+        } finally {
+            setSaving(false);
         }
-        setShowModal(false);
-        setEditingPlan(null);
     };
 
     const formatCurrency = (value: number) => {
@@ -624,16 +631,27 @@ export default function PlansManagement() {
                         <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
                             <button
                                 onClick={() => setShowModal(false)}
-                                className="px-6 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 font-bold transition-colors"
+                                disabled={saving}
+                                className="px-6 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 font-bold transition-colors disabled:opacity-50"
                             >
                                 Descartar Alterações
                             </button>
                             <button
                                 onClick={handleSave}
-                                className="px-8 py-2.5 bg-[#10B981] text-white rounded-xl hover:bg-green-600 font-bold shadow-lg shadow-green-100 transition-all active:scale-95"
+                                disabled={saving}
+                                className="px-8 py-2.5 bg-[#10B981] text-white rounded-xl hover:bg-green-600 font-bold shadow-lg shadow-green-100 transition-all active:scale-95 disabled:opacity-70 flex items-center gap-2"
                             >
-                                <i className="ri-save-line mr-2"></i>
-                                Salvar Configurações
+                                {saving ? (
+                                    <>
+                                        <i className="ri-loader-4-line animate-spin"></i>
+                                        Salvando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="ri-save-line"></i>
+                                        Salvar Configurações
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
