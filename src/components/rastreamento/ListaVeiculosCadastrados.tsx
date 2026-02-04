@@ -181,10 +181,10 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-card rounded-lg shadow-md p-6 border border-border">
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-600">Carregando veículos...</span>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <span className="ml-3 text-muted-foreground">Carregando veículos...</span>
         </div>
       </div>
     );
@@ -195,30 +195,30 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="bg-card rounded-lg shadow-md p-6 border border-border">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-lg font-bold text-gray-800">Veículos Cadastrados para Rastreamento</h3>
-          <p className="text-sm text-gray-500 mt-1">
+          <h3 className="text-lg font-bold text-foreground">Veículos Cadastrados para Rastreamento</h3>
+          <p className="text-sm text-muted-foreground mt-1">
             Rastreamento automático ativo. Consultas semanais programadas.
           </p>
         </div>
-        <div className="flex items-center space-x-2 bg-green-50 px-4 py-2 rounded-lg">
-          <i className="ri-radar-line text-green-600"></i>
-          <span className="text-sm font-medium text-green-800">Monitoramento Automático</span>
+        <div className="flex items-center space-x-2 bg-success/10 px-4 py-2 rounded-lg">
+          <i className="ri-radar-line text-success"></i>
+          <span className="text-sm font-medium text-success">Monitoramento Automático</span>
         </div>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200">
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Veículo</th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Cliente</th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Plano</th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Multas</th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Última Consulta</th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Ações</th>
+            <tr className="border-b border-border">
+              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Veículo</th>
+              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Cliente</th>
+              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Plano</th>
+              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Multas</th>
+              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Última Consulta</th>
+              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -231,21 +231,21 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
               const isProximoVencer = diasParaVencer !== null && diasParaVencer >= 0 && diasParaVencer <= 3;
 
               return (
-                <tr key={veiculo.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <tr key={veiculo.id} className="border-b border-border hover:bg-muted/50 transition-colors">
                   <td className="py-4 px-4">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                        <i className="ri-car-line text-white text-lg"></i>
+                      <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                        <i className="ri-car-line text-primary-foreground text-lg"></i>
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-800">{veiculo.placa}</p>
-                        <p className="text-xs text-gray-500">{veiculo.modelo} {veiculo.ano && `• ${veiculo.ano}`}</p>
+                        <p className="text-sm font-semibold text-foreground">{veiculo.placa}</p>
+                        <p className="text-xs text-muted-foreground">{veiculo.modelo} {veiculo.ano && `• ${veiculo.ano}`}</p>
                       </div>
                     </div>
                   </td>
                   <td className="py-4 px-4">
-                    <p className="text-sm text-gray-700">{veiculo.cliente_nome}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-sm text-foreground">{veiculo.cliente_nome}</p>
+                    <p className="text-xs text-muted-foreground">
                       {veiculo.cliente_cpf || veiculo.cliente_cnpj || '-'}
                     </p>
                   </td>
@@ -253,8 +253,8 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
                     <div className="flex flex-col gap-1">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                         veiculo.rastreamento_tipo === 'anual' 
-                          ? 'bg-green-100 text-green-700' 
-                          : 'bg-blue-100 text-blue-700'
+                          ? 'bg-success/10 text-success' 
+                          : 'bg-primary/10 text-primary'
                       }`}>
                         <i className={`mr-1 ${veiculo.rastreamento_tipo === 'anual' ? 'ri-calendar-check-line' : 'ri-calendar-line'}`}></i>
                         {veiculo.rastreamento_tipo === 'anual' ? 'Anual' : 'Mensal'}
@@ -262,10 +262,10 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
                       {vencimentoDate && (
                         <span className={`text-xs flex items-center gap-1 ${
                           isVencido 
-                            ? 'text-red-600 font-medium' 
+                            ? 'text-destructive font-medium' 
                             : isProximoVencer 
-                              ? 'text-orange-600' 
-                              : 'text-gray-500'
+                              ? 'text-warning' 
+                              : 'text-muted-foreground'
                         }`}>
                           {isVencido ? (
                             <><i className="ri-error-warning-line"></i> Vencido</>
@@ -279,27 +279,27 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
                   <td className="py-4 px-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                       veiculo.multas_count > 0 
-                        ? 'bg-red-100 text-red-700' 
-                        : 'bg-green-100 text-green-700'
+                        ? 'bg-destructive/10 text-destructive' 
+                        : 'bg-success/10 text-success'
                     }`}>
                       {veiculo.multas_count} multa{veiculo.multas_count !== 1 ? 's' : ''}
                     </span>
                   </td>
                   <td className="py-4 px-4">
-                    <p className="text-sm text-gray-600">{formatDate(veiculo.ultima_consulta)}</p>
+                    <p className="text-sm text-muted-foreground">{formatDate(veiculo.ultima_consulta)}</p>
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => onViewHistorico?.(veiculo)}
-                        className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                        className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                         title="Ver histórico de consultas"
                       >
                         <i className="ri-history-line text-lg"></i>
                       </button>
                       <button
                         onClick={() => onEditVeiculo?.(veiculo)}
-                        className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                         title="Editar veículo"
                       >
                         <i className="ri-pencil-line text-lg"></i>
@@ -307,7 +307,7 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
                       <button
                         onClick={() => abrirConfirmacaoDelete(veiculo.id, veiculo.placa)}
                         disabled={deletando === veiculo.id}
-                        className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                        className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors disabled:opacity-50"
                         title="Excluir veículo"
                       >
                         {deletando === veiculo.id ? (
