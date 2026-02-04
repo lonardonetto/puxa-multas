@@ -12,11 +12,61 @@ interface PlanoExtended extends Plano {
     preco_anual?: number | null;
 }
 
+const SAVE_PHASES = [
+    { icon: 'ri-save-line', label: 'Validando dados...', duration: 1500 },
+    { icon: 'ri-database-2-line', label: 'Atualizando banco de dados...', duration: 2000 },
+    { icon: 'ri-refresh-line', label: 'Sincronizando sistema...', duration: 2000 },
+    { icon: 'ri-check-double-line', label: 'Concluído!', duration: 1500 },
+];
+
+function SavingAnimation({ phase }: { phase: number }) {
+    const currentPhase = SAVE_PHASES[phase] || SAVE_PHASES[0];
+    const progress = ((phase + 1) / SAVE_PHASES.length) * 100;
+
+    return (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[200]">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center animate-scale-in">
+                {/* Icon com animação */}
+                <div className="relative mx-auto w-24 h-24 mb-6">
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-r from-emerald-400 to-green-600 animate-pulse opacity-30"></div>
+                    <div className="absolute inset-2 rounded-full bg-gradient-to-r from-emerald-500 to-green-700 flex items-center justify-center">
+                        <i className={`${currentPhase.icon} text-4xl text-white ${phase < SAVE_PHASES.length - 1 ? 'animate-spin' : ''}`}></i>
+                    </div>
+                </div>
+
+                {/* Título */}
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Salvando Configurações</h3>
+                <p className="text-emerald-600 font-semibold mb-6">{currentPhase.label}</p>
+
+                {/* Barra de progresso */}
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div 
+                        className="h-full bg-gradient-to-r from-emerald-500 to-green-600 rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${progress}%` }}
+                    ></div>
+                </div>
+
+                {/* Indicadores de fase */}
+                <div className="flex justify-between mt-4">
+                    {SAVE_PHASES.map((p, i) => (
+                        <div key={i} className="flex flex-col items-center">
+                            <div className={`w-3 h-3 rounded-full transition-colors ${
+                                i <= phase ? 'bg-emerald-500' : 'bg-gray-300'
+                            }`}></div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function PlansManagement() {
     const { plans, loading, fetchPlans, createPlan, updatePlan, deletePlan } = usePlans();
     const [showModal, setShowModal] = useState(false);
     const [editingPlan, setEditingPlan] = useState<Partial<PlanoExtended> | null>(null);
     const [saving, setSaving] = useState(false);
+    const [savePhase, setSavePhase] = useState(0);
 
     useEffect(() => {
         fetchPlans();
@@ -67,17 +117,37 @@ export default function PlansManagement() {
         if (!editingPlan || !editingPlan.nome || !editingPlan.slug) return;
 
         setSaving(true);
+        setSavePhase(0);
+        setShowModal(false);
+
         try {
+            // Fase 1: Validando
+            await new Promise(r => setTimeout(r, SAVE_PHASES[0].duration));
+            setSavePhase(1);
+
+            // Fase 2: Atualizando banco
             if (editingPlan.id) {
                 await updatePlan(editingPlan.id, editingPlan as any);
             } else {
                 await createPlan(editingPlan as any);
             }
+            await new Promise(r => setTimeout(r, SAVE_PHASES[1].duration));
+            setSavePhase(2);
+
+            // Fase 3: Sincronizando
             await fetchPlans();
-            setShowModal(false);
+            await new Promise(r => setTimeout(r, SAVE_PHASES[2].duration));
+            setSavePhase(3);
+
+            // Fase 4: Concluído
+            await new Promise(r => setTimeout(r, SAVE_PHASES[3].duration));
+            
             setEditingPlan(null);
+        } catch (error) {
+            console.error('Erro ao salvar plano:', error);
         } finally {
             setSaving(false);
+            setSavePhase(0);
         }
     };
 
@@ -86,7 +156,11 @@ export default function PlansManagement() {
     };
 
     return (
-        <div className="p-8">
+        <>
+            {/* Animação de salvamento em tela cheia */}
+            {saving && <SavingAnimation phase={savePhase} />}
+            
+            <div className="p-8">
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800">Gestão de Planos</h1>
@@ -657,6 +731,7 @@ export default function PlansManagement() {
                     </div>
                 </div>
             )}
-        </div>
+            </div>
+        </>
     );
 }
