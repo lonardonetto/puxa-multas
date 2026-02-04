@@ -68,7 +68,9 @@ export default function PlansManagement() {
     const [saving, setSaving] = useState(false);
     const [savePhase, setSavePhase] = useState(0);
     const [confirmDeactivate, setConfirmDeactivate] = useState<{ id: string; nome: string } | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState<{ id: string; nome: string } | null>(null);
     const [deactivating, setDeactivating] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         fetchPlans();
@@ -185,6 +187,38 @@ export default function PlansManagement() {
         }
     };
 
+    const handleDelete = async () => {
+        if (!confirmDelete) return;
+        
+        setDeleting(true);
+        setSavePhase(0);
+        setConfirmDelete(null);
+
+        try {
+            // Fase 1: Validando
+            await new Promise(r => setTimeout(r, 1500));
+            setSavePhase(1);
+
+            // Fase 2: Excluindo do banco
+            await deletePlan(confirmDelete.id);
+            await new Promise(r => setTimeout(r, 2000));
+            setSavePhase(2);
+
+            // Fase 3: Sincronizando
+            await fetchPlans();
+            await new Promise(r => setTimeout(r, 2000));
+            setSavePhase(3);
+
+            // Fase 4: Concluído
+            await new Promise(r => setTimeout(r, 1500));
+        } catch (error) {
+            console.error('Erro ao excluir plano:', error);
+        } finally {
+            setDeleting(false);
+            setSavePhase(0);
+        }
+    };
+
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
     };
@@ -249,6 +283,71 @@ export default function PlansManagement() {
                             >
                                 <i className="ri-eye-off-line"></i>
                                 Desativar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Animação de exclusão em tela cheia */}
+            {deleting && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[200]">
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center animate-scale-in">
+                        <div className="relative mx-auto w-24 h-24 mb-6">
+                            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-red-500 to-red-700 animate-pulse opacity-30"></div>
+                            <div className="absolute inset-2 rounded-full bg-gradient-to-r from-red-600 to-red-800 flex items-center justify-center">
+                                <i className={`ri-delete-bin-line text-4xl text-white ${savePhase < 3 ? 'animate-bounce' : ''}`}></i>
+                            </div>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">Excluindo Plano</h3>
+                        <p className="text-red-600 font-semibold mb-6">
+                            {savePhase === 0 && 'Verificando dependências...'}
+                            {savePhase === 1 && 'Removendo do banco de dados...'}
+                            {savePhase === 2 && 'Sincronizando sistema...'}
+                            {savePhase === 3 && 'Concluído!'}
+                        </p>
+                        <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div 
+                                className="h-full bg-gradient-to-r from-red-500 to-red-700 rounded-full transition-all duration-500 ease-out"
+                                style={{ width: `${((savePhase + 1) / 4) * 100}%` }}
+                            ></div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de confirmação de exclusão */}
+            {confirmDelete && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md animate-scale-in">
+                        <div className="text-center mb-6">
+                            <div className="mx-auto w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
+                                <i className="ri-delete-bin-line text-3xl text-red-600"></i>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-800 mb-2">Excluir Plano Permanentemente?</h3>
+                            <p className="text-gray-600">
+                                Tem certeza que deseja <strong className="text-red-600">EXCLUIR</strong> o plano <strong className="text-gray-900">"{confirmDelete.nome}"</strong>?
+                            </p>
+                            <div className="mt-4 p-3 bg-red-50 rounded-xl border border-red-200">
+                                <p className="text-sm text-red-700 font-medium">
+                                    <i className="ri-error-warning-line mr-1"></i>
+                                    Esta ação é IRREVERSÍVEL! O plano será removido permanentemente do sistema.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setConfirmDelete(null)}
+                                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleDelete}
+                                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <i className="ri-delete-bin-line"></i>
+                                Excluir Definitivamente
                             </button>
                         </div>
                     </div>
@@ -385,19 +484,29 @@ export default function PlansManagement() {
                                 </div>
 
                                 {/* Footer com ações */}
-                                <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-between">
+                                <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-between items-center">
                                     <button
                                         onClick={() => handleEdit(plan)}
                                         className="text-gray-600 hover:text-blue-600 font-bold text-sm flex items-center transition-colors"
                                     >
-                                        <i className="ri-edit-line mr-1"></i> Configurar Plano
+                                        <i className="ri-edit-line mr-1"></i> Configurar
                                     </button>
-                                    <button
-                                        onClick={() => setConfirmDeactivate({ id: plan.id, nome: plan.nome })}
-                                        className="text-gray-400 hover:text-red-500 font-medium text-sm flex items-center transition-colors"
-                                    >
-                                        <i className="ri-eye-off-line mr-1"></i> Desativar
-                                    </button>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => setConfirmDeactivate({ id: plan.id, nome: plan.nome })}
+                                            className="text-orange-500 hover:text-orange-600 font-medium text-sm flex items-center transition-colors"
+                                            title="Oculta o plano para clientes, mas mantém no sistema"
+                                        >
+                                            <i className="ri-eye-off-line mr-1"></i> Desativar
+                                        </button>
+                                        <button
+                                            onClick={() => setConfirmDelete({ id: plan.id, nome: plan.nome })}
+                                            className="text-red-400 hover:text-red-600 font-medium text-sm flex items-center transition-colors"
+                                            title="Remove permanentemente o plano"
+                                        >
+                                            <i className="ri-delete-bin-line mr-1"></i> Excluir
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         );
