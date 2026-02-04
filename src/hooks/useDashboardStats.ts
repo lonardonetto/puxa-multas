@@ -244,26 +244,66 @@ export function useDashboardStats() {
 
 function getActivityIcon(tipo: string): string {
   const icons: Record<string, string> = {
+    // Contratos
     'contrato_criado': 'ri-file-add-line',
+    'contrato_assinado': 'ri-quill-pen-line',
+    'contrato_excluido': 'ri-file-reduce-line',
+    'status_alterado': 'ri-refresh-line',
+    
+    // Recursos
     'recurso_criado': 'ri-file-text-line',
-    'cliente_cadastrado': 'ri-user-add-line',
-    'pagamento': 'ri-money-dollar-circle-line',
-    'rastreamento': 'ri-car-line',
     'recurso_deferido': 'ri-checkbox-circle-line',
     'recurso_indeferido': 'ri-close-circle-line',
+    
+    // Clientes
+    'cadastro': 'ri-user-add-line',
+    'cliente_cadastrado': 'ri-user-add-line',
+    'cliente_editado': 'ri-user-settings-line',
+    
+    // Documentos
+    'documento_enviado': 'ri-upload-cloud-line',
+    
+    // Rastreamento
+    'rastreamento': 'ri-car-line',
+    'rastreamento_ativado': 'ri-radar-line',
+    'rastreamento_cancelado': 'ri-car-washing-line',
+    
+    // Financeiro
+    'pagamento': 'ri-money-dollar-circle-line',
+    'credito_adicionado': 'ri-wallet-3-line',
+    
+    // Manual/Outros
+    'manual': 'ri-edit-line',
+    'info': 'ri-information-line',
   };
   return icons[tipo] || 'ri-information-line';
 }
 
 function getActivityColor(tipo: string): string {
   const colors: Record<string, string> = {
+    // Verde (sucesso/positivo)
     'contrato_criado': 'green',
-    'recurso_criado': 'blue',
+    'contrato_assinado': 'green',
+    'cadastro': 'green',
     'cliente_cadastrado': 'green',
     'pagamento': 'green',
-    'rastreamento': 'blue',
+    'credito_adicionado': 'green',
     'recurso_deferido': 'green',
+    'rastreamento_ativado': 'green',
+    'documento_enviado': 'green',
+    
+    // Azul (informativo/neutro)
+    'recurso_criado': 'blue',
+    'rastreamento': 'blue',
+    'status_alterado': 'blue',
+    'cliente_editado': 'blue',
+    'manual': 'blue',
+    'info': 'blue',
+    
+    // Vermelho (negativo/exclusão)
+    'contrato_excluido': 'red',
     'recurso_indeferido': 'red',
+    'rastreamento_cancelado': 'red',
   };
   return colors[tipo] || 'blue';
 }
