@@ -53,20 +53,20 @@ export default function Register() {
         }
     };
 
-    const inputClass = "w-full px-4 py-3 bg-[#1A1A1A] border border-[#3D3D3D] rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D4A017] focus:border-transparent";
-    const labelClass = "block text-sm font-semibold text-gray-300 mb-2";
+    const inputClass = "w-full px-4 py-2.5 bg-[#1A1A1A] border border-[#3D3D3D] rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D4A017] focus:border-transparent";
+    const labelClass = "block text-sm font-semibold text-gray-300 mb-1.5";
 
     return (
         <div className="min-h-screen bg-[#1A1A1A] flex items-center justify-center p-4">
-            <div className="bg-[#2D2D2D] rounded-2xl shadow-2xl p-8 w-full max-w-2xl border border-[#3D3D3D]">
-                <div className="text-center mb-8">
+            <div className="bg-[#2D2D2D] rounded-2xl shadow-2xl p-6 w-full max-w-2xl border border-[#3D3D3D]">
+                <div className="text-center mb-5">
                     <img 
                         src={logo} 
                         alt="Central da Multa" 
-                        className="h-16 mx-auto mb-4"
+                        className="h-12 mx-auto mb-3"
                     />
-                    <h1 className="text-2xl font-bold text-white mb-2">Criar Conta</h1>
-                    <p className="text-gray-400">Cadastre sua organização e comece a usar</p>
+                    <h1 className="text-2xl font-bold text-white mb-1">Criar Conta</h1>
+                    <p className="text-gray-400 text-sm">Cadastre sua organização e comece a usar</p>
                 </div>
 
                 {sucesso && (
@@ -89,8 +89,8 @@ export default function Register() {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className={labelClass}>
                                 Nome da Organização *
@@ -120,12 +120,12 @@ export default function Register() {
                         </div>
                     </div>
 
-                    <div className="mt-8 pt-6 border-t border-[#3D3D3D]">
-                        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-6 text-center">
+                    <div className="mt-4 pt-4 border-t border-[#3D3D3D]">
+                        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 text-center">
                             Configuração de Acesso (Login)
                         </h3>
 
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                             <div>
                                 <label className={labelClass}>
                                     Nome do Admin (Responsável) *
@@ -140,7 +140,7 @@ export default function Register() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className={labelClass}>
                                         E-mail de Login *
@@ -169,7 +169,7 @@ export default function Register() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className={labelClass}>
                                         Senha de Acesso *
