@@ -1248,10 +1248,24 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                                     conteudo = conteudo.replace(/\{\{CNPJ_ORGANIZACAO\}\}/g, (currentOrganization as any).cnpj || '');
                                     conteudo = conteudo.replace(/\{\{ENDERECO_ORGANIZACAO\}\}/g, (currentOrganization as any).endereco_completo || '');
                                   }
-                                  const tempDiv = document.createElement('div');
-                                  tempDiv.innerHTML = conteudo;
-                                  const textoLimpo = tempDiv.innerText || tempDiv.textContent || conteudo;
-                                  setEditandoConteudo(textoLimpo);
+                                  // Se o conteúdo já é HTML, usar direto; senão, converter para HTML jurídico
+                                  const isHTML = /<[a-z][\s\S]*>/i.test(conteudo);
+                                  if (isHTML) {
+                                    setEditandoConteudo(conteudo);
+                                  } else {
+                                    // Converter texto puro para HTML com formatação jurídica profissional
+                                    const paragrafos = conteudo.split(/\n\n+/).filter(p => p.trim());
+                                    const htmlFormatado = paragrafos.map(p => {
+                                      let texto = p.trim().replace(/\n/g, '<br>');
+                                      // Formatar títulos de cláusulas em negrito
+                                      texto = texto.replace(/(CLÁUSULA\s+\w+\s*[–-]\s*[A-ZÁÉÍÓÚÀÂÊÔÃÕÇ\s]+)/g, '<strong>$1</strong>');
+                                      // Formatar cabeçalhos como CONTRATO DE PRESTAÇÃO, PREÂMBULO etc
+                                      texto = texto.replace(/^(CONTRATO DE [A-ZÁÉÍÓÚÀÂÊÔÃÕÇ\s]+)/g, '<strong>$1</strong>');
+                                      texto = texto.replace(/(PREÂMBULO|DO OBJETO|DAS OBRIGAÇÕES|DA CONTRATADA|DO CONTRATANTE|DO PAGAMENTO|DA VIGÊNCIA|DO FORO|DAS DISPOSIÇÕES|Nota:)/g, '<strong>$1</strong>');
+                                      return `<p style="text-align: justify; margin-bottom: 12px; line-height: 1.8; font-family: 'Times New Roman', Georgia, serif; font-size: 12pt;">${texto}</p>`;
+                                    }).join('');
+                                    setEditandoConteudo(htmlFormatado);
+                                  }
                                 }}
                                 className="p-4 bg-green-50 border-2 border-green-300 rounded-lg hover:border-green-500 hover:shadow-md transition-all text-left group"
                               >
