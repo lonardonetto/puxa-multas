@@ -19,14 +19,20 @@ export default function StatusRecurso() {
   }, [loadData]);
 
   // Função para calcular dias desde a última notificação
-  const calcularDiasUltimaNotificacao = (dataUltimaNotificacao: string | null) => {
-    if (!dataUltimaNotificacao) return 999;
-    const dataNotif = new Date(dataUltimaNotificacao);
+  const calcularDiasUltimaNotificacao = (dataUltimaNotificacao: string | null, dataProtocolo: string | null) => {
+    const referencia = dataUltimaNotificacao || dataProtocolo;
+    if (!referencia) return 0; // Sem data de referência, considerar como "em dia"
+    
+    // Parse manual para evitar problemas de timezone com "YYYY-MM-DD"
+    const partes = referencia.split('T')[0].split('-');
+    const dataRef = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+    
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
-    dataNotif.setHours(0, 0, 0, 0);
-    const diffTime = Math.abs(hoje.getTime() - dataNotif.getTime());
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    dataRef.setHours(0, 0, 0, 0);
+    
+    const diffTime = hoje.getTime() - dataRef.getTime();
+    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
   };
 
   const getNivelAlerta = (dias: number, intervalo: number = 7) => {
@@ -167,7 +173,7 @@ export default function StatusRecurso() {
                 <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Atrasados</p>
                 <p className="text-xl font-bold text-red-600">
                   {recursosFiltrados.filter(r =>
-                    calcularDiasUltimaNotificacao(r.data_ultima_notificacao) >= (r.intervalo_notificacao || 7)
+                    calcularDiasUltimaNotificacao(r.data_ultima_notificacao, r.data_protocolo) >= (r.intervalo_notificacao || 7)
                   ).length}
                 </p>
               </div>
@@ -226,7 +232,7 @@ export default function StatusRecurso() {
                 </tr>
               ) : (
                 recursosFiltrados.map((recurso) => {
-                  const diasUltimaNotificacao = calcularDiasUltimaNotificacao(recurso.data_ultima_notificacao);
+                  const diasUltimaNotificacao = calcularDiasUltimaNotificacao(recurso.data_ultima_notificacao, recurso.data_protocolo);
                   const alerta = getNivelAlerta(diasUltimaNotificacao, recurso.intervalo_notificacao);
                   const cliente = recurso.multas?.veiculos?.clientes;
 
