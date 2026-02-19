@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import QRCode from 'qrcode';
 import { gerarPayloadPix } from '@/utils/pixUtils';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
@@ -15,17 +15,17 @@ const VALORES_RAPIDOS = [50, 100, 200, 500];
 
 export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
   const { getSetting } = useSystemSettings();
-  const { currentOrganization, refreshOrganizations } = useOrganization();
+  const { currentOrganization } = useOrganization();
   const { user } = useAuth();
-  
+
   const [valorSelecionado, setValorSelecionado] = useState<number | null>(null);
   const [valorCustom, setValorCustom] = useState('');
-  const [etapa, setEtapa] = useState<'selecao' | 'qrcode' | 'confirmado'>('selecao');
+  const [etapa, setEtapa] = useState<'selecao' | 'qrcode' | 'aguardando'>('selecao');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   const [payloadPix, setPayloadPix] = useState('');
   const [copiado, setCopiado] = useState(false);
   const [carregandoQr, setCarregandoQr] = useState(false);
-  const [confirmandoManual, setConfirmandoManual] = useState(false);
+  const [enviandoSolicitacao, setEnviandoSolicitacao] = useState(false);
 
   const valorFinal = valorSelecionado ?? (parseFloat(valorCustom.replace(',', '.')) || 0);
 
@@ -75,36 +75,31 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
     setTimeout(() => setCopiado(false), 3000);
   };
 
-  // Confirmar crédito manualmente (simulação — em produção usar webhook)
-  const confirmarPagamentoManual = async () => {
+  // Cria solicitação pendente - não adiciona créditos diretamente
+  const enviarSolicitacao = async () => {
     if (!currentOrganization || !user) return;
-    setConfirmandoManual(true);
+    setEnviandoSolicitacao(true);
     try {
-      // Deduz saldo (crédito pago)
-      const novoSaldo = (currentOrganization.saldo_sacavel || 0) + valorFinal;
-      await supabase
-        .from('organizations')
-        .update({ saldo_sacavel: novoSaldo })
-        .eq('id', currentOrganization.id);
+      const { error } = await (supabase as any)
+        .from('solicitacoes_recarga')
+        .insert({
+          organization_id: currentOrganization.id,
+          user_id: user.id,
+          valor: valorFinal,
+          status: 'pendente',
+          metodo_pagamento: 'pix',
+          payload_pix: payloadPix,
+        });
 
-      // Registra no faturamento
-      await supabase.from('faturamento').insert({
-        organization_id: currentOrganization.id,
-        descricao: `Recarga via PIX — R$ ${valorFinal.toFixed(2).replace('.', ',')}`,
-        valor: valorFinal,
-        status: 'paid',
-        tipo: 'credit_purchase',
-        metodo_pagamento: 'pix',
-        data_pagamento: new Date().toISOString().split('T')[0],
-      });
+      if (error) throw error;
 
-      await refreshOrganizations();
-      setEtapa('confirmado');
+      setEtapa('aguardando');
       onSuccess?.();
     } catch (err) {
-      console.error('Erro ao confirmar pagamento:', err);
+      console.error('Erro ao registrar solicitação:', err);
+      alert('Erro ao registrar solicitação. Tente novamente.');
     } finally {
-      setConfirmandoManual(false);
+      setEnviandoSolicitacao(false);
     }
   };
 
@@ -118,19 +113,19 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100">
-        
+
         {/* Header */}
         <div className="p-6 border-b border-gray-100 bg-gray-50/30 flex justify-between items-center">
           <div>
             <h3 className="text-xl font-black text-gray-900">
               {etapa === 'selecao' && 'Adicionar Créditos'}
               {etapa === 'qrcode' && 'QR Code PIX'}
-              {etapa === 'confirmado' && 'Pagamento Confirmado!'}
+              {etapa === 'aguardando' && 'Aguardando Confirmação'}
             </h3>
             <p className="text-xs text-gray-500 font-medium mt-0.5">
-              {etapa === 'selecao' && 'Créditos liberados após confirmação do PIX'}
+              {etapa === 'selecao' && 'Créditos liberados após confirmação do pagamento'}
               {etapa === 'qrcode' && `R$ ${valorFinal.toFixed(2).replace('.', ',')} · ${pixBanco || 'PIX'}`}
-              {etapa === 'confirmado' && 'Saldo atualizado com sucesso'}
+              {etapa === 'aguardando' && 'Solicitação enviada para aprovação'}
             </p>
           </div>
           <button
@@ -244,17 +239,22 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
               )}
             </button>
 
+            {/* Aviso importante */}
+            <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700 flex gap-2">
+              <i className="ri-information-line shrink-0 mt-0.5"></i>
+              <span>Após realizar o pagamento, clique em <strong>"Já paguei"</strong> para enviar sua solicitação. Os créditos serão liberados após confirmação do pagamento pelo administrador.</span>
+            </div>
+
             <div className="space-y-2">
-              {/* Botão de confirmação manual (admin/teste) */}
               <button
-                onClick={confirmarPagamentoManual}
-                disabled={confirmandoManual}
+                onClick={enviarSolicitacao}
+                disabled={enviandoSolicitacao}
                 className="w-full py-4 bg-[#10B981] text-white rounded-2xl font-black shadow-lg hover:bg-green-600 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                {confirmandoManual ? (
-                  <><i className="ri-loader-4-line animate-spin"></i> Confirmando...</>
+                {enviandoSolicitacao ? (
+                  <><i className="ri-loader-4-line animate-spin"></i> Enviando solicitação...</>
                 ) : (
-                  <><i className="ri-check-double-line text-lg"></i> Já realizei o pagamento</>
+                  <><i className="ri-check-double-line text-lg"></i> Já paguei — enviar solicitação</>
                 )}
               </button>
               <button
@@ -267,28 +267,35 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
           </div>
         )}
 
-        {/* Etapa: Confirmado */}
-        {etapa === 'confirmado' && (
+        {/* Etapa: Aguardando aprovação */}
+        {etapa === 'aguardando' && (
           <div className="p-8 flex flex-col items-center text-center space-y-4">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-              <i className="ri-check-double-line text-4xl text-green-600"></i>
+            <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center">
+              <i className="ri-time-line text-4xl text-amber-600"></i>
             </div>
             <div>
-              <h4 className="text-xl font-black text-gray-900">Créditos Adicionados!</h4>
-              <p className="text-gray-500 text-sm mt-1">
-                <span className="font-bold text-green-600">R$ {valorFinal.toFixed(2).replace('.', ',')}</span> adicionados ao seu saldo.
+              <h4 className="text-xl font-black text-gray-900">Solicitação Enviada!</h4>
+              <p className="text-gray-500 text-sm mt-2">
+                Sua solicitação de recarga de <span className="font-bold text-[#1E3A8A]">R$ {valorFinal.toFixed(2).replace('.', ',')}</span> foi registrada.
               </p>
+              <p className="text-gray-400 text-xs mt-2">
+                Os créditos serão liberados após o administrador confirmar o recebimento do pagamento. Isso pode levar alguns minutos.
+              </p>
+            </div>
+            <div className="w-full p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 text-left flex gap-2">
+              <i className="ri-alert-line shrink-0 mt-0.5"></i>
+              <span>Se tiver dúvidas, entre em contato com o suporte informando o valor e horário do pagamento.</span>
             </div>
             <button
               onClick={onClose}
               className="w-full py-4 bg-[#1E3A8A] text-white rounded-2xl font-black hover:bg-blue-800 transition-all"
             >
-              Concluir
+              Entendido
             </button>
           </div>
         )}
 
-        {etapa !== 'confirmado' && (
+        {etapa !== 'aguardando' && (
           <div className="px-6 pb-4 text-center">
             <p className="text-[10px] text-gray-300 font-black tracking-widest uppercase">
               Segurança garantida · PIX Banco Central do Brasil
