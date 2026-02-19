@@ -1,8 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { supabase } from '@/integrations/supabase/client';
+
+type TipoChavePix = 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria';
+
+interface PixSettings {
+    tipoChave: TipoChavePix;
+    chave: string;
+    nomeRecebedor: string;
+    cidade: string;
+    banco: string;
+}
 
 export default function SystemSettings() {
-    const { settings: dbSettings, loading: dbLoading, updateSetting, getSetting, refetch } = useSystemSettings();
+    const { settings: dbSettings, loading: dbLoading, updateSetting } = useSystemSettings();
     
     const [settings, setSettings] = useState({
         maintenanceMode: false,
@@ -23,6 +34,17 @@ export default function SystemSettings() {
     const [savingAi, setSavingAi] = useState(false);
     const [initialLoaded, setInitialLoaded] = useState(false);
 
+    // PIX settings state
+    const [pixSettings, setPixSettings] = useState<PixSettings>({
+        tipoChave: 'aleatoria',
+        chave: '',
+        nomeRecebedor: '',
+        cidade: '',
+        banco: '',
+    });
+    const [savingPix, setSavingPix] = useState(false);
+    const [pixSaved, setPixSaved] = useState(false);
+
     // Load API settings from database - only once when first loaded
     useEffect(() => {
         if (dbSettings.length > 0 && !initialLoaded) {
@@ -31,10 +53,18 @@ export default function SystemSettings() {
             const openaiKey = dbSettings.find(s => s.key === 'openai_api_key')?.value || '';
             const anthropicKey = dbSettings.find(s => s.key === 'anthropic_api_key')?.value || '';
             
+            // Load PIX settings
+            const pixTipo = (dbSettings.find(s => s.key === 'pix_tipo_chave')?.value || 'aleatoria') as TipoChavePix;
+            const pixChave = dbSettings.find(s => s.key === 'pix_chave')?.value || '';
+            const pixNome = dbSettings.find(s => s.key === 'pix_nome_recebedor')?.value || '';
+            const pixCidade = dbSettings.find(s => s.key === 'pix_cidade')?.value || '';
+            const pixBanco = dbSettings.find(s => s.key === 'pix_banco')?.value || '';
+
             setAiProvider(provider);
             setGoogleApiKey(googleKey);
             setOpenaiApiKey(openaiKey);
             setAnthropicApiKey(anthropicKey);
+            setPixSettings({ tipoChave: pixTipo, chave: pixChave, nomeRecebedor: pixNome, cidade: pixCidade, banco: pixBanco });
             setInitialLoaded(true);
         }
     }, [dbSettings, initialLoaded]);
@@ -64,6 +94,23 @@ export default function SystemSettings() {
         }
     };
 
+    const handleSavePixSettings = async () => {
+        setSavingPix(true);
+        try {
+            await updateSetting('pix_tipo_chave', pixSettings.tipoChave);
+            await updateSetting('pix_chave', pixSettings.chave);
+            await updateSetting('pix_nome_recebedor', pixSettings.nomeRecebedor);
+            await updateSetting('pix_cidade', pixSettings.cidade);
+            await updateSetting('pix_banco', pixSettings.banco);
+            setPixSaved(true);
+            setTimeout(() => setPixSaved(false), 3000);
+        } catch (error) {
+            alert('Erro ao salvar configurações de PIX');
+        } finally {
+            setSavingPix(false);
+        }
+    };
+
     const toggleShowKey = (key: string) => {
         setShowKeys(prev => ({ ...prev, [key]: !prev[key] }));
     };
@@ -73,6 +120,14 @@ export default function SystemSettings() {
         if (key.length <= 8) return '••••••••';
         return key.substring(0, 4) + '••••••••' + key.substring(key.length - 4);
     };
+
+    const tiposChavePix: { value: TipoChavePix; label: string; placeholder: string; mask?: string }[] = [
+        { value: 'cpf', label: 'CPF', placeholder: '000.000.000-00' },
+        { value: 'cnpj', label: 'CNPJ', placeholder: '00.000.000/0001-00' },
+        { value: 'email', label: 'E-mail', placeholder: 'exemplo@email.com' },
+        { value: 'telefone', label: 'Telefone', placeholder: '+5511999999999' },
+        { value: 'aleatoria', label: 'Chave Aleatória (EVP)', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' },
+    ];
 
     return (
         <div className="p-8">
@@ -323,6 +378,140 @@ export default function SystemSettings() {
                             </div>
                         </div>
                     )}
+                </div>
+
+                {/* Configurações PIX */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h2 className="text-xl font-bold text-gray-800 mb-2 flex items-center">
+                        <i className="ri-qr-code-line mr-2 text-green-600"></i>
+                        Configurações PIX — Recebimento de Créditos
+                    </h2>
+                    <p className="text-sm text-gray-500 mb-6">
+                        Esses dados serão usados para gerar o QR Code PIX quando os clientes adicionarem créditos na plataforma.
+                    </p>
+
+                    <div className="space-y-5">
+                        {/* Tipo de chave */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Chave PIX</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                                {tiposChavePix.map(tipo => (
+                                    <button
+                                        key={tipo.value}
+                                        onClick={() => setPixSettings(p => ({ ...p, tipoChave: tipo.value, chave: '' }))}
+                                        className={`py-2 px-3 rounded-lg border-2 text-sm font-semibold transition-all ${
+                                            pixSettings.tipoChave === tipo.value
+                                                ? 'border-green-500 bg-green-50 text-green-700'
+                                                : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                                        }`}
+                                    >
+                                        {tipo.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Chave PIX */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Chave PIX ({tiposChavePix.find(t => t.value === pixSettings.tipoChave)?.label})
+                            </label>
+                            <input
+                                type="text"
+                                value={pixSettings.chave}
+                                onChange={e => setPixSettings(p => ({ ...p, chave: e.target.value }))}
+                                placeholder={tiposChavePix.find(t => t.value === pixSettings.tipoChave)?.placeholder}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 font-mono text-sm"
+                            />
+                            {pixSettings.tipoChave === 'aleatoria' && (
+                                <button
+                                    onClick={() => setPixSettings(p => ({ ...p, chave: '48eca431-470d-49bb-bade-7e976e4ba928' }))}
+                                    className="mt-1 text-xs text-green-600 hover:underline"
+                                >
+                                    Usar chave configurada
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Nome do Recebedor */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Nome do Recebedor</label>
+                                <input
+                                    type="text"
+                                    value={pixSettings.nomeRecebedor}
+                                    onChange={e => setPixSettings(p => ({ ...p, nomeRecebedor: e.target.value }))}
+                                    placeholder="Nome ou razão social (max 25 chars)"
+                                    maxLength={25}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                />
+                                <p className="text-xs text-gray-400 mt-1">{pixSettings.nomeRecebedor.length}/25 caracteres</p>
+                            </div>
+
+                            {/* Cidade */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Cidade do Recebedor</label>
+                                <input
+                                    type="text"
+                                    value={pixSettings.cidade}
+                                    onChange={e => setPixSettings(p => ({ ...p, cidade: e.target.value }))}
+                                    placeholder="Ex: Sao Paulo"
+                                    maxLength={15}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                />
+                                <p className="text-xs text-gray-400 mt-1">{pixSettings.cidade.length}/15 caracteres (sem acentos)</p>
+                            </div>
+                        </div>
+
+                        {/* Banco */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Banco / Instituição (informativo)</label>
+                            <input
+                                type="text"
+                                value={pixSettings.banco}
+                                onChange={e => setPixSettings(p => ({ ...p, banco: e.target.value }))}
+                                placeholder="Ex: Nubank, Itaú, Bradesco..."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                            />
+                        </div>
+
+                        {/* Preview da chave */}
+                        {pixSettings.chave && pixSettings.nomeRecebedor && (
+                            <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+                                <i className="ri-check-double-line text-green-600 mt-0.5"></i>
+                                <div className="text-sm">
+                                    <p className="font-semibold text-green-800">Dados configurados:</p>
+                                    <p className="text-green-700 mt-1">
+                                        <span className="font-medium">Chave:</span> {pixSettings.chave} ({tiposChavePix.find(t => t.value === pixSettings.tipoChave)?.label})
+                                    </p>
+                                    <p className="text-green-700">
+                                        <span className="font-medium">Recebedor:</span> {pixSettings.nomeRecebedor} — {pixSettings.cidade}
+                                        {pixSettings.banco && ` (${pixSettings.banco})`}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex justify-end">
+                            <button
+                                onClick={handleSavePixSettings}
+                                disabled={savingPix || !pixSettings.chave || !pixSettings.nomeRecebedor || !pixSettings.cidade}
+                                className={`px-5 py-2.5 font-bold rounded-lg transition-all flex items-center gap-2 ${
+                                    pixSaved
+                                        ? 'bg-green-100 text-green-700 border border-green-300'
+                                        : 'bg-green-600 text-white hover:bg-green-700 disabled:opacity-50'
+                                }`}
+                            >
+                                {savingPix ? (
+                                    <><i className="ri-loader-4-line animate-spin"></i> Salvando...</>
+                                ) : pixSaved ? (
+                                    <><i className="ri-check-line"></i> Salvo!</>
+                                ) : (
+                                    <><i className="ri-save-line"></i> Salvar Dados PIX</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Contato e Suporte */}
