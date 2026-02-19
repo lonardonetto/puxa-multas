@@ -8,6 +8,7 @@ import { ExtractFilters, type ExtractFiltersState } from '../../components/check
 import { ExtractTable } from '../../components/checkout/ExtractTable';
 import { ExtractExport } from '../../components/checkout/ExtractExport';
 import { FinancialChart } from '../../components/checkout/FinancialChart';
+import { ModalPixRecarga } from '../../components/checkout/ModalPixRecarga';
 
 export default function Checkout() {
   const { user } = useAuth();
@@ -239,51 +240,12 @@ export default function Checkout() {
       </div>
 
       {mostrarModalCobranca && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-100">
-            <div className="p-8 border-b border-gray-100 bg-gray-50/30 flex justify-between items-center">
-              <div>
-                <h3 className="text-2xl font-black text-gray-900 leading-tight">Recarregar Wallet</h3>
-                <p className="text-sm text-gray-500 font-medium">Os créditos são liberados na mesma hora após o PIX.</p>
-              </div>
-              <button
-                onClick={() => setMostrarModalCobranca(false)}
-                className="w-10 h-10 flex items-center justify-center hover:bg-gray-200 rounded-full transition-colors cursor-pointer text-gray-400 hover:text-gray-600"
-              >
-                <i className="ri-close-line text-2xl"></i>
-              </button>
-            </div>
-            <div className="p-8 space-y-8">
-              <div className="grid grid-cols-2 gap-4">
-                {[50, 100, 200, 500].map((valor) => (
-                  <button key={valor} className="py-5 border-2 border-gray-100 rounded-2xl font-black text-gray-600 hover:border-[#1E3A8A] hover:text-[#1E3A8A] hover:bg-blue-50/30 transition-all cursor-pointer active:scale-95 group">
-                    <p className="text-xs font-bold text-gray-400 group-hover:text-blue-400 uppercase tracking-widest mb-1">Valor</p>
-                    <p className="text-xl">R$ {valor}</p>
-                  </button>
-                ))}
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Ou digite outro valor</label>
-                <div className="relative">
-                  <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-gray-300 text-xl font-mono">R$</span>
-                  <input
-                    type="text"
-                    placeholder="0,00"
-                    className="w-full pl-16 pr-6 py-5 bg-gray-50 border border-gray-100 rounded-2xl text-2xl font-black focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white transition-all font-mono"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="p-8 bg-gray-50/50 border-t border-gray-100">
-              <button className="w-full py-5 bg-[#10B981] text-white rounded-2xl font-black shadow-xl shadow-green-100 hover:bg-green-600 hover:-translate-y-1 transition-all cursor-pointer uppercase tracking-widest active:scale-95">
-                Gerar PIX de Recarga
-              </button>
-              <p className="text-[10px] text-gray-400 text-center mt-6 uppercase font-black tracking-widest">
-                Segurança garantida via SSL & API Bancária
-              </p>
-            </div>
-          </div>
-        </div>
+        <ModalPixRecarga
+          onClose={() => setMostrarModalCobranca(false)}
+          onSuccess={() => {
+            fetchBilling(currentOrganization?.id || '');
+          }}
+        />
       )}
     </div>
   );
