@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
 type TipoEmail =
+  | 'confirmacao_email'
   | 'boas_vindas'
   | 'redefinicao_senha'
   | 'cliente_adicionado'
