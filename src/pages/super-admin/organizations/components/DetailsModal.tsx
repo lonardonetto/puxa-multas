@@ -19,7 +19,7 @@ export default function OrganizationDetailsModal({ organization, onClose, onUpda
     const [showAddCredit, setShowAddCredit] = useState(false);
     const [creditValue, setCreditValue] = useState('');
     const [creditDesc, setCreditDesc] = useState('Carga manual de créditos');
-    const [isBonus, setIsBonus] = useState(false);
+    const [creditType, setCreditType] = useState<'bonus' | 'credito'>('credito');
     const [expiryDate, setExpiryDate] = useState('');
 
     // Estado para Notificação (Toast)
@@ -66,7 +66,7 @@ export default function OrganizationDetailsModal({ organization, onClose, onUpda
             valor: value,
             status: 'paid',
             descricao: creditDesc,
-            is_bonus: true,
+            is_bonus: creditType === 'bonus',
             data_expiracao: expiryDate ? new Date(expiryDate).toISOString() : null,
             data_pagamento: new Date().toISOString(),
             metodo_pagamento: 'balance'
@@ -125,29 +125,39 @@ export default function OrganizationDetailsModal({ organization, onClose, onUpda
                 <div className="flex-1 overflow-y-auto p-6">
                     {activeTab === 'geral' ? (
                         <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100 transition-all hover:shadow-md">
-                                    <p className="text-xs font-bold text-purple-600 uppercase tracking-wider mb-2">Saldo Bônus</p>
-                                    <h3 className="text-3xl font-black text-purple-900">
-                                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(localOrg.saldo_bonus || 0)}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="bg-green-50 p-5 rounded-2xl border border-green-100 transition-all hover:shadow-md">
+                                    <p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-2">Crédito Pago</p>
+                                    <h3 className="text-2xl font-black text-green-900">
+                                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(localOrg.saldo_sacavel || 0)}
                                     </h3>
-                                    <p className="text-[10px] text-purple-700 mt-2 flex items-center gap-1">
-                                        <i className="ri-gift-line"></i> Créditos para uso no sistema
+                                    <p className="text-[10px] text-green-700 mt-2 flex items-center gap-1">
+                                        <i className="ri-money-dollar-circle-line"></i> Saldo de vendas / depósitos
                                     </p>
                                 </div>
 
-                                <div className="bg-green-50 p-6 rounded-2xl border border-green-100">
-                                    <p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-2">Status da Conta</p>
-                                    <div className="flex items-center gap-2">
-                                        <span className={`w-3 h-3 rounded-full ${localOrg.ativo ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
-                                        <h3 className="text-2xl font-bold text-green-900">{localOrg.ativo ? 'Ativa' : 'Desativada'}</h3>
-                                    </div>
-                                    <p className="text-xs text-green-700 mt-2">Vencimento: {localOrg.data_expiracao ? new Date(localOrg.data_expiracao).toLocaleDateString('pt-BR') : 'N/A'}</p>
+                                <div className="bg-purple-50 p-5 rounded-2xl border border-purple-100 transition-all hover:shadow-md">
+                                    <p className="text-xs font-bold text-purple-600 uppercase tracking-wider mb-2">Saldo Bônus</p>
+                                    <h3 className="text-2xl font-black text-purple-900">
+                                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(localOrg.saldo_bonus || 0)}
+                                    </h3>
+                                    <p className="text-[10px] text-purple-700 mt-2 flex items-center gap-1">
+                                        <i className="ri-gift-line"></i> Créditos promocionais
+                                    </p>
                                 </div>
 
-                                <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100">
+                                <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100">
+                                    <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Status da Conta</p>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`w-3 h-3 rounded-full ${localOrg.ativo ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
+                                        <h3 className="text-xl font-bold text-blue-900">{localOrg.ativo ? 'Ativa' : 'Desativada'}</h3>
+                                    </div>
+                                    <p className="text-xs text-blue-700 mt-2">Vencimento: {localOrg.data_expiracao ? new Date(localOrg.data_expiracao).toLocaleDateString('pt-BR') : 'N/A'}</p>
+                                </div>
+
+                                <div className="bg-orange-50 p-5 rounded-2xl border border-orange-100">
                                     <p className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-2">Plano Atual</p>
-                                    <h3 className="text-2xl font-bold text-orange-900 capitalize">{localOrg.plano}</h3>
+                                    <h3 className="text-xl font-bold text-orange-900 capitalize">{localOrg.plano}</h3>
                                     <p className="text-xs text-orange-700 mt-2">{localOrg.limite_usuarios} usuários / {localOrg.limite_clientes} clientes</p>
                                 </div>
                             </div>
@@ -168,6 +178,25 @@ export default function OrganizationDetailsModal({ organization, onClose, onUpda
                             {showAddCredit && (
                                 <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 mb-6 animate-in fade-in slide-in-from-top-4">
                                     <h4 className="text-sm font-bold text-blue-800 mb-4">Nova Carga de Crédito</h4>
+                                    
+                                    {/* Tipo de crédito */}
+                                    <div className="flex gap-3 mb-4">
+                                        <button
+                                            onClick={() => setCreditType('credito')}
+                                            className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm border-2 transition-all ${creditType === 'credito' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'}`}
+                                        >
+                                            <i className="ri-money-dollar-circle-line mr-2"></i>
+                                            Crédito Pago (Sacável)
+                                        </button>
+                                        <button
+                                            onClick={() => setCreditType('bonus')}
+                                            className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm border-2 transition-all ${creditType === 'bonus' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'}`}
+                                        >
+                                            <i className="ri-gift-line mr-2"></i>
+                                            Bônus (Promocional)
+                                        </button>
+                                    </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-purple-600 mb-2 uppercase tracking-wide">Valor (R$)</label>

@@ -48,6 +48,25 @@ export function useBilling(): UseBillingReturn {
             if (insertError) throw insertError;
             const result = data as unknown as Faturamento;
             if (result) setBilling(prev => [result, ...prev]);
+
+            // Atualizar saldo na organização
+            if (result && invoice.organization_id && invoice.status === 'paid') {
+                const balanceField = invoice.is_bonus ? 'saldo_bonus' : 'saldo_sacavel';
+                const { data: orgData } = await supabase
+                    .from('organizations')
+                    .select(balanceField)
+                    .eq('id', invoice.organization_id)
+                    .single();
+
+                if (orgData) {
+                    const currentBalance = (orgData as any)[balanceField] || 0;
+                    await supabase
+                        .from('organizations')
+                        .update({ [balanceField]: currentBalance + invoice.valor })
+                        .eq('id', invoice.organization_id);
+                }
+            }
+
             return result;
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Erro ao criar fatura'));
