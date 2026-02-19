@@ -51,12 +51,16 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
   const [veiculos, setVeiculos] = useState<VeiculoCadastrado[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletando, setDeletando] = useState<string | null>(null);
+  const [cancelando, setCancelando] = useState<string | null>(null);
   
-  // Estado para o modal de confirmação
+  // Estado para o modal de confirmação de exclusão
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [veiculoParaExcluir, setVeiculoParaExcluir] = useState<{ id: string; placa: string } | null>(null);
+  
+  // Estado para o modal de confirmação de cancelamento
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [veiculoParaCancelar, setVeiculoParaCancelar] = useState<{ id: string; placa: string; tipo: string | null } | null>(null);
 
-  // Expor a função refresh para o componente pai
   useImperativeHandle(ref, () => ({
     refresh: fetchVeiculos
   }));
@@ -72,6 +76,36 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
     setConfirmDeleteOpen(true);
   };
 
+  const abrirConfirmacaoCancelar = (veiculoId: string, placa: string, tipo: string | null) => {
+    setVeiculoParaCancelar({ id: veiculoId, placa, tipo });
+    setConfirmCancelOpen(true);
+  };
+
+  const confirmarCancelarRastreamento = async () => {
+    if (!veiculoParaCancelar) return;
+
+    const { id: veiculoId, placa } = veiculoParaCancelar;
+    setCancelando(veiculoId);
+
+    try {
+      const { error } = await supabase.functions.invoke('cancelar-rastreamento', {
+        body: { veiculo_id: veiculoId, placa, motivo: 'manual' },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Rastreamento cancelado para ${placa}`);
+      await fetchVeiculos();
+      onRefreshMultas();
+    } catch (error) {
+      console.error('Erro ao cancelar rastreamento:', error);
+      toast.error('Erro ao cancelar rastreamento');
+    } finally {
+      setCancelando(null);
+      setVeiculoParaCancelar(null);
+    }
+  };
+
   const confirmarDeleteVeiculo = async () => {
     if (!veiculoParaExcluir) return;
 
@@ -79,10 +113,20 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
     setDeletando(veiculoId);
     
     try {
-      // Primeiro excluir multas do veículo
+      // Cancelar rastreamento na CertaDoc antes de excluir
+      try {
+        await supabase.functions.invoke('cancelar-rastreamento', {
+          body: { veiculo_id: veiculoId, placa, motivo: 'excluido' },
+        });
+      } catch (cancelError) {
+        console.error('Erro ao cancelar rastreamento na exclusão:', cancelError);
+        // Continua com a exclusão mesmo se falhar
+      }
+
+      // Excluir multas do veículo
       await supabase.from('multas').delete().eq('veiculo_id', veiculoId);
       
-      // Depois excluir o veículo
+      // Excluir o veículo
       const { error } = await supabase.from('veiculos').delete().eq('id', veiculoId);
       
       if (error) throw error;
@@ -104,7 +148,6 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
 
     setLoading(true);
     try {
-      // Buscar veículos com rastreamento ativo junto com dados do cliente
       const { data: clientes, error: clientesError } = await supabase
         .from('clientes')
         .select('id, nome_completo, cpf, cnpj, tipo_pessoa')
@@ -128,18 +171,15 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
 
       if (veiculosError) throw veiculosError;
 
-      // Buscar contagem de multas por veículo
       const veiculosComDados: VeiculoCadastrado[] = await Promise.all(
         (veiculosData || []).map(async (v) => {
           const cliente = clientes.find(c => c.id === v.cliente_id);
           
-          // Contar multas do veículo
           const { count } = await supabase
             .from('multas')
             .select('*', { count: 'exact', head: true })
             .eq('veiculo_id', v.id);
 
-          // Buscar última multa para saber última consulta
           const { data: ultimaMultaData } = await supabase
             .from('multas')
             .select('created_at')
@@ -192,7 +232,7 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
   }
 
   if (veiculos.length === 0) {
-    return null; // Não mostrar nada se não tiver veículos
+    return null;
   }
 
   return (
@@ -224,7 +264,6 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
           </thead>
           <tbody>
             {veiculos.map((veiculo) => {
-              // Verificar se vencimento está próximo (3 dias) ou vencido
               const vencimentoDate = veiculo.rastreamento_vencimento ? new Date(veiculo.rastreamento_vencimento) : null;
               const hoje = new Date();
               const diasParaVencer = vencimentoDate ? Math.ceil((vencimentoDate.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24)) : null;
@@ -307,18 +346,32 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
                     <p className="text-sm text-muted-foreground">{formatDate(veiculo.ultima_consulta)}</p>
                   </td>
                   <td className="py-4 px-4">
-                    <div className="flex items-center space-x-2">
-                      {/* Botão de Upgrade - apenas para planos mensal e anual */}
+                    <div className="flex items-center space-x-1">
+                      {/* Botão de Upgrade */}
                       {veiculo.rastreamento_tipo !== 'placa_protegida' && (
                         <button
                           onClick={() => onUpgradePlano?.(veiculo)}
                           className="px-2 py-1 flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200"
-                          title={`Upgrade para ${veiculo.rastreamento_tipo === 'mensal' ? 'Anual ou Placa Protegida' : 'Placa Protegida'}`}
+                          title="Upgrade de plano"
                         >
                           <i className="ri-arrow-up-circle-line"></i>
                           Upgrade
                         </button>
                       )}
+                      {/* Botão Cancelar Rastreamento */}
+                      <button
+                        onClick={() => abrirConfirmacaoCancelar(veiculo.id, veiculo.placa, veiculo.rastreamento_tipo)}
+                        disabled={cancelando === veiculo.id}
+                        className="px-2 py-1 flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors border border-orange-200 disabled:opacity-50"
+                        title="Cancelar rastreamento"
+                      >
+                        {cancelando === veiculo.id ? (
+                          <i className="ri-loader-4-line animate-spin"></i>
+                        ) : (
+                          <i className="ri-stop-circle-line"></i>
+                        )}
+                        Cancelar
+                      </button>
                       <button
                         onClick={() => onViewHistorico?.(veiculo)}
                         className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
@@ -359,12 +412,25 @@ const ListaVeiculosCadastrados = forwardRef<ListaVeiculosRef, Props>(({ onRefres
         open={confirmDeleteOpen}
         onOpenChange={setConfirmDeleteOpen}
         title="Excluir Veículo"
-        description={`Tem certeza que deseja excluir o veículo ${veiculoParaExcluir?.placa || ''}? Esta ação também excluirá todas as multas associadas e não pode ser desfeita.`}
+        description={`Tem certeza que deseja excluir o veículo ${veiculoParaExcluir?.placa || ''}? O rastreamento será desativado e todas as multas associadas serão removidas. Não há estorno de valores pagos. Esta ação não pode ser desfeita.`}
         confirmText="Excluir"
         cancelText="Cancelar"
         variant="danger"
         onConfirm={confirmarDeleteVeiculo}
         loading={deletando !== null}
+      />
+
+      {/* Modal de confirmação de cancelamento de rastreamento */}
+      <ConfirmDialog
+        open={confirmCancelOpen}
+        onOpenChange={setConfirmCancelOpen}
+        title="Cancelar Rastreamento"
+        description={`Deseja cancelar o rastreamento do veículo ${veiculoParaCancelar?.placa || ''}? ⚠️ ATENÇÃO: Não há estorno de valores já pagos${veiculoParaCancelar?.tipo === 'anual' || veiculoParaCancelar?.tipo === 'placa_protegida' ? ', mesmo sendo plano anual/placa protegida' : ''}. O monitoramento automático de multas será desativado imediatamente.`}
+        confirmText="Cancelar Rastreamento"
+        cancelText="Manter Rastreamento"
+        variant="danger"
+        onConfirm={confirmarCancelarRastreamento}
+        loading={cancelando !== null}
       />
     </div>
   );

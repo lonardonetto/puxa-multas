@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.verificar-vencimento-rastreamento]
 verify_jwt = false
+
+[functions.listar-placas-consultadas]
+verify_jwt = false

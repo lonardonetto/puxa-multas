@@ -6,6 +6,57 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const CERTADOC_API_URL = 'https://dev-app-certadoc-api.azurewebsites.net';
+
+// Cache de token
+let cachedToken: { token: string; expiresAt: number } | null = null;
+
+function toBase64(str: string): string {
+  return btoa(str);
+}
+
+async function getCertaDocToken(): Promise<string> {
+  if (cachedToken && cachedToken.expiresAt > Date.now() + 300000) {
+    return cachedToken.token;
+  }
+
+  const email = Deno.env.get('CERTADOC_EMAIL');
+  const password = Deno.env.get('CERTADOC_PASSWORD');
+
+  if (!email || !password) {
+    throw new Error('Credenciais CertaDoc não configuradas');
+  }
+
+  const response = await fetch(`${CERTADOC_API_URL}/api/Login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      EmailBase64: toBase64(email),
+      PasswordBase64: toBase64(password),
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Erro na autenticação CertaDoc:', response.status, errorText);
+    throw new Error('Falha na autenticação CertaDoc');
+  }
+
+  const data = await response.json();
+  const token = data.token || data.Token || data.access_token;
+
+  if (!token) {
+    throw new Error('Token não encontrado na resposta');
+  }
+
+  cachedToken = {
+    token,
+    expiresAt: Date.now() + 3600000,
+  };
+
+  return token;
+}
+
 interface CancelamentoRequest {
   veiculo_id: string;
   placa: string;
@@ -20,6 +71,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const certadocEmail = Deno.env.get('CERTADOC_EMAIL')!;
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -55,38 +107,36 @@ serve(async (req) => {
       );
     }
 
-    // 2. Chamar API externa de cancelamento (quando fornecida)
-    // TODO: Substituir pelo endpoint real fornecido pelo usuário
-    const endpointCancelamento = Deno.env.get('CERTADOC_CANCELAMENTO_URL');
-    
-    if (endpointCancelamento) {
-      try {
-        console.log(`[CANCELAMENTO] Chamando API externa para placa ${placa}`);
-        
-        const response = await fetch(endpointCancelamento, {
-          method: 'POST',
+    // 2. Chamar API CertaDoc para desativar placa
+    let certadocDesativado = false;
+    try {
+      const token = await getCertaDocToken();
+      const placaNormalizada = placa.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      
+      console.log(`[CANCELAMENTO] Chamando CertaDoc desativar-placa-consultada para ${placaNormalizada}`);
+      
+      const certadocResponse = await fetch(
+        `${CERTADOC_API_URL}/api/vendor/desativar-placa-consultada?placa=${encodeURIComponent(placaNormalizada)}&email=${encodeURIComponent(certadocEmail)}`,
+        {
+          method: 'GET',
           headers: {
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
-            // Adicionar autenticação se necessário
           },
-          body: JSON.stringify({
-            placa: placa,
-            motivo: motivo,
-          }),
-        });
-
-        if (!response.ok) {
-          console.error('[CANCELAMENTO] Erro na API externa:', await response.text());
-          // Continua mesmo se a API externa falhar para garantir atualização local
-        } else {
-          console.log('[CANCELAMENTO] API externa respondeu com sucesso');
         }
-      } catch (apiError) {
-        console.error('[CANCELAMENTO] Falha ao chamar API externa:', apiError);
-        // Continua mesmo se a API externa falhar
+      );
+
+      if (!certadocResponse.ok) {
+        const errorText = await certadocResponse.text();
+        console.error('[CANCELAMENTO] Erro na API CertaDoc:', certadocResponse.status, errorText);
+      } else {
+        const resultText = await certadocResponse.text();
+        console.log('[CANCELAMENTO] CertaDoc desativação OK:', resultText);
+        certadocDesativado = true;
       }
-    } else {
-      console.log('[CANCELAMENTO] Endpoint de cancelamento não configurado, pulando chamada externa');
+    } catch (apiError) {
+      console.error('[CANCELAMENTO] Falha ao chamar CertaDoc:', apiError);
+      // Continua mesmo se a API externa falhar
     }
 
     // 3. Atualizar veículo no banco de dados
@@ -123,10 +173,11 @@ serve(async (req) => {
           motivo,
           tipo_anterior: veiculo.rastreamento_tipo,
           vencimento_anterior: veiculo.rastreamento_vencimento,
+          certadoc_desativado: certadocDesativado,
         },
       });
 
-    console.log(`[CANCELAMENTO] Rastreamento cancelado com sucesso para ${placa}`);
+    console.log(`[CANCELAMENTO] Rastreamento cancelado com sucesso para ${placa} (CertaDoc: ${certadocDesativado ? 'OK' : 'FALHOU'})`);
 
     return new Response(
       JSON.stringify({
@@ -135,6 +186,7 @@ serve(async (req) => {
         veiculo_id,
         placa,
         motivo,
+        certadoc_desativado: certadocDesativado,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

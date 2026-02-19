@@ -32,6 +32,7 @@ const SuperAdminKnowledgeBase = lazy(() => import('../pages/super-admin/knowledg
 const Layout = lazy(() => import('../components/feature/Layout'));
 const Home = lazy(() => import('../pages/home/page'));
 const Rastreamento = lazy(() => import('../pages/rastreamento/page'));
+const PlacasConsultadas = lazy(() => import('../pages/rastreamento/placas-consultadas/page'));
 const StatusRecurso = lazy(() => import('../pages/status-recurso/page'));
 const RecursosIA = lazy(() => import('../pages/recursos-ia/page'));
 const Planos = lazy(() => import('../pages/planos/page'));
@@ -91,6 +92,14 @@ const routes: RouteObject[] = [
         element: (
           <Suspense fallback={<LoadingFallback />}>
             <Rastreamento />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'rastreamento/placas-consultadas',
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <PlacasConsultadas />
           </Suspense>
         ),
       },
