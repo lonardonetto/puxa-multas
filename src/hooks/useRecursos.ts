@@ -13,7 +13,7 @@ interface UseRecursosReturn {
     createRecurso: (recurso: RecursoInsert) => Promise<Recurso | null>;
     updateRecurso: (id: string, updates: RecursoUpdate) => Promise<Recurso | null>;
     deleteRecurso: (id: string) => Promise<boolean>;
-    atualizarNotificacao: (id: string) => Promise<Recurso | null>;
+    atualizarNotificacao: (id: string, intervalo?: number) => Promise<Recurso | null>;
     fetchRecursosDetalhados: () => Promise<any[]>;
 }
 
@@ -172,11 +172,18 @@ export function useRecursos(): UseRecursosReturn {
         }
     }, []);
 
-    const atualizarNotificacao = useCallback(async (id: string): Promise<Recurso | null> => {
+    const atualizarNotificacao = useCallback(async (id: string, intervalo?: number): Promise<Recurso | null> => {
         try {
+            const agora = new Date();
+            const diasIntervalo = intervalo || 7;
+            const proximaRevisao = new Date(agora.getTime() + diasIntervalo * 24 * 60 * 60 * 1000);
+
             const { data, error: updateError } = await ((supabase as any)
                 .from('contratos')
-                .update({ data_ultima_notificacao: new Date().toISOString() })
+                .update({
+                    data_ultima_notificacao: agora.toISOString(),
+                    data_proximo_lembrete: proximaRevisao.toISOString(),
+                })
                 .eq('id', id)
                 .select()
                 .single());
@@ -186,7 +193,11 @@ export function useRecursos(): UseRecursosReturn {
             if (data) {
                 const updated = data as any;
                 setRecursos(prev => prev.map(r =>
-                    r.id === id ? { ...r, data_ultima_notificacao: updated.data_ultima_notificacao } : r
+                    r.id === id ? {
+                        ...r,
+                        data_ultima_notificacao: updated.data_ultima_notificacao,
+                        data_proximo_lembrete: updated.data_proximo_lembrete,
+                    } : r
                 ));
             }
             return data;
@@ -222,6 +233,7 @@ export function useRecursos(): UseRecursosReturn {
                 status: c.status,
                 data_protocolo: c.data_protocolo || c.created_at,
                 data_ultima_notificacao: c.data_ultima_notificacao,
+                data_proximo_lembrete: c.data_proximo_lembrete,
                 tipo: c.servicos?.nome || 'Serviço de Trânsito',
                 instancia: c.fase_ait || 'N/A',
                 multas: {
@@ -232,7 +244,7 @@ export function useRecursos(): UseRecursosReturn {
                         clientes: c.clientes
                     }
                 },
-                intervalo_notificacao: c.intervalo_notificacao || c.organizations?.intervalo_notificacao || 7
+                intervalo_notificacao: parseInt(c.intervalo_notificacao) || c.organizations?.intervalo_notificacao || 7
             }));
 
             setRecursos(recursosMapeados);

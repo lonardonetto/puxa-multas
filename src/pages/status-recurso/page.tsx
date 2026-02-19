@@ -18,25 +18,35 @@ export default function StatusRecurso() {
     loadData();
   }, [loadData]);
 
-  // Função para calcular dias desde a última notificação
-  const calcularDiasUltimaNotificacao = (dataUltimaNotificacao: string | null, dataProtocolo: string | null) => {
+  // Calcula dias restantes até a próxima revisão (data_proximo_lembrete)
+  // Retorno positivo = dias restantes, negativo = dias de atraso
+  const calcularDiasAteProximaRevisao = (dataProximoLembrete: string | null, dataUltimaNotificacao: string | null, dataProtocolo: string | null, intervalo: number) => {
+    // Se tem data_proximo_lembrete definida, usar ela diretamente
+    if (dataProximoLembrete) {
+      const partes = dataProximoLembrete.split('T')[0].split('-');
+      const dataAlvo = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      dataAlvo.setHours(0, 0, 0, 0);
+      return Math.ceil((dataAlvo.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    // Fallback: calcular com base na última notificação + intervalo
     const referencia = dataUltimaNotificacao || dataProtocolo;
-    if (!referencia) return 0; // Sem data de referência, considerar como "em dia"
+    if (!referencia) return intervalo; // Sem referência, considerar como "em dia"
     
-    // Parse manual para evitar problemas de timezone com "YYYY-MM-DD"
     const partes = referencia.split('T')[0].split('-');
     const dataRef = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+    dataRef.setDate(dataRef.getDate() + intervalo); // data alvo = referência + intervalo
     
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
     dataRef.setHours(0, 0, 0, 0);
     
-    const diffTime = hoje.getTime() - dataRef.getTime();
-    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+    return Math.ceil((dataRef.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
   };
 
-  const getNivelAlerta = (dias: number, intervalo: number = 7) => {
-    const diasRestantes = intervalo - dias;
+  const getNivelAlerta = (diasRestantes: number) => {
     // Vencido (0 ou menos dias restantes)
     if (diasRestantes <= 0) return { nivel: 'crítico', cor: 'bg-red-100 border-red-500', icone: 'ri-alarm-warning-fill', textoCor: 'text-red-700', bgRow: 'bg-red-50/60', badge: 'bg-red-100 text-red-700 border border-red-300 animate-pulse' };
     // Faltando 1 dia
@@ -78,7 +88,7 @@ export default function StatusRecurso() {
     );
 
     window.open(`https://wa.me/55${telefone.replace(/\D/g, '')}?text=${mensagem}`, '_blank');
-    await atualizarNotificacao(recurso.id);
+    await atualizarNotificacao(recurso.id, recurso.intervalo_notificacao || 7);
     loadData();
   };
 
@@ -172,9 +182,10 @@ export default function StatusRecurso() {
               <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Atrasados</p>
                 <p className="text-xl font-bold text-red-600">
-                  {recursosFiltrados.filter(r =>
-                    calcularDiasUltimaNotificacao(r.data_ultima_notificacao, r.data_protocolo) >= (r.intervalo_notificacao || 7)
-                  ).length}
+                  {recursosFiltrados.filter(r => {
+                    const dias = calcularDiasAteProximaRevisao(r.data_proximo_lembrete, r.data_ultima_notificacao, r.data_protocolo, r.intervalo_notificacao || 7);
+                    return dias <= 0;
+                  }).length}
                 </p>
               </div>
               <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
@@ -232,8 +243,8 @@ export default function StatusRecurso() {
                 </tr>
               ) : (
                 recursosFiltrados.map((recurso) => {
-                  const diasUltimaNotificacao = calcularDiasUltimaNotificacao(recurso.data_ultima_notificacao, recurso.data_protocolo);
-                  const alerta = getNivelAlerta(diasUltimaNotificacao, recurso.intervalo_notificacao);
+                  const diasRestantes = calcularDiasAteProximaRevisao(recurso.data_proximo_lembrete, recurso.data_ultima_notificacao, recurso.data_protocolo, recurso.intervalo_notificacao || 7);
+                  const alerta = getNivelAlerta(diasRestantes);
                   const cliente = recurso.multas?.veiculos?.clientes;
 
                   return (
@@ -275,7 +286,6 @@ export default function StatusRecurso() {
                       </td>
                       <td className="px-4 py-3">
                         {(() => {
-                          const diasRestantes = (recurso.intervalo_notificacao || 7) - diasUltimaNotificacao;
                           return (
                             <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-bold ${alerta.badge}`}>
                               <i className={`${alerta.icone} text-sm`}></i>
