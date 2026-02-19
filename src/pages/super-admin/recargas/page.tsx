@@ -51,23 +51,22 @@ export default function RecargasPage() {
   const aprovar = async (sol: Solicitacao) => {
     setProcessando(sol.id);
     try {
-      // 1. Busca saldo atual
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .select('saldo_sacavel')
-        .eq('id', sol.organization_id)
-        .limit(1);
+      // 1. Busca saldo atual e dados do usuário solicitante
+      const [orgResult, userResult] = await Promise.all([
+        supabase.from('organizations').select('saldo_sacavel, nome').eq('id', sol.organization_id).limit(1),
+        supabase.from('users').select('email, nome').eq('id', sol.user_id).limit(1),
+      ]);
 
-      if (orgError) throw orgError;
+      if (orgResult.error) throw orgResult.error;
 
-      const saldoAtual = (orgData?.[0] as any)?.saldo_sacavel || 0;
+      const saldoAtual = (orgResult.data?.[0] as any)?.saldo_sacavel || 0;
       const novoSaldo = saldoAtual + sol.valor;
+      const userEmail = (userResult.data?.[0] as any)?.email || '';
+      const userNome = (userResult.data?.[0] as any)?.nome || 'Cliente';
+      const orgNome = (orgResult.data?.[0] as any)?.nome || sol.org_nome || '';
 
       // 2. Atualiza saldo
-      await supabase
-        .from('organizations')
-        .update({ saldo_sacavel: novoSaldo })
-        .eq('id', sol.organization_id);
+      await supabase.from('organizations').update({ saldo_sacavel: novoSaldo }).eq('id', sol.organization_id);
 
       // 3. Registra no faturamento
       await supabase.from('faturamento').insert({
@@ -90,6 +89,27 @@ export default function RecargasPage() {
           observacao: observacao[sol.id] || null,
         })
         .eq('id', sol.id);
+
+      // 5. Envia email de aprovação ao usuário
+      if (userEmail) {
+        try {
+          await supabase.functions.invoke('enviar-email', {
+            body: {
+              tipo: 'faturamento',
+              destinatario_email: userEmail,
+              destinatario_nome: userNome,
+              dados: {
+                valor: `R$ ${sol.valor.toFixed(2).replace('.', ',')}`,
+                status: 'aprovado',
+                organizacao: orgNome,
+                mensagem: `Sua recarga de R$ ${sol.valor.toFixed(2).replace('.', ',')} foi aprovada! O saldo já está disponível na sua conta.`,
+              },
+            },
+          });
+        } catch (emailErr) {
+          console.warn('Email de aprovação não enviado:', emailErr);
+        }
+      }
 
       await fetchSolicitacoes();
     } catch (err) {
