@@ -383,27 +383,24 @@ export interface Database {
             documentos: {
                 Row: {
                     id: string;
-                    cliente_id: string;
-                    tipo: TipoDocumento;
-                    nome_arquivo: string;
-                    url_storage: string;
-                    tamanho_bytes: number | null;
-                    created_at: string;
+                    cliente_id: string | null;
+                    tipo: string | null;
+                    url: string | null;
+                    created_at: string | null;
                 };
                 Insert: {
                     id?: string;
-                    cliente_id: string;
-                    tipo: TipoDocumento;
-                    nome_arquivo: string;
-                    url_storage: string;
-                    tamanho_bytes?: number | null;
-                    created_at?: string;
+                    cliente_id?: string | null;
+                    tipo?: string | null;
+                    url?: string | null;
+                    created_at?: string | null;
                 };
                 Update: {
-                    tipo?: TipoDocumento;
-                    nome_arquivo?: string;
-                    url_storage?: string;
-                    tamanho_bytes?: number | null;
+                    id?: string;
+                    cliente_id?: string | null;
+                    tipo?: string | null;
+                    url?: string | null;
+                    created_at?: string | null;
                 };
             };
             faturamento: {

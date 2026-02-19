@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useClientes, useVeiculos, useServicos, useContratos } from '../../../hooks';
-import { supabase, uploadFile } from '../../../lib/supabase';
+import { supabase, uploadFile, getPublicUrl } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useOrganization } from '../../../contexts/OrganizationContext';
 import type { ClienteInsert, VeiculoInsert, Endereco, Servico, ContratoInsert } from '../../../types/database';
@@ -220,10 +220,7 @@ export default function NovoCliente() {
             .insert({
               cliente_id: cliente.id,
               tipo: tipo as any,
-              nome_arquivo: file.name,
-              url_storage: path,
-              tamanho_bytes: file.size,
-              organization_id: currentOrganization?.id
+              url: getPublicUrl(path),
             } as any) as any);
         }
       };

@@ -54,9 +54,7 @@ export function useDocumentos(): UseDocumentosReturn {
             const novoDoc: DocumentoInsert = {
                 cliente_id: clienteId,
                 tipo: tipo as any,
-                nome_arquivo: file.name,
-                url_storage: fileName,
-                tamanho_bytes: file.size,
+                url: url,
             };
 
             const { data, error: insertError } = await (supabase

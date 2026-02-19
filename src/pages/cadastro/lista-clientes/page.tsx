@@ -1757,11 +1757,11 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                                   ? 'bg-green-100'
                                   : doc.tipo === 'identidade'
                                     ? 'bg-blue-100'
-                                    : doc.nome_arquivo.toLowerCase().endsWith('.pdf')
+                                    : (doc.url || '').toLowerCase().endsWith('.pdf')
                                       ? 'bg-red-50'
-                                      : doc.nome_arquivo.toLowerCase().match(/\.(doc|docx)$/)
+                                      : (doc.url || '').toLowerCase().match(/\.(doc|docx)$/)
                                         ? 'bg-blue-50'
-                                        : doc.nome_arquivo.toLowerCase().match(/\.(xls|xlsx)$/)
+                                        : (doc.url || '').toLowerCase().match(/\.(xls|xlsx)$/)
                                           ? 'bg-green-50'
                                           : 'bg-yellow-100'
                                 }`}
@@ -1773,25 +1773,25 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                                     ? 'ri-file-user-line text-[#10B981]'
                                     : doc.tipo === 'identidade'
                                       ? 'ri-id-card-line text-[#1E3A8A]'
-                                      : doc.nome_arquivo.toLowerCase().endsWith('.pdf')
+                                      : (doc.url || '').toLowerCase().endsWith('.pdf')
                                         ? 'ri-file-pdf-line text-red-600'
-                                        : doc.nome_arquivo.toLowerCase().match(/\.(doc|docx)$/)
+                                        : (doc.url || '').toLowerCase().match(/\.(doc|docx)$/)
                                           ? 'ri-file-word-line text-blue-600'
-                                          : doc.nome_arquivo.toLowerCase().match(/\.(xls|xlsx)$/)
+                                          : (doc.url || '').toLowerCase().match(/\.(xls|xlsx)$/)
                                             ? 'ri-file-excel-line text-green-600'
                                             : 'ri-file-list-line text-[#F59E0B]'
                                   }`}
                               ></i>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-gray-800 truncate" title={doc.nome_arquivo}>
-                                {doc.nome_arquivo}
+                              <p className="text-sm font-bold text-gray-800 truncate" title={doc.url || doc.tipo || 'Documento'}>
+                                {doc.url ? doc.url.split('/').pop() : doc.tipo || 'Documento'}
                               </p>
                               <div className="flex items-center justify-between mt-1">
                                 <span className="text-[10px] text-gray-500 uppercase tracking-wider">{doc.tipo} • {formatarData(doc.created_at)}</span>
                                 <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <a
-                                    href={getPublicUrl(doc.url_storage)}
+                                    href={doc.url || '#'}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#1E3A8A] transition-colors cursor-pointer"
@@ -1800,8 +1800,8 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                                     <i className="ri-eye-line text-lg"></i>
                                   </a>
                                   <a
-                                    href={getPublicUrl(doc.url_storage)}
-                                    download={doc.nome_arquivo}
+                                    href={doc.url || '#'}
+                                    download={doc.url ? doc.url.split('/').pop() : 'documento'}
                                     className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#1E3A8A] transition-colors cursor-pointer"
                                     title="Baixar"
                                   >
@@ -1811,10 +1811,10 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                                     onClick={() => {
                                       showConfirm({
                                         title: 'Excluir Documento',
-                                        message: `Tem certeza que deseja excluir permanentemente o documento "${doc.nome_arquivo}"?`,
+                                        message: `Tem certeza que deseja excluir permanentemente o documento "${doc.url ? doc.url.split('/').pop() : 'este documento'}"?`,
                                         type: 'danger',
                                         confirmLabel: 'Excluir',
-                                        onConfirm: () => deleteDocumento(doc.id, doc.url_storage)
+                                        onConfirm: () => deleteDocumento(doc.id, doc.url || '')
                                       });
                                     }}
                                     className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#EF4444] transition-colors cursor-pointer"
