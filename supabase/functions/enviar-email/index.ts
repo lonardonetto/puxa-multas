@@ -6,9 +6,9 @@ const corsHeaders = {
 };
 
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
-const APP_URL = 'https://edita-multas.lovable.app';
-const SENDER_NAME = 'Recorra Multas';
-const SENDER_EMAIL = 'noreply@recorramultas.com.br';
+const APP_URL = 'https://centraldamulta.app.br';
+const SENDER_NAME = 'Central da Multa';
+const SENDER_EMAIL = 'noreply@centraldamulta.app.br';
 
 interface EmailPayload {
   tipo: 'boas_vindas' | 'confirmacao_email' | 'redefinicao_senha' | 'cliente_adicionado' | 'recurso_gerado' | 'notificacao_blindada' | 'faturamento' | 'rastreamento_vencimento' | 'usuario_adicionado';
