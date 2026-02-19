@@ -66,7 +66,7 @@ export default function Checkout() {
         </div>
         <div className="flex items-center space-x-3">
           <div className="bg-white px-4 py-2 rounded-xl border border-gray-100 shadow-sm text-right">
-            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Saldo Total</p>
+            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Créditos Disponíveis</p>
             <p className="text-xl font-black text-[#1E3A8A]">R$ {saldoTotal.toFixed(2).replace('.', ',')}</p>
           </div>
           <button
@@ -86,7 +86,7 @@ export default function Checkout() {
               <i className="ri-wallet-3-line text-xl"></i>
             </div>
           </div>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Saldo Principal</p>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Créditos Pagos</p>
           <p className="text-2xl font-black text-gray-900 mt-1">R$ {saldoDisponivel.toFixed(2).replace('.', ',')}</p>
         </div>
 
@@ -96,8 +96,8 @@ export default function Checkout() {
               <i className="ri-gift-line text-xl"></i>
             </div>
           </div>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Saldo de Bônus</p>
-          <p className="text-2xl font-black text-gray-900 mt-1 font-mono">R$ {saldoBloqueado.toFixed(2).replace('.', ',')}</p>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Créditos Bônus</p>
+          <p className="text-2xl font-black text-gray-900 mt-1">R$ {saldoBloqueado.toFixed(2).replace('.', ',')}</p>
         </div>
 
         <div className="bg-gradient-to-br from-[#1E3A8A] to-blue-600 p-6 rounded-2xl shadow-lg text-white">

@@ -69,6 +69,8 @@ export function useWallet() {
 
     return {
         balance: (currentOrganization?.saldo_sacavel || 0) + (currentOrganization?.saldo_bonus || 0),
+        creditosPagos: currentOrganization?.saldo_sacavel || 0,
+        creditosBonus: currentOrganization?.saldo_bonus || 0,
         saldoDisponivel: currentOrganization?.saldo_sacavel || 0,
         saldoBonus: currentOrganization?.saldo_bonus || 0,
         checkBalance,
