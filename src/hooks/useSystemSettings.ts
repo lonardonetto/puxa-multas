@@ -40,20 +40,26 @@ export function useSystemSettings() {
 
     const updateSetting = async (key: string, value: string) => {
         try {
-            const { error: updateError } = await (supabase
+            const { error: upsertError } = await (supabase
                 .from('system_settings') as any)
-                .update({ value, updated_at: new Date().toISOString() })
-                .eq('key', key);
+                .upsert(
+                    { key, value, updated_at: new Date().toISOString() },
+                    { onConflict: 'key' }
+                );
 
-            if (updateError) throw updateError;
+            if (upsertError) throw upsertError;
 
-            setSettings(prev => 
-                prev.map(s => s.key === key ? { ...s, value } : s)
-            );
+            setSettings(prev => {
+                const exists = prev.find(s => s.key === key);
+                if (exists) {
+                    return prev.map(s => s.key === key ? { ...s, value } : s);
+                }
+                return [...prev, { id: key, key, value, description: null, is_secret: false }];
+            });
 
             return { success: true };
         } catch (err: any) {
-            console.error('Error updating setting:', err);
+            console.error('Error upserting setting:', err);
             return { success: false, error: err.message };
         }
     };
