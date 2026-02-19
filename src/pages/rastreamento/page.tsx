@@ -674,13 +674,22 @@ export default function Rastreamento() {
             <p className="text-lg font-bold text-primary">{formatCurrency(balance)}</p>
           </div>
         </div>
-        <button 
-          onClick={() => navigate('/checkout')}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 transition-colors"
-        >
-          <i className="ri-add-line mr-1"></i>
-          Adicionar Créditos
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => navigate('/rastreamento/placas-consultadas')}
+            className="px-4 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-muted/80 transition-colors border border-border"
+          >
+            <i className="ri-file-list-3-line mr-1"></i>
+            Relatório de Placas
+          </button>
+          <button 
+            onClick={() => navigate('/checkout')}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 transition-colors"
+          >
+            <i className="ri-add-line mr-1"></i>
+            Adicionar Créditos
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
