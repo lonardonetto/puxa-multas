@@ -42,7 +42,7 @@ export default function ListaClientes() {
 
   // Estados para Contrato Avançado
   const [servicoSelecionadoParaContrato, setServicoSelecionadoParaContrato] = useState<Servico | null>(null);
-  const [modeloSelecionado, setModeloSelecionado] = useState<ContractTemplateId | null>(null);
+  const [modeloSelecionado, setModeloSelecionado] = useState<ContractTemplateId | 'custom_servico' | null>(null);
   const [autoInfracao, setAutoInfracao] = useState('');
   const [processoAdministrativo, setProcessoAdministrativo] = useState('');
   const [penalidades, setPenalidades] = useState('');
@@ -1229,6 +1229,47 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                             </p>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Contrato customizado do serviço */}
+                            {servicoSelecionadoParaContrato.contrato_modelo && (
+                              <button
+                                key="custom_servico"
+                                onClick={() => {
+                                  setModeloSelecionado('custom_servico' as ContractTemplateId);
+                                  let conteudo = servicoSelecionadoParaContrato.contrato_modelo || '';
+                                  if (clienteAtual) {
+                                    conteudo = conteudo.replace(/\{\{NOME_CLIENTE\}\}/g, clienteAtual.nome_completo?.toUpperCase() || '');
+                                    conteudo = conteudo.replace(/\{\{CPF_CLIENTE\}\}/g, clienteAtual.cpf || clienteAtual.cnpj || '');
+                                    conteudo = conteudo.replace(/\{\{ENDERECO_CLIENTE\}\}/g, clienteAtual.endereco ? `${(clienteAtual.endereco as any).logradouro || ''}, ${(clienteAtual.endereco as any).numero || ''} – ${(clienteAtual.endereco as any).bairro || ''} – ${(clienteAtual.endereco as any).cidade || ''}/${(clienteAtual.endereco as any).estado || ''}` : 'Não informado');
+                                    conteudo = conteudo.replace(/\{\{EMAIL_CLIENTE\}\}/g, clienteAtual.email || '');
+                                    conteudo = conteudo.replace(/\{\{TELEFONE_CLIENTE\}\}/g, clienteAtual.celular || clienteAtual.telefone || '');
+                                  }
+                                  if (currentOrganization) {
+                                    conteudo = conteudo.replace(/\{\{NOME_ORGANIZACAO\}\}/g, currentOrganization.nome || '');
+                                    conteudo = conteudo.replace(/\{\{CNPJ_ORGANIZACAO\}\}/g, (currentOrganization as any).cnpj || '');
+                                    conteudo = conteudo.replace(/\{\{ENDERECO_ORGANIZACAO\}\}/g, (currentOrganization as any).endereco_completo || '');
+                                  }
+                                  const tempDiv = document.createElement('div');
+                                  tempDiv.innerHTML = conteudo;
+                                  const textoLimpo = tempDiv.innerText || tempDiv.textContent || conteudo;
+                                  setEditandoConteudo(textoLimpo);
+                                }}
+                                className="p-4 bg-green-50 border-2 border-green-300 rounded-lg hover:border-green-500 hover:shadow-md transition-all text-left group"
+                              >
+                                <div className="flex items-center space-x-3 mb-2">
+                                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <i className="ri-file-edit-line text-xl text-green-700"></i>
+                                  </div>
+                                  <div>
+                                    <span className="font-bold text-gray-800 group-hover:text-green-700 transition-colors">
+                                      Contrato do Serviço
+                                    </span>
+                                    <span className="ml-2 text-[10px] bg-green-500 text-white px-2 py-0.5 rounded-full font-bold">PERSONALIZADO</span>
+                                  </div>
+                                </div>
+                                <p className="text-xs text-gray-500">Modelo de contrato configurado para este serviço</p>
+                              </button>
+                            )}
+                            {/* Templates padrão */}
                             {Object.values(CONTRACT_TEMPLATES).map((template) => (
                               <button
                                 key={template.id}
@@ -1288,7 +1329,7 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                           <div className="p-3 bg-green-50 border border-green-200 rounded-lg mb-4">
                             <p className="text-xs text-green-700">
                               <i className="ri-file-text-line mr-1"></i>
-                              Modelo: <strong>{CONTRACT_TEMPLATES[modeloSelecionado]?.nome}</strong>
+                              Modelo: <strong>{modeloSelecionado === 'custom_servico' ? 'Contrato do Serviço' : CONTRACT_TEMPLATES[modeloSelecionado]?.nome}</strong>
                             </p>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1405,9 +1446,11 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                                   valor: servicoSelecionadoParaContrato.preco_base,
                                   formaPagamento
                                 };
-                                const template = CONTRACT_TEMPLATES[modeloSelecionado];
-                                const content = template.gerador(clienteAtual as any, orgData, contractData as any);
-                                setEditandoConteudo(content);
+                                const template = modeloSelecionado !== 'custom_servico' ? CONTRACT_TEMPLATES[modeloSelecionado as ContractTemplateId] : null;
+                                if (template) {
+                                  const content = template.gerador(clienteAtual as any, orgData, contractData as any);
+                                  setEditandoConteudo(content);
+                                }
                               }}
                               className="px-6 py-3 bg-[#1E3A8A] text-white rounded-lg font-bold hover:bg-blue-800 transition-colors"
                             >
