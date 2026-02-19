@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import logo from '@/assets/logo-central-multa.png';
 import { supabase } from '../../../lib/supabase';
 
-type Tela = 'login' | 'esqueci_senha' | 'senha_enviada';
+type Tela = 'login' | 'esqueci_senha' | 'senha_enviada' | 'email_nao_confirmado';
 
 export default function Login() {
     const { signIn, loading } = useAuth();
@@ -14,6 +14,7 @@ export default function Login() {
     const [emailReset, setEmailReset] = useState('');
     const [erro, setErro] = useState<string | null>(null);
     const [enviandoReset, setEnviandoReset] = useState(false);
+    const [reenvioSucesso, setReenvioSucesso] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -22,7 +23,15 @@ export default function Login() {
         if (error) {
             setErro('E-mail ou senha incorretos. Verifique seus dados e tente novamente.');
         } else {
-            navigate('/');
+            // Verificar se o email foi confirmado
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user && !user.email_confirmed_at) {
+                await supabase.auth.signOut();
+                setEmailReset(formData.email);
+                setTela('email_nao_confirmado');
+            } else {
+                navigate('/');
+            }
         }
     };
 
@@ -35,7 +44,6 @@ export default function Login() {
         }
         setEnviandoReset(true);
         try {
-            // 1. Dispara o reset via Supabase Auth (gera link)
             const { error } = await supabase.auth.resetPasswordForEmail(emailReset, {
                 redirectTo: `${window.location.origin}/reset-password`,
             });
@@ -45,7 +53,6 @@ export default function Login() {
                 return;
             }
 
-            // 2. Dispara template personalizado via Brevo em paralelo (best-effort)
             const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
             fetch(`https://${projectId}.supabase.co/functions/v1/enviar-email`, {
                 method: 'POST',
@@ -54,16 +61,27 @@ export default function Login() {
                     tipo: 'redefinicao_senha',
                     destinatario_email: emailReset,
                     destinatario_nome: emailReset,
-                    dados: {
-                        nome: emailReset,
-                        link: `${window.location.origin}/reset-password`,
-                    },
+                    dados: { nome: emailReset, link: `${window.location.origin}/reset-password` },
                 }),
             }).catch(() => {});
 
             setTela('senha_enviada');
         } catch {
             setErro('Erro inesperado. Tente novamente.');
+        } finally {
+            setEnviandoReset(false);
+        }
+    };
+
+    const handleReenviarConfirmacao = async () => {
+        if (!emailReset) return;
+        setReenvioSucesso(false);
+        setEnviandoReset(true);
+        try {
+            await supabase.auth.resend({ type: 'signup', email: emailReset });
+            setReenvioSucesso(true);
+        } catch {
+            // silent
         } finally {
             setEnviandoReset(false);
         }
@@ -94,6 +112,13 @@ export default function Login() {
                             <div className="text-5xl mb-4">📧</div>
                             <h1 className="text-2xl font-bold text-white mb-2">E-mail Enviado!</h1>
                             <p className="text-gray-400">Verifique sua caixa de entrada</p>
+                        </>
+                    )}
+                    {tela === 'email_nao_confirmado' && (
+                        <>
+                            <div className="text-5xl mb-4">⚠️</div>
+                            <h1 className="text-2xl font-bold text-white mb-2">Confirme seu E-mail</h1>
+                            <p className="text-gray-400">Acesso bloqueado até a confirmação</p>
                         </>
                     )}
                 </div>
@@ -222,6 +247,56 @@ export default function Login() {
                             <button
                                 type="button"
                                 onClick={() => { setErro(null); setTela('login'); }}
+                                className="text-sm text-gray-400 hover:text-white transition-colors"
+                            >
+                                <i className="ri-arrow-left-line mr-1"></i>Voltar ao login
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* ── TELA EMAIL NÃO CONFIRMADO ── */}
+                {tela === 'email_nao_confirmado' && (
+                    <div className="space-y-5">
+                        <div className="bg-amber-900/20 border border-amber-600/50 rounded-xl p-5">
+                            <div className="flex items-start space-x-3">
+                                <i className="ri-mail-lock-line text-amber-400 text-xl mt-0.5 flex-shrink-0"></i>
+                                <div>
+                                    <h4 className="text-sm font-bold text-amber-300 mb-1">E-mail não confirmado</h4>
+                                    <p className="text-sm text-amber-200/80 leading-relaxed">
+                                        Para acessar a plataforma, você precisa confirmar seu e-mail. Verifique sua caixa de entrada (e spam) pelo link que enviamos para:
+                                    </p>
+                                    <p className="text-white font-semibold text-sm mt-2">{emailReset}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {reenvioSucesso && (
+                            <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-3 text-center">
+                                <p className="text-green-300 text-sm">
+                                    <i className="ri-checkbox-circle-line mr-1"></i>
+                                    Novo e-mail de confirmação enviado!
+                                </p>
+                            </div>
+                        )}
+
+                        <button
+                            type="button"
+                            onClick={handleReenviarConfirmacao}
+                            disabled={enviandoReset}
+                            className="w-full py-3 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded-lg font-semibold transition-all text-sm"
+                        >
+                            {enviandoReset ? (
+                                <><i className="ri-loader-4-line mr-2 animate-spin"></i>Enviando...</>
+                            ) : (
+                                <><i className="ri-mail-send-line mr-2"></i>Reenviar e-mail de confirmação</>
+                            )}
+                        </button>
+
+                        <div className="text-center">
+                            <button
+                                type="button"
+                                onClick={() => { setErro(null); setReenvioSucesso(false); setTela('login'); }}
                                 className="text-sm text-gray-400 hover:text-white transition-colors"
                             >
                                 <i className="ri-arrow-left-line mr-1"></i>Voltar ao login
