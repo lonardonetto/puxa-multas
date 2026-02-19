@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../../lib/supabase';
 import { useOrganizations } from '../../../hooks/useOrganizations';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import type { UserRole, Organization } from '../../../types/database';
 
 interface SystemUser {
@@ -26,6 +27,9 @@ export default function UsersManagement() {
     const [showModal, setShowModal] = useState(false);
     const [password, setPassword] = useState('');
     const [selectedOrgId, setSelectedOrgId] = useState('');
+    const [deleteTarget, setDeleteTarget] = useState<SystemUser | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -157,6 +161,39 @@ export default function UsersManagement() {
         }
     };
 
+    const handleDeleteClick = (user: SystemUser) => {
+        setDeleteTarget(user);
+        setShowDeleteConfirm(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteTarget || deleting) return;
+        setDeleting(true);
+        try {
+            // Remove user_organizations first
+            await (supabase.from('user_organizations') as any)
+                .delete()
+                .eq('user_id', deleteTarget.id);
+
+            // Remove from users table
+            const { error } = await (supabase.from('users') as any)
+                .delete()
+                .eq('id', deleteTarget.id);
+
+            if (error) {
+                alert('Erro ao excluir usuário: ' + error.message);
+            } else {
+                fetchUsers();
+            }
+        } catch (err) {
+            alert('Erro inesperado ao excluir usuário.');
+        } finally {
+            setDeleting(false);
+            setShowDeleteConfirm(false);
+            setDeleteTarget(null);
+        }
+    };
+
     const getRoleBadge = (role: string) => {
         const colors = {
             super_admin: 'bg-red-500',
@@ -235,12 +272,22 @@ export default function UsersManagement() {
                                         {new Date(user.created_at).toLocaleDateString('pt-BR')}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button
-                                            onClick={() => handleEdit(user)}
-                                            className="text-[#10B981] hover:text-green-700"
-                                        >
-                                            <i className="ri-edit-line text-xl"></i>
-                                        </button>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button
+                                                onClick={() => handleEdit(user)}
+                                                className="text-[#10B981] hover:text-green-700"
+                                                title="Editar"
+                                            >
+                                                <i className="ri-edit-line text-xl"></i>
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteClick(user)}
+                                                className="text-red-500 hover:text-red-700"
+                                                title="Excluir"
+                                            >
+                                                <i className="ri-delete-bin-line text-xl"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -346,6 +393,18 @@ export default function UsersManagement() {
                     </div>
                 </div>
             )}
+
+            <ConfirmDialog
+                open={showDeleteConfirm}
+                onOpenChange={setShowDeleteConfirm}
+                title="Excluir Usuário"
+                description={`Tem certeza que deseja excluir o usuário "${deleteTarget?.nome || deleteTarget?.email}"? Esta ação não pode ser desfeita.`}
+                confirmText="Excluir"
+                cancelText="Cancelar"
+                variant="danger"
+                onConfirm={confirmDelete}
+                loading={deleting}
+            />
         </div>
     );
 }
