@@ -1651,6 +1651,72 @@ export type Database = {
           },
         ]
       }
+      solicitacoes_plano: {
+        Row: {
+          aprovado_em: string | null
+          aprovado_por: string | null
+          ciclo: string
+          created_at: string
+          id: string
+          observacao: string | null
+          organization_id: string
+          plano_id: string
+          plano_nome: string
+          plano_slug: string
+          status: string
+          updated_at: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          ciclo?: string
+          created_at?: string
+          id?: string
+          observacao?: string | null
+          organization_id: string
+          plano_id: string
+          plano_nome: string
+          plano_slug: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          valor?: number
+        }
+        Update: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          ciclo?: string
+          created_at?: string
+          id?: string
+          observacao?: string | null
+          organization_id?: string
+          plano_id?: string
+          plano_nome?: string
+          plano_slug?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_plano_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_plano_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "planos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       solicitacoes_recarga: {
         Row: {
           aprovado_em: string | null
