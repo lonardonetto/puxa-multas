@@ -28,7 +28,9 @@ export default function ListaClientes() {
   const [busca, setBusca] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('todos');
   const [clienteIdSelecionado, setClienteIdSelecionado] = useState<string | null>(null);
-  const [abaAtiva, setAbaAtiva] = useState<'dados' | 'servicos' | 'documentos' | 'recursos'>('dados');
+  const [abaAtiva, setAbaAtiva] = useState<'dados' | 'servicos' | 'documentos' | 'recursos' | 'notificacoes'>('dados');
+  const [notificacoesCliente, setNotificacoesCliente] = useState<any[]>([]);
+  const [loadingNotificacoes, setLoadingNotificacoes] = useState(false);
   const [editando, setEditando] = useState(false);
   const [criandoContrato, setCriandoContrato] = useState(false);
   const [salvandoContrato, setSalvandoContrato] = useState(false);
@@ -763,6 +765,28 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                       {recursosCliente.length}
                     </span>
                   )}
+                </button>
+                <button
+                  onClick={async () => {
+                    setAbaAtiva('notificacoes');
+                    if (clienteIdSelecionado) {
+                      setLoadingNotificacoes(true);
+                      try {
+                        const { data } = await supabase
+                          .from('registro_notificacoes' as any)
+                          .select('*')
+                          .eq('cliente_id', clienteIdSelecionado)
+                          .order('created_at', { ascending: false })
+                          .limit(50);
+                        setNotificacoesCliente(data || []);
+                      } catch { setNotificacoesCliente([]); }
+                      finally { setLoadingNotificacoes(false); }
+                    }
+                  }}
+                  className={`px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${abaAtiva === 'notificacoes' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                >
+                  <i className="ri-shield-check-line mr-2"></i>
+                  Notificações
                 </button>
               </div>
             </div>
@@ -2031,6 +2055,88 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Aba Notificações */}
+              {abaAtiva === 'notificacoes' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <i className="ri-shield-check-line text-blue-600 text-xl"></i>
+                    </div>
+                    <div>
+                      <h4 className="text-base font-bold text-gray-800">Registro de Notificações</h4>
+                      <p className="text-xs text-gray-500">Histórico blindado e imutável de todas as notificações enviadas para este cliente</p>
+                    </div>
+                  </div>
+
+                  {loadingNotificacoes ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <i className="ri-loader-4-line animate-spin mr-2"></i>Carregando registros...
+                    </div>
+                  ) : notificacoesCliente.length === 0 ? (
+                    <div className="text-center py-12">
+                      <i className="ri-mail-check-line text-4xl text-gray-300 mb-3"></i>
+                      <p className="text-sm text-gray-400">Nenhuma notificação registrada para este cliente.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {notificacoesCliente.map((reg: any) => (
+                        <div key={reg.id} className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-3">
+                              <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i className="ri-check-double-line text-green-600"></i>
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-bold text-gray-800">{reg.usuario_nome}</span>
+                                  <span className="text-[10px] text-gray-400">({reg.usuario_email})</span>
+                                </div>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  <i className="ri-calendar-line mr-1"></i>
+                                  {reg.horario_brasilia}
+                                </p>
+                                {reg.auto_infracao && (
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    <i className="ri-file-text-line mr-1"></i>
+                                    Auto: <span className="font-mono font-bold">{reg.auto_infracao}</span>
+                                  </p>
+                                )}
+                                {reg.status_recurso && (
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    Status no momento: <span className="font-semibold">{reg.status_recurso}</span>
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">
+                                <i className="ri-shield-check-line"></i>Confirmado
+                              </span>
+                              <p className="text-[9px] text-gray-400 font-mono mt-1" title={reg.hash_integridade}>
+                                <i className="ri-lock-line mr-0.5"></i>{reg.hash_integridade?.substring(0, 16)}...
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {notificacoesCliente.length > 0 && (
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                      <p className="text-[10px] text-gray-400">
+                        <i className="ri-information-line mr-1"></i>
+                        {notificacoesCliente.length} registro(s) • Dados protegidos por hash SHA-256
+                      </p>
+                      <div className="flex items-center gap-1 text-[10px] text-green-600 font-bold">
+                        <i className="ri-shield-star-line"></i>
+                        Imutável
+                      </div>
                     </div>
                   )}
                 </div>
