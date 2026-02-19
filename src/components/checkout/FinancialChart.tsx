@@ -25,11 +25,11 @@ export function FinancialChart({ billing }: FinancialChartProps) {
       });
       
       const receita = dayTransactions
-        .filter(t => t.valor > 0)
+        .filter(t => t.valor > 0 && t.tipo !== 'system_usage')
         .reduce((acc, t) => acc + t.valor, 0);
       
       const despesa = dayTransactions
-        .filter(t => t.valor < 0)
+        .filter(t => t.valor < 0 || t.tipo === 'system_usage')
         .reduce((acc, t) => acc + Math.abs(t.valor), 0);
       
       return {
@@ -62,11 +62,11 @@ export function FinancialChart({ billing }: FinancialChartProps) {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-500 rounded"></div>
-            <span className="text-xs text-gray-500">Receitas</span>
+            <span className="text-xs text-gray-500">Recargas</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-red-400 rounded"></div>
-            <span className="text-xs text-gray-500">Despesas</span>
+            <span className="text-xs text-gray-500">Consumo</span>
           </div>
         </div>
       </div>
@@ -81,8 +81,8 @@ export function FinancialChart({ billing }: FinancialChartProps) {
               {/* Tooltip */}
               <div className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-10">
                 <p className="font-bold">{day.fullLabel}</p>
-                <p className="text-green-400">+R$ {day.receita.toFixed(2)}</p>
-                <p className="text-red-400">-R$ {day.despesa.toFixed(2)}</p>
+                <p className="text-green-400">Recarga: R$ {day.receita.toFixed(2)}</p>
+                <p className="text-red-400">Consumo: R$ {day.despesa.toFixed(2)}</p>
               </div>
               
               {/* Bars container */}

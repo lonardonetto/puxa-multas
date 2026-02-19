@@ -19,9 +19,10 @@ interface GroupedTransactions {
 export function ExtractTable({ transacoes, filters }: ExtractTableProps) {
   const filteredTransactions = useMemo(() => {
     return transacoes.filter(t => {
-      // Filtro por tipo
-      if (filters.tipo === 'entrada' && t.valor <= 0) return false;
-      if (filters.tipo === 'saida' && t.valor >= 0) return false;
+      // Filtro por tipo (system_usage é sempre consumo/saída)
+      const isConsumo = t.tipo === 'system_usage' || t.valor < 0;
+      if (filters.tipo === 'entrada' && isConsumo) return false;
+      if (filters.tipo === 'saida' && !isConsumo) return false;
       
       // Filtro por status
       if (filters.status !== 'todos' && t.status !== filters.status) return false;
@@ -116,41 +117,50 @@ export function ExtractTable({ transacoes, filters }: ExtractTableProps) {
     );
   };
 
-  const renderTransactionRow = (transacao: Faturamento) => (
-    <tr key={transacao.id} className="hover:bg-gray-50/50 transition-colors">
-      <td className="py-4 px-2">
-        <p className="text-sm font-bold text-gray-700">
-          {format(new Date(transacao.created_at), 'dd/MM/yyyy', { locale: ptBR })}
-        </p>
-        <p className="text-[10px] text-gray-400 font-mono">
-          {format(new Date(transacao.created_at), 'HH:mm', { locale: ptBR })}
-        </p>
-      </td>
-      <td className="py-4 px-2">
-        <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${
-            transacao.valor > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-          }`}>
-            <i className={transacao.valor > 0 ? 'ri-arrow-left-down-line' : 'ri-arrow-right-up-line'}></i>
+  const getDisplayValue = (t: Faturamento) => {
+    // system_usage é sempre consumo (negativo), independente do sinal armazenado
+    if (t.tipo === 'system_usage' && t.valor > 0) return -t.valor;
+    return t.valor;
+  };
+
+  const renderTransactionRow = (transacao: Faturamento) => {
+    const displayValue = getDisplayValue(transacao);
+    return (
+      <tr key={transacao.id} className="hover:bg-gray-50/50 transition-colors">
+        <td className="py-4 px-2">
+          <p className="text-sm font-bold text-gray-700">
+            {format(new Date(transacao.created_at), 'dd/MM/yyyy', { locale: ptBR })}
+          </p>
+          <p className="text-[10px] text-gray-400 font-mono">
+            {format(new Date(transacao.created_at), 'HH:mm', { locale: ptBR })}
+          </p>
+        </td>
+        <td className="py-4 px-2">
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${
+              displayValue > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+            }`}>
+              <i className={displayValue > 0 ? 'ri-arrow-left-down-line' : 'ri-arrow-right-up-line'}></i>
+            </div>
+            <span className="text-sm text-gray-800 font-bold">{transacao.descricao}</span>
           </div>
-          <span className="text-sm text-gray-800 font-bold">{transacao.descricao}</span>
-        </div>
-      </td>
-      <td className="py-4 px-2">
-        <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-gray-100 text-gray-600">
-          {(transacao as any).categoria || 'Outros'}
-        </span>
-      </td>
-      <td className={`py-4 px-2 text-right text-sm font-black ${
-        transacao.valor > 0 ? 'text-[#10B981]' : 'text-red-500'
-      }`}>
-        {transacao.valor > 0 ? '+' : ''} R$ {transacao.valor.toFixed(2).replace('.', ',')}
-      </td>
-      <td className="py-4 px-2 text-center">
-        {getStatusBadge(transacao.status)}
-      </td>
-    </tr>
-  );
+        </td>
+        <td className="py-4 px-2">
+          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-gray-100 text-gray-600">
+            {transacao.tipo === 'system_usage' ? 'Consumo' : (transacao as any).categoria || 'Recarga'}
+          </span>
+        </td>
+        <td className={`py-4 px-2 text-right text-sm font-black ${
+          displayValue > 0 ? 'text-[#10B981]' : 'text-red-500'
+        }`}>
+          {displayValue > 0 ? '+' : '- '} R$ {Math.abs(displayValue).toFixed(2).replace('.', ',')}
+        </td>
+        <td className="py-4 px-2 text-center">
+          {getStatusBadge(transacao.status)}
+        </td>
+      </tr>
+    );
+  };
 
   const tableHeader = (
     <thead>

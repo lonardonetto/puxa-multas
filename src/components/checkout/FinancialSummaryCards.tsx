@@ -19,79 +19,51 @@ export function FinancialSummaryCards({ billing, dateRange }: FinancialSummaryCa
       });
     }
 
-    const receita = filteredBilling
-      .filter(item => item.valor > 0 && item.status === 'paid')
+    const recargas = filteredBilling
+      .filter(item => item.valor > 0 && item.status === 'paid' && item.tipo !== 'system_usage')
       .reduce((acc, item) => acc + item.valor, 0);
 
-    const despesas = filteredBilling
-      .filter(item => item.valor < 0 && item.status === 'paid')
+    const consumo = filteredBilling
+      .filter(item => item.status === 'paid' && (item.valor < 0 || item.tipo === 'system_usage'))
       .reduce((acc, item) => acc + Math.abs(item.valor), 0);
 
     const pendente = filteredBilling
       .filter(item => item.status === 'pending')
       .reduce((acc, item) => acc + Math.abs(item.valor), 0);
 
-    const lucro = receita - despesas;
+    const saldoPeriodo = recargas - consumo;
     const totalTransacoes = filteredBilling.length;
 
-    // Calcular tendência comparando com período anterior
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-
-    const currentMonthRevenue = billing
-      .filter(item => {
-        const date = new Date(item.created_at);
-        return date >= startOfMonth && item.valor > 0 && item.status === 'paid';
-      })
-      .reduce((acc, item) => acc + item.valor, 0);
-
-    const lastMonthRevenue = billing
-      .filter(item => {
-        const date = new Date(item.created_at);
-        return date >= startOfLastMonth && date <= endOfLastMonth && item.valor > 0 && item.status === 'paid';
-      })
-      .reduce((acc, item) => acc + item.valor, 0);
-
-    const tendenciaReceita = lastMonthRevenue > 0 
-      ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 
-      : 0;
-
     return {
-      receita,
-      despesas,
+      recargas,
+      consumo,
       pendente,
-      lucro,
+      saldoPeriodo,
       totalTransacoes,
-      tendenciaReceita: Math.round(tendenciaReceita)
     };
   }, [billing, dateRange]);
 
   const cards = [
     {
-      title: 'Receita Total',
-      value: summary.receita,
-      icon: 'ri-arrow-left-down-line',
+      title: 'Total Recargas',
+      value: summary.recargas,
+      icon: 'ri-add-circle-line',
       color: 'text-green-600',
       bgColor: 'bg-green-50',
-      trend: summary.tendenciaReceita,
     },
     {
-      title: 'Despesas',
-      value: summary.despesas,
-      icon: 'ri-arrow-right-up-line',
+      title: 'Total Consumo',
+      value: summary.consumo,
+      icon: 'ri-shopping-cart-2-line',
       color: 'text-red-600',
       bgColor: 'bg-red-50',
-      trend: null,
     },
     {
-      title: 'Lucro Líquido',
-      value: summary.lucro,
-      icon: 'ri-funds-line',
-      color: summary.lucro >= 0 ? 'text-blue-600' : 'text-red-600',
-      bgColor: summary.lucro >= 0 ? 'bg-blue-50' : 'bg-red-50',
-      trend: null,
+      title: 'Saldo do Período',
+      value: summary.saldoPeriodo,
+      icon: 'ri-scales-3-line',
+      color: summary.saldoPeriodo >= 0 ? 'text-blue-600' : 'text-red-600',
+      bgColor: summary.saldoPeriodo >= 0 ? 'bg-blue-50' : 'bg-red-50',
     },
     {
       title: 'Pendente',
@@ -99,7 +71,6 @@ export function FinancialSummaryCards({ billing, dateRange }: FinancialSummaryCa
       icon: 'ri-time-line',
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-50',
-      trend: null,
       subtitle: `${summary.totalTransacoes} transações`
     },
   ];
@@ -115,12 +86,6 @@ export function FinancialSummaryCards({ billing, dateRange }: FinancialSummaryCa
             <div className={`w-10 h-10 ${card.bgColor} ${card.color} rounded-xl flex items-center justify-center`}>
               <i className={`${card.icon} text-xl`}></i>
             </div>
-            {card.trend !== null && card.trend !== 0 && (
-              <div className={`flex items-center text-xs font-bold ${card.trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                <i className={`${card.trend > 0 ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'} mr-0.5`}></i>
-                {Math.abs(card.trend)}%
-              </div>
-            )}
           </div>
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
             {card.title}
