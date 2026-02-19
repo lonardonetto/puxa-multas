@@ -10,6 +10,7 @@ import { useOrganization } from '../../../contexts/OrganizationContext';
 import { getPublicUrl, supabase } from '../../../lib/supabase';
 import { CONTRACT_TEMPLATES, type ContractTemplateId } from '../../../components/contracts/contractTemplates';
 import { ContractHeader, ContractFooter } from '../../../components/contracts/ContractHeader';
+import RichTextEditor from '../../../components/contracts/RichTextEditor';
 import type { Cliente, Documento, Contrato, Servico, Veiculo } from '../../../types/database';
 
 export default function ListaClientes() {
@@ -1317,10 +1318,11 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                               Você está revisando o conteúdo final do contrato. Se precisar, ajuste o texto abaixo antes de salvar.
                             </p>
                           </div>
-                          <textarea
+                          <RichTextEditor
                             value={editandoConteudo}
-                            onChange={(e) => setEditandoConteudo(e.target.value)}
-                            className="w-full h-80 p-4 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-[#10B981] focus:outline-none"
+                            onChange={setEditandoConteudo}
+                            placeholder="Edite o conteúdo do contrato aqui..."
+                            minHeight="400px"
                           />
                           <div className="flex justify-end space-x-3">
                             <button
@@ -2131,9 +2133,10 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                 </div>
 
                 {/* Conteúdo do Contrato */}
-                <div className="prose max-w-none text-sm text-gray-800 leading-relaxed whitespace-pre-wrap font-serif">
-                  {contratoVisualizado.conteudo || 'Nenhum conteúdo detalhado disponível.'}
-                </div>
+                <div 
+                  className="prose max-w-none text-sm text-gray-800 leading-relaxed font-serif"
+                  dangerouslySetInnerHTML={{ __html: contratoVisualizado.conteudo || 'Nenhum conteúdo detalhado disponível.' }}
+                />
 
                 {/* Assinaturas */}
                 <div className="grid grid-cols-2 gap-12 mt-20 pt-12 border-t border-gray-200 print:mt-12">
