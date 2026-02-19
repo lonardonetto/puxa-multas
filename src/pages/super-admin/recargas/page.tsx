@@ -90,19 +90,33 @@ export default function RecargasPage() {
         })
         .eq('id', sol.id);
 
-      // 5. Envia email de aprovação ao usuário
+      // 5. Notificação no sino para o cliente (pix_aprovado)
+      try {
+        await (supabase as any).from('notificacoes_recarga').insert({
+          organization_id: sol.organization_id,
+          solicitacao_id: sol.id,
+          tipo: 'pix_aprovado',
+          titulo: 'Recarga PIX aprovada! 🎉',
+          mensagem: `R$ ${sol.valor.toFixed(2).replace('.', ',')} já disponível na sua conta.`,
+          valor: sol.valor,
+          para_super_admin: false,
+        });
+      } catch (notifErr) {
+        console.warn('Notificação de aprovação não criada:', notifErr);
+      }
+
+      // 6. Envia email de aprovação ao usuário
       if (userEmail) {
         try {
           await supabase.functions.invoke('enviar-email', {
             body: {
-              tipo: 'faturamento',
+              tipo: 'pix_recarga',
               destinatario_email: userEmail,
               destinatario_nome: userNome,
               dados: {
-                valor: `R$ ${sol.valor.toFixed(2).replace('.', ',')}`,
                 status: 'aprovado',
+                valor: sol.valor,
                 organizacao: orgNome,
-                mensagem: `Sua recarga de R$ ${sol.valor.toFixed(2).replace('.', ',')} foi aprovada! O saldo já está disponível na sua conta.`,
               },
             },
           });
