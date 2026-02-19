@@ -22,8 +22,10 @@ export default function SystemSettings() {
         maxUsersPerFreeOrg: 3,
         maxClientesPerFreeOrg: 5,
         systemEmail: 'suporte@rekorramultas.com.br',
-        whatsappSupportNumber: '+5521999999999'
+        whatsappSupportNumber: ''
     });
+    const [savingWhatsapp, setSavingWhatsapp] = useState(false);
+    const [whatsappSaved, setWhatsappSaved] = useState(false);
 
     // AI API Keys state
     const [aiProvider, setAiProvider] = useState('google');
@@ -59,12 +61,14 @@ export default function SystemSettings() {
             const pixNome = dbSettings.find(s => s.key === 'pix_nome_recebedor')?.value || '';
             const pixCidade = dbSettings.find(s => s.key === 'pix_cidade')?.value || '';
             const pixBanco = dbSettings.find(s => s.key === 'pix_banco')?.value || '';
+            const whatsappNum = dbSettings.find(s => s.key === 'whatsapp_suporte')?.value || '';
 
             setAiProvider(provider);
             setGoogleApiKey(googleKey);
             setOpenaiApiKey(openaiKey);
             setAnthropicApiKey(anthropicKey);
             setPixSettings({ tipoChave: pixTipo, chave: pixChave, nomeRecebedor: pixNome, cidade: pixCidade, banco: pixBanco });
+            setSettings(prev => ({ ...prev, whatsappSupportNumber: whatsappNum }));
             setInitialLoaded(true);
         }
     }, [dbSettings, initialLoaded]);
@@ -531,13 +535,43 @@ export default function SystemSettings() {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">WhatsApp de Suporte</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                WhatsApp de Suporte
+                                <span className="ml-2 text-xs text-green-600 font-normal">— usado no link de envio de comprovante PIX</span>
+                            </label>
                             <input
                                 type="text"
                                 value={settings.whatsappSupportNumber}
                                 onChange={(e) => setSettings({ ...settings, whatsappSupportNumber: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="+5511999999999 (com código do país)"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                             />
+                            <p className="text-xs text-gray-400 mt-1">Formato: +5511999999999 (código do país + DDD + número)</p>
+                        </div>
+                        <div className="flex justify-end">
+                            <button
+                                onClick={async () => {
+                                    setSavingWhatsapp(true);
+                                    await updateSetting('whatsapp_suporte', settings.whatsappSupportNumber);
+                                    setWhatsappSaved(true);
+                                    setTimeout(() => setWhatsappSaved(false), 3000);
+                                    setSavingWhatsapp(false);
+                                }}
+                                disabled={savingWhatsapp || !settings.whatsappSupportNumber}
+                                className={`px-4 py-2 font-bold rounded-lg transition-all flex items-center gap-2 text-sm ${
+                                    whatsappSaved
+                                        ? 'bg-green-100 text-green-700 border border-green-300'
+                                        : 'bg-green-600 text-white hover:bg-green-700 disabled:opacity-50'
+                                }`}
+                            >
+                                {savingWhatsapp ? (
+                                    <><i className="ri-loader-4-line animate-spin"></i> Salvando...</>
+                                ) : whatsappSaved ? (
+                                    <><i className="ri-check-line"></i> Salvo!</>
+                                ) : (
+                                    <><i className="ri-whatsapp-fill"></i> Salvar WhatsApp</>
+                                )}
+                            </button>
                         </div>
                     </div>
                 </div>

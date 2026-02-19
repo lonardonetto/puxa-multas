@@ -14,7 +14,7 @@ interface ModalPixRecargaProps {
 const VALORES_RAPIDOS = [50, 100, 200, 500];
 
 export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
-  const { getSetting } = useSystemSettings();
+  const { getSetting, loading: loadingSettings } = useSystemSettings();
   const { currentOrganization } = useOrganization();
   const { user } = useAuth();
 
@@ -38,6 +38,9 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
   const pixCidade = getSetting('pix_cidade') || 'Sao Paulo';
   const pixBanco = getSetting('pix_banco') || '';
   const pixTipo = getSetting('pix_tipo_chave') || 'aleatoria';
+  const whatsappSuporte = getSetting('whatsapp_suporte') || getSetting('whatsappSupportNumber') || '';
+
+  const pixConfigurado = !!pixChave && !!pixNome && !!pixCidade;
 
   const gerarQrCode = useCallback(async () => {
     if (!pixChave || valorFinal <= 0) return;
@@ -75,6 +78,16 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
     setTimeout(() => setCopiado(false), 3000);
   };
 
+  // Monta link WhatsApp para enviar comprovante
+  const montarLinkWhatsapp = () => {
+    const numero = whatsappSuporte.replace(/\D/g, '');
+    const mensagem = encodeURIComponent(
+      `Olá! Realizei um pagamento PIX de R$ ${valorFinal.toFixed(2).replace('.', ',')} para recarga de créditos.\n\nOrganização: ${currentOrganization?.nome || ''}\n\nSegue o comprovante em anexo.`
+    );
+    if (numero) return `https://wa.me/${numero}?text=${mensagem}`;
+    return `https://wa.me/?text=${mensagem}`;
+  };
+
   // Cria solicitação pendente - não adiciona créditos diretamente
   const enviarSolicitacao = async () => {
     if (!currentOrganization || !user) return;
@@ -93,6 +106,25 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
 
       if (error) throw error;
 
+      // Envia email transacional: PIX aguardando aprovação
+      try {
+        await supabase.functions.invoke('enviar-email', {
+          body: {
+            tipo: 'faturamento',
+            destinatario_email: user.email,
+            destinatario_nome: user.user_metadata?.nome || user.email,
+            dados: {
+              valor: `R$ ${valorFinal.toFixed(2).replace('.', ',')}`,
+              status: 'aguardando_aprovacao',
+              organizacao: currentOrganization.nome,
+              mensagem: 'Sua solicitação de recarga foi recebida e está aguardando confirmação do pagamento pelo administrador.',
+            },
+          },
+        });
+      } catch (emailErr) {
+        console.warn('Email de confirmação não enviado:', emailErr);
+      }
+
       setEtapa('aguardando');
       onSuccess?.();
     } catch (err) {
@@ -107,8 +139,6 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
     setValorSelecionado(null);
     setValorCustom(v.replace(/[^0-9,]/g, ''));
   };
-
-  const pixConfigurado = !!pixChave && !!pixNome && !!pixCidade;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
@@ -139,10 +169,19 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
         {/* Etapa: Seleção de valor */}
         {etapa === 'selecao' && (
           <div className="p-6 space-y-6">
-            {!pixConfigurado && (
+            {/* Loading settings */}
+            {loadingSettings && (
+              <div className="flex items-center justify-center py-2 gap-2 text-gray-400 text-sm">
+                <i className="ri-loader-4-line animate-spin"></i>
+                <span>Carregando dados de pagamento...</span>
+              </div>
+            )}
+
+            {/* PIX não configurado - só mostra se não está carregando e realmente não tem dados */}
+            {!loadingSettings && !pixConfigurado && (
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700 flex gap-2">
                 <i className="ri-alert-line mt-0.5 shrink-0"></i>
-                <span>Dados de PIX não configurados. Acesse <strong>Super Admin → Configurações → PIX</strong> para configurar.</span>
+                <span>Sistema de pagamento temporariamente indisponível. Entre em contato com o suporte.</span>
               </div>
             )}
 
@@ -179,7 +218,7 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
 
             <button
               onClick={gerarQrCode}
-              disabled={carregandoQr || valorFinal <= 0 || !pixConfigurado}
+              disabled={carregandoQr || valorFinal <= 0 || !pixConfigurado || loadingSettings}
               className="w-full py-4 bg-[#1E3A8A] text-white rounded-2xl font-black shadow-lg hover:bg-blue-800 hover:-translate-y-0.5 transition-all cursor-pointer uppercase tracking-widest active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2"
             >
               {carregandoQr ? (
@@ -239,10 +278,21 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
               )}
             </button>
 
-            {/* Aviso importante */}
-            <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700 flex gap-2">
-              <i className="ri-information-line shrink-0 mt-0.5"></i>
-              <span>Após realizar o pagamento, clique em <strong>"Já paguei"</strong> para enviar sua solicitação. Os créditos serão liberados após confirmação do pagamento pelo administrador.</span>
+            {/* Aviso: enviar comprovante no WhatsApp */}
+            <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-xs text-green-800 flex gap-2">
+              <i className="ri-whatsapp-line shrink-0 mt-0.5 text-green-600 text-sm"></i>
+              <div>
+                <p className="font-bold mb-1">Após pagar, envie o comprovante</p>
+                <p>Envie o comprovante de pagamento via WhatsApp para confirmar sua recarga. Os créditos serão liberados após aprovação.</p>
+                <a
+                  href={montarLinkWhatsapp()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 mt-2 font-bold text-green-700 underline"
+                >
+                  <i className="ri-whatsapp-fill"></i> Enviar comprovante no WhatsApp
+                </a>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -279,12 +329,24 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
                 Sua solicitação de recarga de <span className="font-bold text-[#1E3A8A]">R$ {valorFinal.toFixed(2).replace('.', ',')}</span> foi registrada.
               </p>
               <p className="text-gray-400 text-xs mt-2">
-                Os créditos serão liberados após o administrador confirmar o recebimento do pagamento. Isso pode levar alguns minutos.
+                Os créditos serão liberados após o administrador confirmar o recebimento do pagamento.
               </p>
             </div>
+
+            {/* WhatsApp CTA */}
+            <a
+              href={montarLinkWhatsapp()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#25D366] text-white rounded-2xl font-black hover:bg-green-500 transition-all"
+            >
+              <i className="ri-whatsapp-fill text-lg"></i>
+              Enviar comprovante no WhatsApp
+            </a>
+
             <div className="w-full p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 text-left flex gap-2">
               <i className="ri-alert-line shrink-0 mt-0.5"></i>
-              <span>Se tiver dúvidas, entre em contato com o suporte informando o valor e horário do pagamento.</span>
+              <span>Envie o comprovante via WhatsApp para agilizar a aprovação. Sem o comprovante, a aprovação pode demorar mais.</span>
             </div>
             <button
               onClick={onClose}
