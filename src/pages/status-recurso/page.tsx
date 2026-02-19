@@ -30,10 +30,15 @@ export default function StatusRecurso() {
   };
 
   const getNivelAlerta = (dias: number, intervalo: number = 7) => {
-    if (dias >= intervalo) return { nivel: 'crítico', cor: 'bg-red-100 border-red-500', icone: 'ri-alarm-warning-fill', textoCor: 'text-red-700' };
-    if (dias >= Math.max(1, intervalo - 2)) return { nivel: 'alto', cor: 'bg-orange-100 border-orange-500', icone: 'ri-error-warning-fill', textoCor: 'text-orange-700' };
-    if (dias >= Math.max(1, intervalo - 4)) return { nivel: 'médio', cor: 'bg-yellow-100 border-yellow-500', icone: 'ri-alert-fill', textoCor: 'text-yellow-700' };
-    return { nivel: 'normal', cor: 'bg-blue-100 border-blue-500', icone: 'ri-information-fill', textoCor: 'text-blue-700' };
+    const diasRestantes = intervalo - dias;
+    // Vencido (0 ou menos dias restantes)
+    if (diasRestantes <= 0) return { nivel: 'crítico', cor: 'bg-red-100 border-red-500', icone: 'ri-alarm-warning-fill', textoCor: 'text-red-700', bgRow: 'bg-red-50/60', badge: 'bg-red-100 text-red-700 border border-red-300 animate-pulse' };
+    // Faltando 1 dia
+    if (diasRestantes === 1) return { nivel: 'urgente', cor: 'bg-orange-100 border-orange-500', icone: 'ri-error-warning-fill', textoCor: 'text-orange-700', bgRow: 'bg-orange-50/40', badge: 'bg-orange-100 text-orange-700 border border-orange-300' };
+    // Faltando 2 dias
+    if (diasRestantes === 2) return { nivel: 'atenção', cor: 'bg-yellow-100 border-yellow-500', icone: 'ri-alert-fill', textoCor: 'text-yellow-700', bgRow: '', badge: 'bg-yellow-100 text-yellow-700 border border-yellow-300' };
+    // Dentro do prazo
+    return { nivel: 'normal', cor: 'bg-green-100 border-green-500', icone: 'ri-checkbox-circle-fill', textoCor: 'text-green-700', bgRow: '', badge: 'bg-green-100 text-green-700 border border-green-300' };
   };
 
   const getStatusLabel = (status: string) => {
@@ -226,7 +231,7 @@ export default function StatusRecurso() {
                   const cliente = recurso.multas?.veiculos?.clientes;
 
                   return (
-                    <tr key={recurso.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={recurso.id} className={`hover:bg-gray-50 transition-colors ${alerta.bgRow}`}>
                       <td className="px-4 py-3">
                         <div
                           className="flex items-center cursor-pointer group"
@@ -263,12 +268,20 @@ export default function StatusRecurso() {
                         <span className="text-xs text-gray-600">{formatarData(recurso.data_protocolo)}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center space-x-1.5">
-                          <i className={`${alerta.icone} ${alerta.textoCor} text-xs`}></i>
-                          <span className={`text-xs font-semibold ${alerta.textoCor}`}>
-                            {diasUltimaNotificacao >= 30 ? 'Pendente' : `${diasUltimaNotificacao} dias`}
-                          </span>
-                        </div>
+                        {(() => {
+                          const diasRestantes = (recurso.intervalo_notificacao || 7) - diasUltimaNotificacao;
+                          return (
+                            <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-bold ${alerta.badge}`}>
+                              <i className={`${alerta.icone} text-sm`}></i>
+                              {diasRestantes <= 0
+                                ? <span>{Math.abs(diasRestantes)} {Math.abs(diasRestantes) === 1 ? 'dia' : 'dias'} atrasado</span>
+                                : diasRestantes <= 2
+                                  ? <span>Vence em {diasRestantes} {diasRestantes === 1 ? 'dia' : 'dias'}</span>
+                                  : <span>{diasRestantes} dias restantes</span>
+                              }
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
