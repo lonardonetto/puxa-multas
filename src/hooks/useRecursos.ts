@@ -174,14 +174,15 @@ export function useRecursos(): UseRecursosReturn {
 
     const atualizarNotificacao = useCallback(async (id: string, intervalo?: number): Promise<Recurso | null> => {
         try {
-            const agora = new Date();
+            // Usa horário de Brasília como referência
+            const agoraBrasilia = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
             const diasIntervalo = intervalo || 7;
-            const proximaRevisao = new Date(agora.getTime() + diasIntervalo * 24 * 60 * 60 * 1000);
+            const proximaRevisao = new Date(agoraBrasilia.getTime() + diasIntervalo * 24 * 60 * 60 * 1000);
 
             const { data, error: updateError } = await ((supabase as any)
                 .from('contratos')
                 .update({
-                    data_ultima_notificacao: agora.toISOString(),
+                    data_ultima_notificacao: agoraBrasilia.toISOString(),
                     data_proximo_lembrete: proximaRevisao.toISOString(),
                 })
                 .eq('id', id)

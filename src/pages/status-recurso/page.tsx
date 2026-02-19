@@ -18,32 +18,29 @@ export default function StatusRecurso() {
     loadData();
   }, [loadData]);
 
-  // Calcula dias restantes até a próxima revisão (data_proximo_lembrete)
-  // Retorno positivo = dias restantes, negativo = dias de atraso
+  // Calcula dias restantes baseado apenas no intervalo de dias (horário de Brasília)
   const calcularDiasAteProximaRevisao = (dataProximoLembrete: string | null, dataUltimaNotificacao: string | null, dataProtocolo: string | null, intervalo: number) => {
-    // Se tem data_proximo_lembrete definida, usar ela diretamente
+    const hojeBrasilia = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+    hojeBrasilia.setHours(0, 0, 0, 0);
+
+    // Se tem data_proximo_lembrete definida, usar ela
     if (dataProximoLembrete) {
       const partes = dataProximoLembrete.split('T')[0].split('-');
       const dataAlvo = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
-      const hoje = new Date();
-      hoje.setHours(0, 0, 0, 0);
       dataAlvo.setHours(0, 0, 0, 0);
-      return Math.ceil((dataAlvo.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+      return Math.ceil((dataAlvo.getTime() - hojeBrasilia.getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    // Fallback: calcular com base na última notificação + intervalo
+    // Fallback: referência + intervalo
     const referencia = dataUltimaNotificacao || dataProtocolo;
-    if (!referencia) return intervalo; // Sem referência, considerar como "em dia"
+    if (!referencia) return intervalo;
     
     const partes = referencia.split('T')[0].split('-');
     const dataRef = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
-    dataRef.setDate(dataRef.getDate() + intervalo); // data alvo = referência + intervalo
-    
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    dataRef.setDate(dataRef.getDate() + intervalo);
     dataRef.setHours(0, 0, 0, 0);
     
-    return Math.ceil((dataRef.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.ceil((dataRef.getTime() - hojeBrasilia.getTime()) / (1000 * 60 * 60 * 24));
   };
 
   const getNivelAlerta = (diasRestantes: number) => {
