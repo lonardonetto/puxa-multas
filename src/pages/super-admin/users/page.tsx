@@ -89,9 +89,9 @@ export default function UsersManagement() {
             // Criar um cliente temporário que NÃO persiste a sessão
             // Isso evita que o Supabase deslogue o admin e logue o novo usuário automaticamente
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+            const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-            const tempSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+            const tempSupabase = createClient(supabaseUrl, supabaseKey, {
                 auth: { persistSession: false }
             });
 
