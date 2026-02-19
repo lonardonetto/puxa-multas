@@ -4,6 +4,7 @@ import { useOrganizations } from '../../../hooks/useOrganizations';
 import type { Organization } from '../../../types/database';
 import { usePlans } from '../../../hooks/usePlans';
 import OrganizationDetailsModal from './components/DetailsModal';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 
 export default function Organizations() {
     const { organizations, loading, error: apiError, fetchOrganizations, createOrganization, updateOrganization, deleteOrganization } = useOrganizations();
@@ -128,10 +129,34 @@ export default function Organizations() {
         fetchOrganizations();
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Tem certeza?')) return;
-        await deleteOrganization(id);
-        fetchOrganizations();
+    // Estado para exclusão profissional
+    const [deleteTarget, setDeleteTarget] = useState<Organization | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [deleteSuccess, setDeleteSuccess] = useState(false);
+    const [deletedOrgName, setDeletedOrgName] = useState('');
+
+    const handleDelete = (org: Organization) => {
+        setDeleteTarget(org);
+        setShowDeleteConfirm(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
+        setDeleting(true);
+        setDeletedOrgName(deleteTarget.nome);
+        const success = await deleteOrganization(deleteTarget.id);
+        setDeleting(false);
+        setShowDeleteConfirm(false);
+        if (success) {
+            setDeleteSuccess(true);
+            setTimeout(() => {
+                setDeleteSuccess(false);
+                setDeletedOrgName('');
+            }, 3000);
+            fetchOrganizations();
+        }
+        setDeleteTarget(null);
     };
 
     const getPlanoBadge = (plano: string) => {
@@ -210,7 +235,7 @@ export default function Organizations() {
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                                         <button onClick={() => setSelectedOrgForDetails(org)} className="text-blue-500 mr-4"><i className="ri-search-line"></i></button>
                                         <button onClick={() => handleEdit(org)} className="text-[#10B981] mr-4"><i className="ri-edit-line"></i></button>
-                                        <button onClick={() => handleDelete(org.id)} className="text-red-600"><i className="ri-delete-bin-line"></i></button>
+                                        <button onClick={() => handleDelete(org)} className="text-red-600"><i className="ri-delete-bin-line"></i></button>
                                     </td>
                                 </tr>
                             ))}
@@ -305,6 +330,32 @@ export default function Organizations() {
                     onClose={() => setSelectedOrgForDetails(null)}
                     onUpdate={fetchOrganizations}
                 />
+            )}
+
+            <ConfirmDialog
+                open={showDeleteConfirm}
+                onOpenChange={setShowDeleteConfirm}
+                title="Excluir Organização"
+                description={`Tem certeza que deseja excluir "${deleteTarget?.nome}"? Todos os dados associados (clientes, contratos, veículos, multas, recursos e histórico) serão removidos permanentemente.`}
+                confirmText="Excluir Permanentemente"
+                cancelText="Cancelar"
+                variant="danger"
+                onConfirm={confirmDelete}
+                loading={deleting}
+            />
+
+            {deleteSuccess && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] animate-fade-in">
+                    <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4 animate-scale-in">
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                            <i className="ri-check-line text-3xl text-green-600"></i>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900">Organização Excluída</h3>
+                        <p className="text-gray-500 text-sm text-center">
+                            <strong>{deletedOrgName}</strong> e todos os dados associados foram removidos com sucesso.
+                        </p>
+                    </div>
+                </div>
             )}
         </div>
     );
