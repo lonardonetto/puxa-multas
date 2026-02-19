@@ -49,6 +49,40 @@ export default function Planos() {
     return 0;
   };
 
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\.?0+$/, '');
+  };
+
+  const buildFeatures = (plan: any): string[] => {
+    const features: string[] = [];
+    
+    // Limite de clientes
+    if (plan.limite_clientes) {
+      features.push(`Cadastro de até ${plan.limite_clientes} clientes`);
+    } else {
+      features.push('Clientes ilimitados');
+    }
+
+    // Recursos IA
+    if (plan.recursos_ia_inclusos > 0) {
+      features.push(`${plan.recursos_ia_inclusos} Recursos IA grátis/mês (excedente R$ ${formatCurrency(plan.preco_recurso_ia)})`);
+    } else {
+      features.push(`Geração de Recursos (R$ ${formatCurrency(plan.preco_recurso_ia)}/un)`);
+    }
+
+    // Rastreamento
+    features.push(`Rastreamento de Multas (R$ ${formatCurrency(plan.preco_rastreamento)}/un)`);
+
+    // Editais
+    features.push(`Editais (R$ ${formatCurrency(plan.preco_edital)}/contato)`);
+
+    // CRM e Disparador
+    if (plan.acesso_crm) features.push('Acesso ao CRM + IA');
+    if (plan.acesso_disparador) features.push('Acesso ao Disparador');
+
+    return features;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -154,10 +188,10 @@ export default function Planos() {
                 </div>
 
                 <div className="space-y-4 mb-8">
-                  {plan.recursos && plan.recursos.slice(0, 4).map((rec: string, i: number) => (
+                  {buildFeatures(plan).map((rec: string, i: number) => (
                     <div key={i} className="flex items-center text-sm text-muted-foreground">
                       <i className="ri-checkbox-circle-line text-green-500 mr-2 flex-shrink-0"></i>
-                      <span className="truncate">{rec}</span>
+                      <span>{rec}</span>
                     </div>
                   ))}
                 </div>
