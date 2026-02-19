@@ -36,7 +36,6 @@ const PlacasConsultadas = lazy(() => import('../pages/rastreamento/placas-consul
 const StatusRecurso = lazy(() => import('../pages/status-recurso/page'));
 const RecursosIA = lazy(() => import('../pages/recursos-ia/page'));
 const Planos = lazy(() => import('../pages/planos/page'));
-const ChatWhatsApp = lazy(() => import('../pages/atendimento/chat-whatsapp/page'));
 const CRMKanban = lazy(() => import('../pages/atendimento/crm-kanban/page'));
 const NovoCliente = lazy(() => import('../pages/cadastro/novo-cliente/page'));
 const ListaClientes = lazy(() => import('../pages/cadastro/lista-clientes/page'));
@@ -125,15 +124,7 @@ const routes: RouteObject[] = [
         ),
       },
       {
-        path: 'atendimento/chat-whatsapp',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <ChatWhatsApp />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'atendimento/crm-kanban',
+        path: 'crm-kanban',
         element: (
           <Suspense fallback={<LoadingFallback />}>
             <CRMKanban />

@@ -16,7 +16,6 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
   const location = useLocation();
   const { user } = useAuth();
   const { plan: planDetails } = useCurrentPlan();
-  const [atendimentoOpen, setAtendimentoOpen] = useState(false);
   const [cadastroOpen, setCadastroOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const [superAdminOpen, setSuperAdminOpen] = useState(false);
@@ -52,11 +51,7 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
     { path: '/rastreamento', icon: 'ri-car-line', label: 'Rastreamento de Multas' },
     { path: '/status-recurso', icon: 'ri-file-list-3-line', label: 'Acompanhamento Recursos' },
     { path: '/recursos-ia', icon: 'ri-file-text-line', label: 'Recursos por IA' },
-  ];
-
-  const atendimentoItems = [
-    { path: '/atendimento/chat-whatsapp', icon: 'ri-whatsapp-line', label: 'Chat WhatsApp' },
-    { path: '/atendimento/crm-kanban', icon: 'ri-layout-board-line', label: 'CRM Kanban' },
+    { path: '/crm-kanban', icon: 'ri-layout-board-line', label: 'CRM Kanban' },
   ];
 
   const cadastroItems = [
@@ -111,36 +106,6 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
           </Link>
         ))}
 
-        {/* Atendimento Dropdown */}
-        <div>
-          <button
-            onClick={() => setAtendimentoOpen(!atendimentoOpen)}
-            className={`w-full flex items-center justify-between px-4 py-2.5 text-gray-200 ${bgHover} transition-colors ${location.pathname.startsWith('/atendimento') ? `${bgActive} border-l-4 border-primary` : 'border-l-4 border-transparent'
-              }`}
-          >
-            <div className="flex items-center">
-              <i className={`ri-customer-service-2-line text-lg mr-3 ${location.pathname.startsWith('/atendimento') ? 'text-primary' : ''}`}></i>
-              <span className="text-sm font-medium">Atendimento</span>
-            </div>
-            <i className={`ri-arrow-${atendimentoOpen ? 'up' : 'down'}-s-line text-base transition-transform`}></i>
-          </button>
-
-          {atendimentoOpen && (
-            <div className={subMenuBg}>
-              {atendimentoItems.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center px-4 py-2 pl-10 text-gray-300 ${bgHover} transition-colors ${location.pathname === item.path ? `${bgActive} text-primary` : ''
-                    }`}
-                >
-                  <i className={`${item.icon} text-base mr-3`}></i>
-                  <span className="text-sm font-medium">{item.label}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
 
         {/* Cadastro Dropdown */}
         <div>
