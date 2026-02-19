@@ -36,15 +36,12 @@ const PlacasConsultadas = lazy(() => import('../pages/rastreamento/placas-consul
 const StatusRecurso = lazy(() => import('../pages/status-recurso/page'));
 const RecursosIA = lazy(() => import('../pages/recursos-ia/page'));
 const Planos = lazy(() => import('../pages/planos/page'));
-const MarketingDigital = lazy(() => import('../pages/marketing-digital/page'));
 const ChatWhatsApp = lazy(() => import('../pages/atendimento/chat-whatsapp/page'));
 const CRMKanban = lazy(() => import('../pages/atendimento/crm-kanban/page'));
 const NovoCliente = lazy(() => import('../pages/cadastro/novo-cliente/page'));
 const ListaClientes = lazy(() => import('../pages/cadastro/lista-clientes/page'));
 const ProspeccaoEditais = lazy(() => import('../pages/prospeccao-editais/page'));
-const MaterialApoio = lazy(() => import('../pages/material-apoio/page'));
 const Checkout = lazy(() => import('../pages/checkout/page'));
-const Educacional = lazy(() => import('../pages/educacional/page'));
 const Perfil = lazy(() => import('../pages/perfil/page'));
 const Servicos = lazy(() => import('../pages/servicos/page'));
 const NotFound = lazy(() => import('../pages/NotFound'));
@@ -128,14 +125,6 @@ const routes: RouteObject[] = [
         ),
       },
       {
-        path: 'marketing-digital',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <MarketingDigital />
-          </Suspense>
-        ),
-      },
-      {
         path: 'atendimento/chat-whatsapp',
         element: (
           <Suspense fallback={<LoadingFallback />}>
@@ -184,26 +173,10 @@ const routes: RouteObject[] = [
         ),
       },
       {
-        path: 'material-apoio',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <MaterialApoio />
-          </Suspense>
-        ),
-      },
-      {
         path: 'checkout',
         element: (
           <Suspense fallback={<LoadingFallback />}>
             <Checkout />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'educacional',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <Educacional />
           </Suspense>
         ),
       },
