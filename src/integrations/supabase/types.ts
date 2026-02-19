@@ -1612,6 +1612,62 @@ export type Database = {
           },
         ]
       }
+      solicitacoes_recarga: {
+        Row: {
+          aprovado_em: string | null
+          aprovado_por: string | null
+          comprovante_url: string | null
+          created_at: string
+          id: string
+          metodo_pagamento: string
+          observacao: string | null
+          organization_id: string
+          payload_pix: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          comprovante_url?: string | null
+          created_at?: string
+          id?: string
+          metodo_pagamento?: string
+          observacao?: string | null
+          organization_id: string
+          payload_pix?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          valor: number
+        }
+        Update: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          comprovante_url?: string | null
+          created_at?: string
+          id?: string
+          metodo_pagamento?: string
+          observacao?: string | null
+          organization_id?: string
+          payload_pix?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_recarga_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_settings: {
         Row: {
           created_at: string | null
