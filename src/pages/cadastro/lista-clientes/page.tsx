@@ -2133,10 +2133,23 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                 </div>
 
                 {/* Conteúdo do Contrato */}
-                <div 
-                  className="prose max-w-none text-sm text-gray-800 leading-relaxed font-serif"
-                  dangerouslySetInnerHTML={{ __html: contratoVisualizado.conteudo || 'Nenhum conteúdo detalhado disponível.' }}
-                />
+                {(() => {
+                  const conteudo = contratoVisualizado.conteudo || 'Nenhum conteúdo detalhado disponível.';
+                  const isHTML = /<[a-z][\s\S]*>/i.test(conteudo);
+                  if (isHTML) {
+                    return (
+                      <div 
+                        className="prose max-w-none text-sm text-gray-800 leading-relaxed font-serif"
+                        dangerouslySetInnerHTML={{ __html: conteudo }}
+                      />
+                    );
+                  }
+                  return (
+                    <div className="prose max-w-none text-sm text-gray-800 leading-relaxed whitespace-pre-wrap font-serif">
+                      {conteudo}
+                    </div>
+                  );
+                })()}
 
                 {/* Assinaturas */}
                 <div className="grid grid-cols-2 gap-12 mt-20 pt-12 border-t border-gray-200 print:mt-12">
