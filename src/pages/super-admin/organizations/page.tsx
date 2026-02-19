@@ -18,6 +18,12 @@ export default function Organizations() {
     const [adminEmail, setAdminEmail] = useState('');
     const [adminPassword, setAdminPassword] = useState('');
 
+    // Estados para animação de criação
+    const [showCreatingAnimation, setShowCreatingAnimation] = useState(false);
+    const [creatingStep, setCreatingStep] = useState(0);
+    const [creatingDone, setCreatingDone] = useState(false);
+    const [creatingError, setCreatingError] = useState<string | null>(null);
+
     const { plans, fetchPlans: fetchDynamicPlans } = usePlans();
 
     useEffect(() => {
@@ -53,6 +59,41 @@ export default function Organizations() {
         setShowModal(true);
     };
 
+    const creatingSteps = [
+        { label: 'Validando dados...', icon: 'ri-shield-check-line' },
+        { label: 'Criando empresa...', icon: 'ri-building-2-line' },
+        { label: 'Configurando plano...', icon: 'ri-settings-3-line' },
+        { label: 'Criando administrador...', icon: 'ri-user-add-line' },
+        { label: 'Finalizando configuração...', icon: 'ri-check-double-line' },
+    ];
+
+    const runCreatingAnimation = (hasAdmin: boolean): Promise<void> => {
+        return new Promise((resolve) => {
+            setShowCreatingAnimation(true);
+            setCreatingStep(0);
+            setCreatingDone(false);
+            setCreatingError(null);
+
+            const totalSteps = hasAdmin ? 5 : 3;
+            const stepDuration = 1200;
+            let current = 0;
+
+            const interval = setInterval(() => {
+                current++;
+                if (current >= totalSteps) {
+                    clearInterval(interval);
+                    setCreatingStep(totalSteps - 1);
+                    setTimeout(() => {
+                        setCreatingDone(true);
+                        setTimeout(resolve, 800);
+                    }, 600);
+                } else {
+                    setCreatingStep(current);
+                }
+            }, stepDuration);
+        });
+    };
+
     const handleSave = async () => {
         if (!editingOrg || !editingOrg.nome) return;
 
@@ -66,6 +107,11 @@ export default function Organizations() {
         };
 
         if (isCreating) {
+            const hasAdmin = !!(adminEmail && adminPassword);
+
+            // Iniciar animação em paralelo com a criação
+            const animationPromise = runCreatingAnimation(hasAdmin);
+
             const result = await createOrganization({
                 nome: finalData.nome!,
                 cnpj: finalData.cnpj || null,
@@ -79,11 +125,15 @@ export default function Organizations() {
             });
 
             if (!result) {
-                alert('Erro ao criar organização.');
+                setCreatingError('Erro ao criar organização.');
+                setTimeout(() => {
+                    setShowCreatingAnimation(false);
+                    setCreatingError(null);
+                }, 2000);
                 return;
             }
 
-            if (adminEmail && adminPassword) {
+            if (hasAdmin) {
                 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
                 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
@@ -104,9 +154,17 @@ export default function Organizations() {
                 });
 
                 if (signUpError) {
-                    alert('Empresa criada, mas erro ao criar o administrador: ' + signUpError.message);
+                    setCreatingError('Empresa criada, mas erro ao criar administrador: ' + signUpError.message);
+                    setTimeout(() => {
+                        setShowCreatingAnimation(false);
+                        setCreatingError(null);
+                    }, 3000);
                 }
             }
+
+            // Esperar animação terminar
+            await animationPromise;
+            setShowCreatingAnimation(false);
         } else if (finalData.id) {
             await updateOrganization(finalData.id, {
                 nome: finalData.nome,
@@ -354,6 +412,63 @@ export default function Organizations() {
                         <p className="text-gray-500 text-sm text-center">
                             <strong>{deletedOrgName}</strong> e todos os dados associados foram removidos com sucesso.
                         </p>
+                    </div>
+                </div>
+            )}
+
+            {/* Animação de Criação */}
+            {showCreatingAnimation && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] animate-fade-in">
+                    <div className="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-md animate-scale-in">
+                        {creatingError ? (
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                                    <i className="ri-error-warning-line text-3xl text-red-600"></i>
+                                </div>
+                                <h3 className="text-lg font-bold text-gray-900">Erro</h3>
+                                <p className="text-sm text-gray-500 text-center">{creatingError}</p>
+                            </div>
+                        ) : creatingDone ? (
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+                                    <i className="ri-check-line text-4xl text-green-600 animate-scale-in"></i>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900">Tudo Pronto!</h3>
+                                <p className="text-sm text-gray-500">Empresa e usuário criados com sucesso.</p>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center gap-6">
+                                <div className="relative w-20 h-20">
+                                    <div className="absolute inset-0 rounded-full border-4 border-gray-200"></div>
+                                    <div className="absolute inset-0 rounded-full border-4 border-t-[#10B981] animate-spin"></div>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <i className={`${creatingSteps[creatingStep]?.icon} text-2xl text-[#10B981]`}></i>
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-1">Configurando...</h3>
+                                    <p className="text-sm text-gray-500">{creatingSteps[creatingStep]?.label}</p>
+                                </div>
+                                <div className="w-full space-y-2 mt-2">
+                                    {creatingSteps.map((step, i) => (
+                                        <div key={i} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 ${i < creatingStep ? 'bg-green-50' : i === creatingStep ? 'bg-[#10B981]/10' : 'bg-gray-50 opacity-40'}`}>
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${i < creatingStep ? 'bg-green-500' : i === creatingStep ? 'bg-[#10B981]' : 'bg-gray-300'}`}>
+                                                {i < creatingStep ? (
+                                                    <i className="ri-check-line text-white text-xs"></i>
+                                                ) : i === creatingStep ? (
+                                                    <i className="ri-loader-4-line text-white text-xs animate-spin"></i>
+                                                ) : (
+                                                    <span className="text-white text-[10px] font-bold">{i + 1}</span>
+                                                )}
+                                            </div>
+                                            <span className={`text-sm ${i <= creatingStep ? 'text-gray-800 font-medium' : 'text-gray-400'}`}>
+                                                {step.label}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
