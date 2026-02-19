@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.listar-placas-consultadas]
 verify_jwt = false
+
+[functions.registrar-notificacao]
+verify_jwt = false

@@ -1478,6 +1478,84 @@ export type Database = {
           },
         ]
       }
+      registro_notificacoes: {
+        Row: {
+          auto_infracao: string | null
+          cliente_id: string | null
+          cliente_nome: string
+          cliente_telefone: string | null
+          confirmacao_usuario: boolean
+          contrato_id: string | null
+          created_at: string
+          hash_integridade: string
+          horario_brasilia: string
+          id: string
+          ip_address: string | null
+          mensagem_enviada: string | null
+          organization_id: string
+          status_recurso: string | null
+          user_agent: string | null
+          usuario_email: string
+          usuario_id: string
+          usuario_nome: string
+        }
+        Insert: {
+          auto_infracao?: string | null
+          cliente_id?: string | null
+          cliente_nome: string
+          cliente_telefone?: string | null
+          confirmacao_usuario?: boolean
+          contrato_id?: string | null
+          created_at?: string
+          hash_integridade: string
+          horario_brasilia: string
+          id?: string
+          ip_address?: string | null
+          mensagem_enviada?: string | null
+          organization_id: string
+          status_recurso?: string | null
+          user_agent?: string | null
+          usuario_email: string
+          usuario_id: string
+          usuario_nome: string
+        }
+        Update: {
+          auto_infracao?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string
+          cliente_telefone?: string | null
+          confirmacao_usuario?: boolean
+          contrato_id?: string | null
+          created_at?: string
+          hash_integridade?: string
+          horario_brasilia?: string
+          id?: string
+          ip_address?: string | null
+          mensagem_enviada?: string | null
+          organization_id?: string
+          status_recurso?: string | null
+          user_agent?: string | null
+          usuario_email?: string
+          usuario_id?: string
+          usuario_nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registro_notificacoes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_notificacoes_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       servicos: {
         Row: {
           ativo: boolean | null
