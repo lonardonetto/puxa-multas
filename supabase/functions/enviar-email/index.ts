@@ -37,6 +37,15 @@ const COLORS = {
   indigo:    '#6366F1',
 };
 
+// Converte hex (#RRGGBB) + opacidade (0-1) para rgba() — compatível com todos os clientes de email
+function rgba(hex: string, opacity: number): string {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${opacity})`;
+}
+
 // ─── Layout Base ───────────────────────────────────────────────────────────────
 function layoutBase(params: {
   titulo: string;
@@ -85,7 +94,7 @@ function layoutBase(params: {
                       </table>
                     </div>
                     <!-- Icon -->
-                    <div style="width:72px;height:72px;background:linear-gradient(135deg,${corAcento}22,${corAcento}11);border:2px solid ${corAcento}44;border-radius:50%;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:32px;line-height:72px;text-align:center;">
+                    <div style="width:72px;height:72px;background:${rgba(corAcento,0.13)};border:2px solid ${rgba(corAcento,0.27)};border-radius:50%;margin:0 auto 16px;font-size:32px;line-height:72px;text-align:center;">
                       ${icone}
                     </div>
                     <!-- Title -->
@@ -158,10 +167,10 @@ function infoCard(linhas: { label: string; valor: string; cor?: string }[]): str
 
 function alertBox(texto: string, tipo: 'info' | 'success' | 'warning' | 'error' = 'info'): string {
   const map = {
-    info:    { bg: `${COLORS.blue}15`,   border: `${COLORS.blue}40`,   color: COLORS.blue,   icon: 'ℹ️' },
-    success: { bg: `${COLORS.green}15`,  border: `${COLORS.green}40`,  color: COLORS.green,  icon: '✅' },
-    warning: { bg: `${COLORS.amber}15`,  border: `${COLORS.amber}40`,  color: COLORS.amber,  icon: '⚠️' },
-    error:   { bg: `${COLORS.red}15`,    border: `${COLORS.red}40`,    color: COLORS.red,    icon: '🚨' },
+    info:    { bg: rgba(COLORS.blue, 0.08),   border: rgba(COLORS.blue, 0.25),   color: COLORS.blue,   icon: 'ℹ️' },
+    success: { bg: rgba(COLORS.green, 0.08),  border: rgba(COLORS.green, 0.25),  color: COLORS.green,  icon: '✅' },
+    warning: { bg: rgba(COLORS.amber, 0.08),  border: rgba(COLORS.amber, 0.25),  color: COLORS.amber,  icon: '⚠️' },
+    error:   { bg: rgba(COLORS.red, 0.08),    border: rgba(COLORS.red, 0.25),    color: COLORS.red,    icon: '🚨' },
   };
   const s = map[tipo];
   return `
@@ -179,7 +188,7 @@ function paragrafo(texto: string): string {
 }
 
 function badge(texto: string, cor: string): string {
-  return `<div style="text-align:center;margin-bottom:20px;"><span style="display:inline-block;background:${cor}20;color:${cor};border:1px solid ${cor}50;border-radius:20px;padding:5px 16px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;">${texto}</span></div>`;
+  return `<div style="text-align:center;margin-bottom:20px;"><span style="display:inline-block;background:${rgba(cor,0.12)};color:${cor};border:1px solid ${rgba(cor,0.31)};border-radius:20px;padding:5px 16px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;">${texto}</span></div>`;
 }
 
 function listaFeatures(items: string[]): string {
@@ -406,7 +415,7 @@ function templateNotificacaoBlindada(dados: Record<string, string | number | boo
       { label: '⚖️ Status do Recurso', valor: statusRecurso },
       { label: '🔐 Hash SHA-256', valor: hash, cor: COLORS.green },
     ])}
-    <div style="background:${COLORS.green}10;border:1px solid ${COLORS.green}30;border-radius:12px;padding:20px;margin:20px 0;">
+    <div style="background:${rgba(COLORS.green,0.06)};border:1px solid ${rgba(COLORS.green,0.19)};border-radius:12px;padding:20px;margin:20px 0;">
       <p style="color:${COLORS.green};font-size:13px;font-weight:800;margin:0 0 8px;text-align:center;">🔒 REGISTRO IMUTÁVEL</p>
       <p style="color:${COLORS.gray2};font-size:12px;margin:0;text-align:center;line-height:1.6;">
         Este registro possui hash criptográfico SHA-256, data e horário com timezone de Brasília, IP do operador e confirmação explícita do usuário — garantindo total rastreabilidade jurídica.
@@ -448,10 +457,10 @@ function templateFaturamento(dados: Record<string, string | number | boolean>): 
     ${badge('Informação de Faturamento', COLORS.gold)}
     ${paragrafo(`Olá, <strong style="color:${COLORS.white};">${adminNome}</strong>!`)}
     ${paragrafo(`Há uma movimentação financeira na conta da organização <strong style="color:${COLORS.gold};">${orgNome}</strong>.`)}
-    <div style="background:${COLORS.card};border:2px solid ${s.cor}40;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
+    <div style="background:${COLORS.card};border:2px solid ${rgba(s.cor,0.25)};border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
       <p style="color:${COLORS.gray2};font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:0 0 4px;">Valor</p>
       <p style="color:${COLORS.white};font-size:36px;font-weight:900;margin:0 0 8px;letter-spacing:-1px;">${valor}</p>
-      <span style="display:inline-block;background:${s.cor}20;color:${s.cor};border:1px solid ${s.cor}40;border-radius:20px;padding:4px 14px;font-size:11px;font-weight:800;">${s.texto}</span>
+      <span style="display:inline-block;background:${rgba(s.cor,0.12)};color:${s.cor};border:1px solid ${rgba(s.cor,0.25)};border-radius:20px;padding:4px 14px;font-size:11px;font-weight:800;">${s.texto}</span>
     </div>
     ${infoCard([
       { label: '📋 Descrição', valor: descricao },
@@ -499,7 +508,7 @@ function templateRastreamentoVencimento(dados: Record<string, string | number | 
     ${badge(`${urgencia.nivel}`, urgencia.cor)}
     ${paragrafo(`Olá, <strong style="color:${COLORS.white};">${adminNome}</strong>!`)}
     ${paragrafo(`O rastreamento de um veículo da organização <strong style="color:${COLORS.gold};">${orgNome}</strong> está próximo do vencimento e requer sua atenção.`)}
-    <div style="background:${urgencia.cor}15;border:2px solid ${urgencia.cor}40;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
+    <div style="background:${rgba(urgencia.cor,0.08)};border:2px solid ${rgba(urgencia.cor,0.25)};border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
       <p style="color:${urgencia.cor};font-size:48px;font-weight:900;margin:0 0 4px;line-height:1;">${diasRestantes}</p>
       <p style="color:${urgencia.cor};font-size:13px;font-weight:700;margin:0;text-transform:uppercase;letter-spacing:1px;">dia${diasRestantes !== 1 ? 's' : ''} restante${diasRestantes !== 1 ? 's' : ''}</p>
     </div>
@@ -584,10 +593,10 @@ function templatePixRecarga(dados: Record<string, string | number | boolean>): {
 
   const conteudo = `
     ${badge(titulo, cor)}
-    <div style="background:${COLORS.card};border:2px solid ${cor}40;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
+    <div style="background:${COLORS.card};border:2px solid ${rgba(cor,0.25)};border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
       <p style="color:${COLORS.gray2};font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:0 0 4px;">Valor</p>
       <p style="color:${COLORS.white};font-size:36px;font-weight:900;margin:0 0 8px;">${valor}</p>
-      <span style="display:inline-block;background:${cor}20;color:${cor};border:1px solid ${cor}40;border-radius:20px;padding:4px 14px;font-size:11px;font-weight:800;">${titulo}</span>
+      <span style="display:inline-block;background:${rgba(cor,0.12)};color:${cor};border:1px solid ${rgba(cor,0.25)};border-radius:20px;padding:4px 14px;font-size:11px;font-weight:800;">${titulo}</span>
     </div>
     ${infoCard([
       { label: '🏢 Organização', valor: orgNome },
@@ -617,7 +626,7 @@ function templatePlanoSolicitado(dados: Record<string, any>): { assunto: string;
 
   const conteudo = `
     ${badge('Solicitação de Plano Enviada', COLORS.amber)}
-    <div style="background:${COLORS.card};border:2px solid ${COLORS.amber}40;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
+    <div style="background:${COLORS.card};border:2px solid ${rgba(COLORS.amber,0.25)};border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
       <p style="color:${COLORS.gray2};font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:0 0 4px;">Plano Solicitado</p>
       <p style="color:${COLORS.white};font-size:28px;font-weight:900;margin:0 0 8px;">${planoNome}</p>
       <p style="color:${COLORS.gold};font-size:20px;font-weight:700;margin:0;">${valor}/${ciclo}</p>
@@ -646,7 +655,7 @@ function templatePlanoAprovado(dados: Record<string, any>): { assunto: string; h
 
   const conteudo = `
     ${badge('Plano Ativado com Sucesso!', COLORS.green)}
-    <div style="background:${COLORS.card};border:2px solid ${COLORS.green}40;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
+    <div style="background:${COLORS.card};border:2px solid ${rgba(COLORS.green,0.25)};border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
       <p style="color:${COLORS.gray2};font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:0 0 4px;">Plano Ativo</p>
       <p style="color:${COLORS.white};font-size:28px;font-weight:900;margin:0 0 8px;">🎉 ${planoNome}</p>
       <p style="color:${COLORS.green};font-size:16px;font-weight:700;margin:0;">Todos os benefícios desbloqueados</p>
