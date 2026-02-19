@@ -11,7 +11,7 @@ const SENDER_NAME = 'Central da Multa';
 const SENDER_EMAIL = 'noreply@centraldamulta.app.br';
 
 interface EmailPayload {
-  tipo: 'boas_vindas' | 'confirmacao_email' | 'redefinicao_senha' | 'cliente_adicionado' | 'recurso_gerado' | 'notificacao_blindada' | 'faturamento' | 'rastreamento_vencimento' | 'usuario_adicionado' | 'pix_recarga';
+  tipo: 'boas_vindas' | 'confirmacao_email' | 'redefinicao_senha' | 'cliente_adicionado' | 'recurso_gerado' | 'notificacao_blindada' | 'faturamento' | 'rastreamento_vencimento' | 'usuario_adicionado' | 'pix_recarga' | 'plano_solicitado' | 'plano_aprovado' | 'plano_rejeitado';
   destinatario_email: string;
   destinatario_nome: string;
   dados?: Record<string, string | number | boolean>;
@@ -608,6 +608,87 @@ function templatePixRecarga(dados: Record<string, string | number | boolean>): {
   };
 }
 
+function templatePlanoSolicitado(dados: Record<string, any>): { assunto: string; html: string } {
+  const planoNome = String(dados.plano_nome || 'Plano');
+  const ciclo = String(dados.ciclo || 'mensal');
+  const valor = `R$ ${Number(dados.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+  const chavePix = String(dados.chave_pix || '');
+  const orgNome = String(dados.organizacao || '');
+
+  const conteudo = `
+    ${badge('Solicitação de Plano Enviada', COLORS.amber)}
+    <div style="background:${COLORS.card};border:2px solid ${COLORS.amber}40;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
+      <p style="color:${COLORS.gray2};font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:0 0 4px;">Plano Solicitado</p>
+      <p style="color:${COLORS.white};font-size:28px;font-weight:900;margin:0 0 8px;">${planoNome}</p>
+      <p style="color:${COLORS.gold};font-size:20px;font-weight:700;margin:0;">${valor}/${ciclo}</p>
+    </div>
+    ${infoCard([
+      { label: '🏢 Organização', valor: orgNome },
+      { label: '📦 Plano', valor: planoNome },
+      { label: '💳 Ciclo', valor: ciclo },
+      { label: '💰 Valor', valor },
+    ])}
+    ${alertBox(`Para ativar seu plano, realize o pagamento PIX para a chave: <strong>${chavePix}</strong> e aguarde a aprovação em até 24h.`, 'warning')}
+    ${btnPrimario('Ver Meu Plano', 'https://app.centraldamulta.app.br/planos', COLORS.amber)}
+  `;
+
+  return {
+    assunto: `⏳ Solicitação do Plano ${planoNome} recebida — Central da Multa`,
+    html: layoutBase({ titulo: 'Solicitação Recebida', subtitulo: 'Aguardando aprovação do pagamento', icone: '⏳', conteudo, corAcento: COLORS.amber }),
+  };
+}
+
+function templatePlanoAprovado(dados: Record<string, any>): { assunto: string; html: string } {
+  const planoNome = String(dados.plano_nome || 'Plano');
+  const ciclo = String(dados.ciclo || 'mensal');
+  const valor = `R$ ${Number(dados.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+  const orgNome = String(dados.organizacao || '');
+
+  const conteudo = `
+    ${badge('Plano Ativado com Sucesso!', COLORS.green)}
+    <div style="background:${COLORS.card};border:2px solid ${COLORS.green}40;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
+      <p style="color:${COLORS.gray2};font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:0 0 4px;">Plano Ativo</p>
+      <p style="color:${COLORS.white};font-size:28px;font-weight:900;margin:0 0 8px;">🎉 ${planoNome}</p>
+      <p style="color:${COLORS.green};font-size:16px;font-weight:700;margin:0;">Todos os benefícios desbloqueados</p>
+    </div>
+    ${infoCard([
+      { label: '🏢 Organização', valor: orgNome },
+      { label: '📦 Plano Ativado', valor: planoNome },
+      { label: '💳 Ciclo', valor: ciclo },
+      { label: '💰 Valor Pago', valor },
+    ])}
+    ${alertBox('Seu plano foi ativado! Acesse o painel para aproveitar todos os benefícios inclusos.', 'success')}
+    ${btnPrimario('Acessar Meu Painel', 'https://app.centraldamulta.app.br/', COLORS.green)}
+  `;
+
+  return {
+    assunto: `✅ Plano ${planoNome} ativado! — Central da Multa`,
+    html: layoutBase({ titulo: 'Plano Ativado!', subtitulo: 'Bem-vindo ao novo plano', icone: '🎉', conteudo, corAcento: COLORS.green }),
+  };
+}
+
+function templatePlanoRejeitado(dados: Record<string, any>): { assunto: string; html: string } {
+  const planoNome = String(dados.plano_nome || 'Plano');
+  const motivo = String(dados.motivo || 'Entre em contato com o suporte.');
+  const orgNome = String(dados.organizacao || '');
+
+  const conteudo = `
+    ${badge('Solicitação de Plano Rejeitada', COLORS.red)}
+    ${infoCard([
+      { label: '🏢 Organização', valor: orgNome },
+      { label: '📦 Plano Solicitado', valor: planoNome },
+      { label: '❌ Motivo', valor: motivo, cor: COLORS.red },
+    ])}
+    ${alertBox('Se tiver dúvidas, entre em contato com nosso suporte.', 'warning')}
+    ${btnPrimario('Ver Planos Disponíveis', 'https://app.centraldamulta.app.br/planos', COLORS.gold)}
+  `;
+
+  return {
+    assunto: `❌ Solicitação do Plano ${planoNome} rejeitada — Central da Multa`,
+    html: layoutBase({ titulo: 'Solicitação Rejeitada', subtitulo: 'Veja o motivo abaixo', icone: '❌', conteudo, corAcento: COLORS.red }),
+  };
+}
+
 function gerarEmail(tipo: EmailPayload['tipo'], dados: Record<string, string | number | boolean>): { assunto: string; html: string } {
   switch (tipo) {
     case 'confirmacao_email':      return templateConfirmacaoEmail(dados);
@@ -620,6 +701,9 @@ function gerarEmail(tipo: EmailPayload['tipo'], dados: Record<string, string | n
     case 'rastreamento_vencimento':return templateRastreamentoVencimento(dados);
     case 'usuario_adicionado':     return templateUsuarioAdicionado(dados);
     case 'pix_recarga':            return templatePixRecarga(dados);
+    case 'plano_solicitado':       return templatePlanoSolicitado(dados);
+    case 'plano_aprovado':         return templatePlanoAprovado(dados);
+    case 'plano_rejeitado':        return templatePlanoRejeitado(dados);
     default: throw new Error(`Tipo de email desconhecido: ${tipo}`);
   }
 }
