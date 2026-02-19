@@ -53,7 +53,7 @@ function layoutBase(params: {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>${titulo} — Recorra Multas</title>
+  <title>${titulo} — Central da Multa</title>
   <!--[if mso]>
   <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
   <![endif]-->
@@ -78,7 +78,7 @@ function layoutBase(params: {
                         <tr>
                           <td style="background:linear-gradient(135deg,${corAcento},${COLORS.goldLight});border-radius:10px;padding:1px;">
                             <div style="background:${COLORS.card};border-radius:9px;padding:10px 20px;">
-                              <span style="color:${corAcento};font-size:11px;font-weight:900;letter-spacing:3px;text-transform:uppercase;">⚖ RECORRA MULTAS</span>
+                              <img src="https://centraldamulta.app.br/logo-central-multa.png" alt="Central da Multa" style="height:36px;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';" /><span style="display:none;color:${corAcento};font-size:11px;font-weight:900;letter-spacing:3px;text-transform:uppercase;">⚖ CENTRAL DA MULTA</span>
                             </div>
                           </td>
                         </tr>
@@ -111,11 +111,11 @@ function layoutBase(params: {
                 Este é um e-mail automático. <strong style="color:${COLORS.gray2};">Não responda a este e-mail.</strong>
               </p>
               <p style="color:${COLORS.gray3};font-size:11px;margin:0 0 16px;line-height:1.6;">
-                Recorra Multas — Plataforma de Gestão de Recursos de Trânsito<br/>
+                Central da Multa — Plataforma de Gestão de Recursos de Trânsito<br/>
                 Enviado por: <span style="color:${COLORS.gray2};">${SENDER_EMAIL}</span>
               </p>
               <div style="border-top:1px solid ${COLORS.border};padding-top:16px;margin-top:8px;">
-                <a href="${APP_URL}" style="color:${corAcento};font-size:11px;text-decoration:none;font-weight:600;">recorramultas.com.br</a>
+                <a href="${APP_URL}" style="color:${corAcento};font-size:11px;text-decoration:none;font-weight:600;">centraldamulta.app.br</a>
                 <span style="color:${COLORS.border};margin:0 8px;">|</span>
                 <a href="${APP_URL}/login" style="color:${COLORS.gray3};font-size:11px;text-decoration:none;">Acessar plataforma</a>
               </div>
@@ -203,14 +203,14 @@ function templateConfirmacaoEmail(dados: Record<string, string | number | boolea
   const conteudo = `
     ${badge('Confirme seu endereço de e-mail', COLORS.gold)}
     ${paragrafo(`Olá, <strong style="color:${COLORS.white};">${nome}</strong>!`)}
-    ${paragrafo(`Obrigado por se cadastrar na <strong style="color:${COLORS.gold};">Recorra Multas</strong>${org ? ` como responsável pela organização <strong style="color:${COLORS.white};">${org}</strong>` : ''}. Para ativar sua conta e garantir a segurança do seu acesso, precisamos confirmar que este endereço de e-mail pertence a você.`)}
+    ${paragrafo(`Obrigado por se cadastrar na <strong style="color:${COLORS.gold};">Central da Multa</strong>${org ? ` como responsável pela organização <strong style="color:${COLORS.white};">${org}</strong>` : ''}. Para ativar sua conta e garantir a segurança do seu acesso, precisamos confirmar que este endereço de e-mail pertence a você.`)}
     ${divider()}
     <div style="background:${COLORS.card};border:1px solid ${COLORS.border};border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
       <p style="color:${COLORS.gray2};font-size:12px;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Clique no botão abaixo para confirmar</p>
       ${btnPrimario('Confirmar Meu E-mail', link)}
       <p style="color:${COLORS.gray3};font-size:11px;margin:0;">Este link expira em <strong style="color:${COLORS.amber};">24 horas</strong></p>
     </div>
-    ${alertBox('Se você não criou uma conta na Recorra Multas, ignore este e-mail com segurança.', 'warning')}
+    ${alertBox('Se você não criou uma conta na Central da Multa, ignore este e-mail com segurança.', 'warning')}
     ${divider()}
     <p style="color:${COLORS.gray3};font-size:12px;text-align:center;margin:0;line-height:1.8;">
       Se o botão não funcionar, copie e cole este link no navegador:<br/>
@@ -219,7 +219,7 @@ function templateConfirmacaoEmail(dados: Record<string, string | number | boolea
   `;
 
   return {
-    assunto: `✅ Confirme seu e-mail — Recorra Multas`,
+    assunto: `✅ Confirme seu e-mail — Central da Multa`,
     html: layoutBase({
       titulo: 'Confirme seu E-mail',
       subtitulo: 'Um passo para ativar sua conta',
@@ -238,7 +238,7 @@ function templateBoasVindas(dados: Record<string, string | number | boolean>): {
   const conteudo = `
     ${badge('Conta Ativada com Sucesso', COLORS.green)}
     ${paragrafo(`Seja muito bem-vindo(a), <strong style="color:${COLORS.white};">${nome}</strong>!`)}
-    ${paragrafo(`Sua conta na <strong style="color:${COLORS.gold};">Recorra Multas</strong> foi criada e confirmada com sucesso. Agora você tem acesso completo à plataforma mais avançada de gestão de recursos de trânsito do Brasil.`)}
+    ${paragrafo(`Sua conta na <strong style="color:${COLORS.gold};">Central da Multa</strong> foi criada e confirmada com sucesso. Agora você tem acesso completo à plataforma mais avançada de gestão de recursos de trânsito do Brasil.`)}
     ${infoCard([
       { label: '👤 Responsável', valor: nome },
       { label: '🏢 Organização', valor: org || '—' },
@@ -258,9 +258,9 @@ function templateBoasVindas(dados: Record<string, string | number | boolean>): {
   `;
 
   return {
-    assunto: `🎉 Bem-vindo(a) à Recorra Multas, ${nome}!`,
+    assunto: `🎉 Bem-vindo(a) à Central da Multa, ${nome}!`,
     html: layoutBase({
-      titulo: 'Bem-vindo(a) ao Recorra Multas!',
+      titulo: 'Bem-vindo(a) à Central da Multa!',
       subtitulo: 'Sua conta está pronta para uso',
       icone: '🎉',
       conteudo,
@@ -277,7 +277,7 @@ function templateRedefinicaoSenha(dados: Record<string, string | number | boolea
   const conteudo = `
     ${badge('Solicitação de Redefinição de Senha', COLORS.amber)}
     ${paragrafo(`Olá, <strong style="color:${COLORS.white};">${nome}</strong>!`)}
-    ${paragrafo(`Recebemos uma solicitação para redefinir a senha da sua conta na <strong style="color:${COLORS.gold};">Recorra Multas</strong>.`)}
+    ${paragrafo(`Recebemos uma solicitação para redefinir a senha da sua conta na <strong style="color:${COLORS.gold};">Central da Multa</strong>.`)}
     ${infoCard([
       { label: '📅 Solicitado em', valor: horario },
       { label: '⏰ Link válido por', valor: '1 hora', cor: COLORS.amber },
@@ -296,7 +296,7 @@ function templateRedefinicaoSenha(dados: Record<string, string | number | boolea
   `;
 
   return {
-    assunto: `🔑 Redefinição de senha — Recorra Multas`,
+    assunto: `🔑 Redefinição de senha — Central da Multa`,
     html: layoutBase({
       titulo: 'Redefinição de Senha',
       subtitulo: 'Solicitação recebida com segurança',
@@ -432,7 +432,7 @@ function templateFaturamento(dados: Record<string, string | number | boolean>): 
   const orgNome = String(dados.organizacao || '');
   const valorNum = parseFloat(String(dados.valor || '0'));
   const valor = valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const descricao = String(dados.descricao || 'Assinatura Recorra Multas');
+  const descricao = String(dados.descricao || 'Assinatura Central da Multa');
   const vencimento = String(dados.vencimento || '—');
   const status = String(dados.status || 'pending');
 
@@ -466,7 +466,7 @@ function templateFaturamento(dados: Record<string, string | number | boolean>): 
 
   return {
     assunto: status === 'paid'
-      ? `✅ Pagamento confirmado: ${valor} — Recorra Multas`
+      ? `✅ Pagamento confirmado: ${valor} — Central da Multa`
       : `💰 Fatura: ${descricao} — ${valor}`,
     html: layoutBase({
       titulo: 'Informação de Faturamento',
@@ -536,7 +536,7 @@ function templateUsuarioAdicionado(dados: Record<string, string | number | boole
   const conteudo = `
     ${badge('Você foi adicionado a uma organização', COLORS.indigo)}
     ${paragrafo(`Olá, <strong style="color:${COLORS.white};">${nome}</strong>!`)}
-    ${paragrafo(`O administrador <strong style="color:${COLORS.white};">${adminNome}</strong> adicionou você como <strong style="color:${COLORS.gold};">${roleLabel}</strong> na organização <strong style="color:${COLORS.white};">${orgNome}</strong> na plataforma <strong style="color:${COLORS.gold};">Recorra Multas</strong>.`)}
+    ${paragrafo(`O administrador <strong style="color:${COLORS.white};">${adminNome}</strong> adicionou você como <strong style="color:${COLORS.gold};">${roleLabel}</strong> na organização <strong style="color:${COLORS.white};">${orgNome}</strong> na plataforma <strong style="color:${COLORS.gold};">Central da Multa</strong>.`)}
     ${infoCard([
       { label: '👤 Seu nome', valor: nome, cor: COLORS.white },
       { label: '📧 E-mail de acesso', valor: email },
@@ -553,7 +553,7 @@ function templateUsuarioAdicionado(dados: Record<string, string | number | boole
   `;
 
   return {
-    assunto: `👥 Você foi adicionado à ${orgNome} — Recorra Multas`,
+    assunto: `👥 Você foi adicionado à ${orgNome} — Central da Multa`,
     html: layoutBase({
       titulo: 'Bem-vindo à sua Organização!',
       subtitulo: orgNome,
@@ -623,7 +623,7 @@ Deno.serve(async (req) => {
         name: SENDER_NAME,
       },
       headers: {
-        'X-Mailer': 'Recorra Multas Platform',
+        'X-Mailer': 'Central da Multa Platform',
       },
     };
 
