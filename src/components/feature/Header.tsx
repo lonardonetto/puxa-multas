@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { useNotificationAlerts } from '../../hooks/useNotificationAlerts';
 import { useNotificacoesMultas } from '../../hooks/useNotificacoesMultas';
+import { useNotificacoesRecarga } from '../../hooks/useNotificacoesRecarga';
 import logoCentralMulta from '@/assets/logo-central-multa.png';
 
 interface HeaderProps {
@@ -18,15 +19,17 @@ export default function Header({ darkMode, isSidebarCollapsed, toggleSidebar }: 
   const { currentOrganization } = useOrganization();
   const { alerts, markAsCheckedIn, clearNotifications } = useNotificationAlerts();
   const { notificacoes: multasNotif, naoLidas: multasNaoLidas, marcarComoLido: marcarMultaLida, limparNotificacoes: limparMultas } = useNotificacoesMultas();
+  const { notificacoes: recargaNotif, naoLidas: recargaNaoLidas, marcarComoLido: marcarRecargaLida, marcarTodasComoLidas: limparRecargas } = useNotificacoesRecarga();
   const navigate = useNavigate();
   const location = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [notifTab, setNotifTab] = useState<'processos' | 'multas'>('multas');
+  const [notifTab, setNotifTab] = useState<'processos' | 'multas' | 'recargas'>('multas');
   const notificationRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   
-  const totalNaoLidas = alerts.filter(a => !a.lido).length + multasNaoLidas.length;
+  const isSuperAdmin = (user as any)?.role === 'super_admin';
+  const totalNaoLidas = alerts.filter(a => !a.lido).length + multasNaoLidas.length + recargaNaoLidas.length;
 
   // Cores do tema Central da Multa
   const bgHeader = darkMode ? 'bg-[#1A1A1A]' : 'bg-white';
@@ -139,10 +142,62 @@ export default function Header({ darkMode, isSidebarCollapsed, toggleSidebar }: 
                     <i className="ri-file-list-line mr-1"></i>
                     Processos {alerts.filter(a => !a.lido).length > 0 && <span className="ml-1 bg-warning text-black text-[9px] px-1.5 py-0.5 rounded-full">{alerts.filter(a => !a.lido).length}</span>}
                   </button>
+                  <button
+                    onClick={() => setNotifTab('recargas')}
+                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-wide transition-all ${
+                      notifTab === 'recargas' 
+                        ? 'text-green-600 border-b-2 border-green-500 bg-green-50/50' 
+                        : `${textSecondary} hover:bg-muted`
+                    }`}
+                  >
+                    <i className="ri-coin-line mr-1"></i>
+                    PIX {recargaNaoLidas.length > 0 && <span className="ml-1 bg-green-500 text-white text-[9px] px-1.5 py-0.5 rounded-full">{recargaNaoLidas.length}</span>}
+                  </button>
                 </div>
                 
                 <div className="max-h-80 overflow-y-auto">
-                  {notifTab === 'multas' ? (
+                  {notifTab === 'recargas' ? (
+                    recargaNotif.length === 0 ? (
+                      <div className={`px-4 py-12 text-center ${textSecondary} text-sm`}>
+                        <i className="ri-coin-line text-3xl block mb-2 opacity-10"></i>
+                        Nenhuma notificação de recarga
+                      </div>
+                    ) : (
+                      recargaNotif.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={`px-4 py-3 ${hoverBg} border-l-4 ${
+                            notif.tipo === 'pix_aprovado' ? 'border-green-500' : notif.tipo === 'pix_rejeitado' ? 'border-destructive' : 'border-amber-400'
+                          } border-b border-muted last:border-b-0 group ${notif.lido ? 'opacity-50' : ''}`}
+                        >
+                          <div className="flex justify-between items-start mb-1">
+                            <p className={`text-xs font-bold ${textPrimary} flex items-center gap-2`}>
+                              <i className={`${notif.tipo === 'pix_aprovado' ? 'ri-check-double-line text-green-500' : notif.tipo === 'pix_rejeitado' ? 'ri-close-circle-line text-destructive' : 'ri-time-line text-amber-500'}`}></i>
+                              {notif.titulo}
+                            </p>
+                            {!notif.lido && (
+                              <button
+                                onClick={() => marcarRecargaLida(notif.id)}
+                                className="text-[9px] text-primary hover:text-primary/80 font-bold uppercase tracking-tighter opacity-0 group-hover:opacity-100"
+                              >
+                                LER
+                              </button>
+                            )}
+                          </div>
+                          <p className={`text-[11px] leading-tight ${textSecondary}`}>{notif.mensagem}</p>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-[10px] text-green-600 font-bold">R$ {notif.valor.toFixed(2).replace('.', ',')}</p>
+                            <button
+                              onClick={() => { navigate('/checkout'); setShowNotifications(false); }}
+                              className={`text-[9px] ${textSecondary} font-bold hover:text-primary uppercase flex items-center gap-1`}
+                            >
+                              VER <i className="ri-arrow-right-s-line"></i>
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )
+                  ) : notifTab === 'multas' ? (
                     /* Notificações de Multas */
                     multasNotif.length === 0 ? (
                       <div className={`px-4 py-12 text-center ${textSecondary} text-sm`}>
@@ -254,6 +309,8 @@ export default function Header({ darkMode, isSidebarCollapsed, toggleSidebar }: 
                     onClick={async () => {
                       if (notifTab === 'multas') {
                         await limparMultas();
+                      } else if (notifTab === 'recargas') {
+                        await limparRecargas();
                       } else {
                         await clearNotifications();
                       }
@@ -262,7 +319,7 @@ export default function Header({ darkMode, isSidebarCollapsed, toggleSidebar }: 
                     className={`w-full py-2 text-[10px] font-bold ${textSecondary} hover:text-destructive hover:bg-destructive/10 rounded-md transition-all uppercase tracking-widest flex items-center justify-center gap-2`}
                   >
                     <i className="ri-delete-bin-line text-xs"></i>
-                    Limpar {notifTab === 'multas' ? 'Multas' : 'Processos'}
+                    Limpar {notifTab === 'multas' ? 'Multas' : notifTab === 'recargas' ? 'PIX' : 'Processos'}
                   </button>
                 </div>
               </div>

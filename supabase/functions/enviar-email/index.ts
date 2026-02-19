@@ -11,7 +11,7 @@ const SENDER_NAME = 'Central da Multa';
 const SENDER_EMAIL = 'noreply@centraldamulta.app.br';
 
 interface EmailPayload {
-  tipo: 'boas_vindas' | 'confirmacao_email' | 'redefinicao_senha' | 'cliente_adicionado' | 'recurso_gerado' | 'notificacao_blindada' | 'faturamento' | 'rastreamento_vencimento' | 'usuario_adicionado';
+  tipo: 'boas_vindas' | 'confirmacao_email' | 'redefinicao_senha' | 'cliente_adicionado' | 'recurso_gerado' | 'notificacao_blindada' | 'faturamento' | 'rastreamento_vencimento' | 'usuario_adicionado' | 'pix_recarga';
   destinatario_email: string;
   destinatario_nome: string;
   dados?: Record<string, string | number | boolean>;
@@ -566,6 +566,48 @@ function templateUsuarioAdicionado(dados: Record<string, string | number | boole
 
 // ─── Seletor ───────────────────────────────────────────────────────────────────
 
+function templatePixRecarga(dados: Record<string, string | number | boolean>): { assunto: string; html: string } {
+  const status = String(dados.status || 'pendente');
+  const valorNum = Number(dados.valor || 0);
+  const valor = `R$ ${valorNum.toFixed(2).replace('.', ',')}`;
+  const orgNome = String(dados.organizacao || '');
+  const whatsappLink = String(dados.whatsapp_link || '');
+
+  const isPendente = status === 'pendente';
+  const isAprovado = status === 'aprovado';
+  const isRejeitado = status === 'rejeitado';
+
+  const cor = isAprovado ? COLORS.green : isRejeitado ? COLORS.red : COLORS.amber;
+  const icone = isAprovado ? '✅' : isRejeitado ? '❌' : '⏳';
+  const titulo = isAprovado ? 'Recarga PIX Aprovada!' : isRejeitado ? 'Recarga PIX Rejeitada' : 'Recarga PIX Recebida';
+  const subtitulo = isAprovado ? 'Créditos disponíveis na sua conta' : isRejeitado ? 'Entre em contato com o suporte' : 'Aguardando confirmação do pagamento';
+
+  const conteudo = `
+    ${badge(titulo, cor)}
+    <div style="background:${COLORS.card};border:2px solid ${cor}40;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
+      <p style="color:${COLORS.gray2};font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:0 0 4px;">Valor</p>
+      <p style="color:${COLORS.white};font-size:36px;font-weight:900;margin:0 0 8px;">${valor}</p>
+      <span style="display:inline-block;background:${cor}20;color:${cor};border:1px solid ${cor}40;border-radius:20px;padding:4px 14px;font-size:11px;font-weight:800;">${titulo}</span>
+    </div>
+    ${infoCard([
+      { label: '🏢 Organização', valor: orgNome },
+      { label: '💰 Valor', valor },
+      { label: '🏷️ Status', valor: titulo, cor },
+    ])}
+    ${isAprovado ? alertBox('Os créditos já estão disponíveis na sua conta. Acesse o painel para utilizar.', 'success') : ''}
+    ${isPendente ? `
+      ${alertBox('Envie o comprovante via WhatsApp para agilizar a aprovação.', 'warning')}
+      ${whatsappLink ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px auto;"><tr><td style="border-radius:10px;background:#25D366;"><a href="${whatsappLink}" target="_blank" style="display:inline-block;padding:14px 32px;color:#fff;text-decoration:none;font-weight:800;font-size:13px;border-radius:10px;">📱 Enviar Comprovante no WhatsApp →</a></td></tr></table>` : ''}
+    ` : ''}
+    ${btnPrimario('Acessar Extrato & Conta', 'https://app.centraldamulta.app.br/checkout', cor)}
+  `;
+
+  return {
+    assunto: `${icone} ${titulo}: ${valor} — Central da Multa`,
+    html: layoutBase({ titulo, subtitulo, icone, conteudo, corAcento: cor }),
+  };
+}
+
 function gerarEmail(tipo: EmailPayload['tipo'], dados: Record<string, string | number | boolean>): { assunto: string; html: string } {
   switch (tipo) {
     case 'confirmacao_email':      return templateConfirmacaoEmail(dados);
@@ -577,6 +619,7 @@ function gerarEmail(tipo: EmailPayload['tipo'], dados: Record<string, string | n
     case 'faturamento':            return templateFaturamento(dados);
     case 'rastreamento_vencimento':return templateRastreamentoVencimento(dados);
     case 'usuario_adicionado':     return templateUsuarioAdicionado(dados);
+    case 'pix_recarga':            return templatePixRecarga(dados);
     default: throw new Error(`Tipo de email desconhecido: ${tipo}`);
   }
 }
