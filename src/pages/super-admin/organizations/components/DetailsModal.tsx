@@ -281,9 +281,13 @@ export default function OrganizationDetailsModal({ organization, onClose, onUpda
                                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${getStatusColor(item.status)}`}>
                                                             {getStatusLabel(item.status)}
                                                         </span>
-                                                        {item.is_bonus && (
+                                                        {item.data_expiracao ? (
                                                             <span className="ml-2 px-2 py-0.5 rounded-md text-[9px] font-bold bg-purple-100 text-purple-600 uppercase">
                                                                 Bônus
+                                                            </span>
+                                                        ) : item.is_bonus ? null : (
+                                                            <span className="ml-2 px-2 py-0.5 rounded-md text-[9px] font-bold bg-green-100 text-green-600 uppercase">
+                                                                Pago
                                                             </span>
                                                         )}
                                                     </td>
