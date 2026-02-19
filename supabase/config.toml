@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.registrar-notificacao]
 verify_jwt = false
+
+[functions.enviar-email]
+verify_jwt = false
