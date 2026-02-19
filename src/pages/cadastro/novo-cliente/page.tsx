@@ -4,6 +4,7 @@ import { useClientes, useVeiculos, useServicos, useContratos } from '../../../ho
 import { supabase, uploadFile, getPublicUrl } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useOrganization } from '../../../contexts/OrganizationContext';
+import { useEmail } from '../../../hooks/useEmail';
 import type { ClienteInsert, VeiculoInsert, Endereco, Servico, ContratoInsert } from '../../../types/database';
 
 export default function NovoCliente() {
@@ -13,6 +14,7 @@ export default function NovoCliente() {
   const { createVeiculosBatch, loading: loadingVeiculos } = useVeiculos();
   const { servicos, fetchServicos } = useServicos();
   const { createContrato } = useContratos();
+  const { enviarEmail } = useEmail();
   const location = useLocation();
 
   const [etapaAtual, setEtapaAtual] = useState(1);
@@ -268,7 +270,23 @@ export default function NovoCliente() {
         await createContrato(contratoData);
       }
 
-      // Sucesso!
+      // Sucesso! Disparar email de boas-vindas
+      if (formData.email && formData.nomeCompleto) {
+        enviarEmail({
+          tipo: 'cliente_adicionado',
+          destinatario_email: user.email || '',
+          destinatario_nome: user.email || 'Administrador',
+          dados: {
+            admin_nome: user.email || 'Administrador',
+            cliente_nome: formData.nomeCompleto,
+            cliente_documento: formData.cpf || formData.cnpj || '—',
+            cliente_telefone: formData.celular || formData.telefone || '—',
+            operador: user.email || 'Sistema',
+            organizacao: currentOrganization?.nome || '',
+          },
+        }).catch(() => {}); // fire-and-forget
+      }
+
       setSucesso(true);
       setTimeout(() => {
         // Reset form

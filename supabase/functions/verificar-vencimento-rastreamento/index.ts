@@ -85,9 +85,34 @@ serve(async (req) => {
           });
 
         console.log(`[VENCIMENTO] Notificação registrada para ${veiculo.placa}`);
-        
-        // TODO: Enviar e-mail de notificação ao cliente
-        // Pode ser integrado com serviço de e-mail (Resend, SendGrid, etc.)
+
+        // Enviar e-mail de alerta de vencimento ao admin/contato da organização
+        const emailDestino = (cliente.organizations as any)?.email_contato || cliente.email;
+        if (emailDestino) {
+          const diasRestantes = Math.ceil(
+            (new Date(veiculo.rastreamento_vencimento).getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/enviar-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            },
+            body: JSON.stringify({
+              tipo: 'rastreamento_vencimento',
+              destinatario_email: emailDestino,
+              destinatario_nome: emailDestino,
+              dados: {
+                admin_nome: emailDestino,
+                placa: veiculo.placa,
+                modelo: veiculo.modelo || 'Veículo',
+                vencimento: new Date(veiculo.rastreamento_vencimento).toLocaleDateString('pt-BR'),
+                dias_restantes: diasRestantes,
+                organizacao: (cliente.organizations as any)?.nome || '',
+              },
+            }),
+          }).catch(e => console.error('[VENCIMENTO] Erro ao enviar email:', e));
+        }
       }
     } else {
       console.log('[VENCIMENTO] Nenhum veículo para notificar');

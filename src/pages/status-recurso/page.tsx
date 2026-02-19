@@ -2,10 +2,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRecursos } from '../../hooks/useRecursos';
 import { supabase } from '../../lib/supabase';
+import { useEmail } from '../../hooks/useEmail';
+import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 
 export default function StatusRecurso() {
   const navigate = useNavigate();
   const { fetchRecursosDetalhados, loading } = useRecursos();
+  const { enviarEmail } = useEmail();
+  const { user } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [recursosList, setRecursosList] = useState<any[]>([]);
   const [confirmModal, setConfirmModal] = useState<any>(null);
   const [confirmando, setConfirmando] = useState(false);
@@ -103,6 +109,25 @@ export default function StatusRecurso() {
           intervalo: recurso.intervalo_notificacao || 7,
         }),
       });
+
+      // Dispara email de notificação blindada para o admin (fire-and-forget)
+      if (user?.email) {
+        const horario = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        enviarEmail({
+          tipo: 'notificacao_blindada',
+          destinatario_email: user.email,
+          destinatario_nome: user.email,
+          dados: {
+            admin_nome: user.email,
+            cliente_nome: nome,
+            operador: user.email,
+            horario,
+            auto_infracao: auto,
+            hash: `${Date.now()}`,
+            organizacao: currentOrganization?.nome || '',
+          },
+        }).catch(() => {});
+      }
 
       setConfirmModal(null);
       loadData();

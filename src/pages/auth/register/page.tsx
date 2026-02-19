@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import logo from '@/assets/logo-central-multa.png';
+import { supabase } from '../../../lib/supabase';
 
 export default function Register() {
     const { signUp, loading } = useAuth();
@@ -46,10 +47,25 @@ export default function Register() {
         if (error) {
             setErro(error.message);
         } else {
+            // Disparar email de boas-vindas via Brevo (best-effort)
+            const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+            fetch(`https://${projectId}.supabase.co/functions/v1/enviar-email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tipo: 'boas_vindas',
+                    destinatario_email: formData.email,
+                    destinatario_nome: formData.nome || formData.email,
+                    dados: {
+                        nome: formData.nome || formData.email,
+                        email: formData.email,
+                        organizacao: formData.organizationName || '',
+                    },
+                }),
+            }).catch(() => {});
+
             setSucesso(true);
-            setTimeout(() => {
-                navigate('/login');
-            }, 2000);
+            setTimeout(() => { navigate('/login'); }, 2000);
         }
     };
 
