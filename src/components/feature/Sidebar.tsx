@@ -70,10 +70,7 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
 
   const bottomMenuItems = [
     { path: '/prospeccao-editais', icon: 'ri-folder-line', label: 'Prospecção de Editais' },
-    { path: '/marketing-digital', icon: 'ri-megaphone-line', label: 'Marketing Digital' },
-    { path: '/material-apoio', icon: 'ri-folder-download-line', label: 'Material de Apoio' },
     { path: '/checkout', icon: 'ri-wallet-3-line', label: 'Extrato & Conta' },
-    { path: '/educacional', icon: 'ri-graduation-cap-line', label: 'Educacional', premium: true },
     { path: '/planos', icon: 'ri-price-tag-3-line', label: 'Planos' },
   ];
 
@@ -344,11 +341,6 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
           >
             <i className={`${item.icon} text-lg mr-3 ${location.pathname === item.path ? 'text-primary' : ''}`}></i>
             <span className="text-sm font-medium">{item.label}</span>
-            {item.premium && (
-              <span className="ml-auto bg-primary text-black text-xs px-2 py-0.5 rounded-full whitespace-nowrap font-bold">
-                Premium
-              </span>
-            )}
           </Link>
         ))}
       </nav>
