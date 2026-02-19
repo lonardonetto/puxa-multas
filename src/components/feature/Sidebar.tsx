@@ -51,7 +51,7 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
     { path: '/rastreamento', icon: 'ri-car-line', label: 'Rastreamento de Multas' },
     { path: '/status-recurso', icon: 'ri-file-list-3-line', label: 'Acompanhamento Recursos' },
     { path: '/recursos-ia', icon: 'ri-file-text-line', label: 'Recursos por IA' },
-    { path: '/crm-kanban', icon: 'ri-layout-board-line', label: 'CRM Kanban' },
+    { path: '/crm-kanban', icon: 'ri-kanban-view-2', label: 'CRM Kanban' },
   ];
 
   const cadastroItems = [
