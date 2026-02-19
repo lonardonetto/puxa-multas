@@ -957,6 +957,45 @@ export type Database = {
           },
         ]
       }
+      notificacoes_recarga: {
+        Row: {
+          created_at: string
+          id: string
+          lido: boolean
+          mensagem: string
+          organization_id: string
+          para_super_admin: boolean
+          solicitacao_id: string
+          tipo: string
+          titulo: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lido?: boolean
+          mensagem: string
+          organization_id: string
+          para_super_admin?: boolean
+          solicitacao_id: string
+          tipo?: string
+          titulo: string
+          valor?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lido?: boolean
+          mensagem?: string
+          organization_id?: string
+          para_super_admin?: boolean
+          solicitacao_id?: string
+          tipo?: string
+          titulo?: string
+          valor?: number
+        }
+        Relationships: []
+      }
       organizations: {
         Row: {
           acesso_crm: boolean | null
