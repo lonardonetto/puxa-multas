@@ -1595,23 +1595,9 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                                       </div>
 
                                       {contrato.lembrete_ativado && (
-                                        <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                          <div>
-                                            <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Próxima Revisão</label>
-                                            <input
-                                              type="datetime-local"
-                                              defaultValue={contrato.data_proximo_lembrete ? new Date(contrato.data_proximo_lembrete).toISOString().slice(0, 16) : ''}
-                                              onBlur={async (e) => {
-                                                const newVal = e.target.value;
-                                                if (newVal && newVal !== contrato.data_proximo_lembrete) {
-                                                  await updateContrato(contrato.id, { data_proximo_lembrete: new Date(newVal).toISOString() });
-                                                }
-                                              }}
-                                              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs font-bold text-gray-700 outline-none focus:ring-1 focus:ring-blue-500"
-                                            />
-                                          </div>
-                                          <div>
-                                            <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Intervalo (Dias)</label>
+                                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                          <div className="max-w-[180px]">
+                                            <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Intervalo de Notificação</label>
                                             <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 h-[34px]">
                                               <input
                                                 type="number"
@@ -1619,14 +1605,21 @@ Status: PENDENTE DE ASSINATURA DIGITAL`;
                                                 defaultValue={contrato.intervalo_notificacao || currentOrganization?.intervalo_notificacao || 7}
                                                 onBlur={async (e) => {
                                                   const newVal = parseInt(e.target.value);
-                                                  if (!isNaN(newVal) && newVal !== contrato.intervalo_notificacao) {
-                                                    await updateContrato(contrato.id, { intervalo_notificacao: newVal });
+                                                  if (!isNaN(newVal) && newVal > 0 && newVal !== parseInt(String(contrato.intervalo_notificacao || '0'))) {
+                                                    // Salva intervalo e recalcula próximo lembrete automaticamente (horário de Brasília)
+                                                    const agoraBrasilia = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+                                                    const proximoLembrete = new Date(agoraBrasilia.getTime() + newVal * 24 * 60 * 60 * 1000);
+                                                    await updateContrato(contrato.id, { 
+                                                      intervalo_notificacao: newVal,
+                                                      data_proximo_lembrete: proximoLembrete.toISOString()
+                                                    });
                                                   }
                                                 }}
                                                 className="w-full bg-transparent text-xs font-bold text-gray-700 outline-none text-center"
                                               />
-                                              <span className="text-[9px] text-gray-400 font-bold ml-1">DIAS</span>
+                                              <span className="text-[9px] text-gray-400 font-bold ml-1 whitespace-nowrap">DIAS</span>
                                             </div>
+                                            <p className="text-[9px] text-gray-400 mt-1">A cada X dias o sistema alertará para notificar o cliente.</p>
                                           </div>
                                         </div>
                                       )}
