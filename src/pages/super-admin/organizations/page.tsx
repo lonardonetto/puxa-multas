@@ -85,7 +85,7 @@ export default function Organizations() {
 
             if (adminEmail && adminPassword) {
                 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-                const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+                const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
                 const tempSupabase = createClient(supabaseUrl, supabaseAnonKey, {
                     auth: { persistSession: false }
