@@ -51,7 +51,7 @@ export function useWallet() {
             .insert({
                 organization_id: currentOrganization.id,
                 descricao: description,
-                valor: amount, // Valor positivo, representa o custo
+                valor: -amount, // Valor negativo, representa dedução/consumo
                 status: 'paid',
                 tipo: 'system_usage',
                 metodo_pagamento: 'balance',
