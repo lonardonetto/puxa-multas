@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
-const APP_URL = 'https://centraldamulta.app.br';
+const APP_URL = 'https://app.centraldamulta.app.br';
 const SENDER_NAME = 'Central da Multa';
 const SENDER_EMAIL = 'noreply@centraldamulta.app.br';
 
@@ -115,7 +115,7 @@ function layoutBase(params: {
                 Enviado por: <span style="color:${COLORS.gray2};">${SENDER_EMAIL}</span>
               </p>
               <div style="border-top:1px solid ${COLORS.border};padding-top:16px;margin-top:8px;">
-                <a href="${APP_URL}" style="color:${corAcento};font-size:11px;text-decoration:none;font-weight:600;">centraldamulta.app.br</a>
+                <a href="${APP_URL}" style="color:${corAcento};font-size:11px;text-decoration:none;font-weight:600;">app.centraldamulta.app.br</a>
                 <span style="color:${COLORS.border};margin:0 8px;">|</span>
                 <a href="${APP_URL}/login" style="color:${COLORS.gray3};font-size:11px;text-decoration:none;">Acessar plataforma</a>
               </div>
