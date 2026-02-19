@@ -273,8 +273,8 @@ export default function Organizations() {
                                                 {org.plano}
                                             </span>
                                             <span className="text-sm font-black text-purple-600 mt-1">
-                                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(org.saldo_bonus || 0)}
-                                                <span className="block text-[10px] text-gray-500 font-normal">Saldo Bônus</span>
+                                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((org.saldo_sacavel || 0) + (org.saldo_bonus || 0))}
+                                                <span className="block text-[10px] text-gray-500 font-normal">Saldo Disponível</span>
                                             </span>
                                         </div>
                                     </td>
