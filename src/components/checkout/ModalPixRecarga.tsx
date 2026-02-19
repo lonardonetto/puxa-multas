@@ -42,8 +42,10 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
 
   const pixConfigurado = !!pixChave && !!pixNome && !!pixCidade;
 
+  const [solicitacaoId, setSolicitacaoId] = useState<string | null>(null);
+
   const gerarQrCode = useCallback(async () => {
-    if (!pixChave || valorFinal <= 0) return;
+    if (!pixChave || valorFinal <= 0 || !currentOrganization || !user) return;
 
     setCarregandoQr(true);
     try {
@@ -64,13 +66,55 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
         color: { dark: '#1E3A8A', light: '#FFFFFF' },
       });
       setQrCodeDataUrl(dataUrl);
+
+      // Criar solicitação e notificações logo ao gerar o QR Code
+      const { data: solData, error: solError } = await (supabase as any)
+        .from('solicitacoes_recarga')
+        .insert({
+          organization_id: currentOrganization.id,
+          user_id: user.id,
+          valor: valorFinal,
+          status: 'pendente',
+          metodo_pagamento: 'pix',
+          payload_pix: payload,
+        })
+        .select()
+        .limit(1);
+
+      if (!solError && solData?.[0]?.id) {
+        const solId = solData[0].id;
+        setSolicitacaoId(solId);
+
+        // Notificação para o cliente
+        await (supabase as any).from('notificacoes_recarga').insert({
+          organization_id: currentOrganization.id,
+          solicitacao_id: solId,
+          tipo: 'pix_pendente',
+          titulo: 'Recarga PIX aguardando aprovação',
+          mensagem: `Sua solicitação de R$ ${valorFinal.toFixed(2).replace('.', ',')} foi recebida e está aguardando aprovação.`,
+          valor: valorFinal,
+          para_super_admin: false,
+        });
+
+        // Notificação para super admins
+        await (supabase as any).from('notificacoes_recarga').insert({
+          organization_id: currentOrganization.id,
+          solicitacao_id: solId,
+          tipo: 'pix_pendente',
+          titulo: `Nova recarga PIX — ${currentOrganization.nome}`,
+          mensagem: `Solicitação de R$ ${valorFinal.toFixed(2).replace('.', ',')} aguardando sua aprovação.`,
+          valor: valorFinal,
+          para_super_admin: true,
+        });
+      }
+
       setEtapa('qrcode');
     } catch (err) {
       console.error('Erro ao gerar QR Code PIX:', err);
     } finally {
       setCarregandoQr(false);
     }
-  }, [pixChave, pixNome, pixCidade, valorFinal]);
+  }, [pixChave, pixNome, pixCidade, valorFinal, currentOrganization, user]);
 
   const copiarCodigo = async () => {
     await navigator.clipboard.writeText(payloadPix);
@@ -87,51 +131,12 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
     return `https://wa.me/?text=${mensagem}`;
   };
 
-  // Cria solicitação pendente e notificações + emails, depois fecha o modal
+  // Confirma o pagamento: envia email e fecha o modal
   const enviarSolicitacao = async () => {
     if (!currentOrganization || !user) return;
     setEnviandoSolicitacao(true);
     try {
-      // 1. Registrar solicitação
-      const { data: solData, error } = await (supabase as any)
-        .from('solicitacoes_recarga')
-        .insert({
-          organization_id: currentOrganization.id,
-          user_id: user.id,
-          valor: valorFinal,
-          status: 'pendente',
-          metodo_pagamento: 'pix',
-          payload_pix: payloadPix,
-        })
-        .select()
-        .limit(1);
-
-      if (error) throw error;
-      const solId = solData?.[0]?.id;
-
-      // 2. Criar notificação para o cliente (para_super_admin = false)
-      await (supabase as any).from('notificacoes_recarga').insert({
-        organization_id: currentOrganization.id,
-        solicitacao_id: solId,
-        tipo: 'pix_pendente',
-        titulo: 'Recarga PIX aguardando aprovação',
-        mensagem: `Sua solicitação de R$ ${valorFinal.toFixed(2).replace('.', ',')} foi recebida e está aguardando aprovação.`,
-        valor: valorFinal,
-        para_super_admin: false,
-      });
-
-      // 3. Criar notificação para super admins (para_super_admin = true)
-      await (supabase as any).from('notificacoes_recarga').insert({
-        organization_id: currentOrganization.id,
-        solicitacao_id: solId,
-        tipo: 'pix_pendente',
-        titulo: `Nova recarga PIX — ${currentOrganization.nome}`,
-        mensagem: `Solicitação de R$ ${valorFinal.toFixed(2).replace('.', ',')} aguardando sua aprovação.`,
-        valor: valorFinal,
-        para_super_admin: true,
-      });
-
-      // 4. Email para o usuário: PIX gerado / aguardando aprovação
+      // Enviar email de confirmação para o usuário
       try {
         await supabase.functions.invoke('enviar-email', {
           body: {
@@ -150,12 +155,12 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
         console.warn('Email PIX pendente não enviado:', emailErr);
       }
 
-      // 5. Fecha modal e atualiza extrato
+      // Fechar modal e atualizar extrato
       onSuccess?.();
       onClose();
     } catch (err) {
-      console.error('Erro ao registrar solicitação:', err);
-      alert('Erro ao registrar solicitação. Tente novamente.');
+      console.error('Erro ao confirmar solicitação:', err);
+      alert('Erro ao confirmar solicitação. Tente novamente.');
     } finally {
       setEnviandoSolicitacao(false);
     }
