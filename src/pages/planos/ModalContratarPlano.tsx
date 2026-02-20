@@ -130,6 +130,10 @@ export default function ModalContratarPlano({ plan, billingCycle, onClose, onSuc
 
   const gerarLinkInfinitePay = useCallback(async () => {
     if (!currentOrganization || !user) return;
+
+    // Abre a janela IMEDIATAMENTE no clique (antes de qualquer async), senão o browser bloqueia
+    const popupWindow = window.open('about:blank', '_blank');
+
     setGerandoLinkCard(true);
     try {
       const orderNsu = `PLN${Date.now().toString(36).toUpperCase()}`;
@@ -176,10 +180,17 @@ export default function ModalContratarPlano({ plan, billingCycle, onClose, onSuc
       });
 
       if (error || !data?.link) {
+        if (popupWindow) popupWindow.close();
         throw new Error(data?.error || 'Erro ao gerar link de pagamento');
       }
 
-      // Abre o checkout embutido em modal (iframe)
+      // Redireciona o popup já aberto para a URL do checkout
+      if (popupWindow) {
+        popupWindow.location.href = data.link;
+      } else {
+        window.open(data.link, '_blank');
+      }
+
       setInfinitePayModal({ url: data.link, orderNsu, solicitacaoId: solId || '' });
     } catch (err: any) {
       console.error('InfinitePay error:', err);
