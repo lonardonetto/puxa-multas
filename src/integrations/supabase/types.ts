@@ -1026,6 +1026,8 @@ export type Database = {
           nome_contrato: string | null
           plan: string | null
           plano: string | null
+          plano_ciclo: string | null
+          plano_expiracao_em: string | null
           rodape_texto: string | null
           saldo_bonus: number | null
           saldo_sacavel: number | null
@@ -1064,6 +1066,8 @@ export type Database = {
           nome_contrato?: string | null
           plan?: string | null
           plano?: string | null
+          plano_ciclo?: string | null
+          plano_expiracao_em?: string | null
           rodape_texto?: string | null
           saldo_bonus?: number | null
           saldo_sacavel?: number | null
@@ -1102,6 +1106,8 @@ export type Database = {
           nome_contrato?: string | null
           plan?: string | null
           plano?: string | null
+          plano_ciclo?: string | null
+          plano_expiracao_em?: string | null
           rodape_texto?: string | null
           saldo_bonus?: number | null
           saldo_sacavel?: number | null

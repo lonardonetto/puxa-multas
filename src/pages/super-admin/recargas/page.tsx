@@ -223,10 +223,19 @@ export default function RecargasPage() {
   const aprovarPlano = async (sol: SolicitacaoPlano) => {
     setProcessandoPlano(sol.id);
     try {
-      // 1. Atualiza o plano da organização
+      // 1. Atualiza o plano da organização + data de expiração
+      const expiracao = new Date();
+      if (sol.ciclo === 'anual') expiracao.setFullYear(expiracao.getFullYear() + 1);
+      else expiracao.setMonth(expiracao.getMonth() + 1);
+
       const { error: updateOrgError } = await supabase
         .from('organizations')
-        .update({ plano: sol.plano_slug, plan: sol.plano_slug } as any)
+        .update({
+          plano: sol.plano_slug,
+          plan: sol.plano_slug,
+          plano_expiracao_em: expiracao.toISOString(),
+          plano_ciclo: sol.ciclo,
+        } as any)
         .eq('id', sol.organization_id);
 
       if (updateOrgError) throw updateOrgError;

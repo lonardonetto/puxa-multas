@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
 import { useSystemSettings } from '../../hooks/useSystemSettings';
 import { ModalAguardandoInfinitePay } from '@/components/checkout/ModalAguardandoInfinitePay';
+import { useWallet } from '@/hooks/useWallet';
 
 
 interface Props {
@@ -20,6 +21,7 @@ export default function ModalContratarPlano({ plan, billingCycle, onClose, onSuc
   const { currentOrganization } = useOrganization();
   const { user } = useAuth();
   const { getSetting, loading: loadingSettings } = useSystemSettings();
+  const { balance, checkBalance } = useWallet();
 
   const [etapa, setEtapa] = useState<'info' | 'qrcode'>('info');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
@@ -28,6 +30,7 @@ export default function ModalContratarPlano({ plan, billingCycle, onClose, onSuc
   const [gerando, setGerando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoLinkCard, setGerandoLinkCard] = useState(false);
+  const [pagandoCreditos, setPagandoCreditos] = useState(false);
   const [infinitePayModal, setInfinitePayModal] = useState<{
     url: string; orderNsu: string; solicitacaoId: string;
   } | null>(null);
@@ -200,6 +203,40 @@ export default function ModalContratarPlano({ plan, billingCycle, onClose, onSuc
     }
   }, [currentOrganization, user, valor, plan, billingCycle, valorFormatado]);
 
+  // Pagar plano com créditos internos
+  const pagarComCreditos = useCallback(async () => {
+    if (!currentOrganization || !user) return;
+    if (!checkBalance(Number(valor))) {
+      toast.error('Saldo insuficiente. Adicione créditos antes de contratar o plano.');
+      return;
+    }
+    setPagandoCreditos(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('infinitepay-checkout', {
+        body: {
+          action: 'pagar_plano_creditos',
+          organization_id: currentOrganization.id,
+          user_id: user.id,
+          plano_id: plan.id,
+          plano_slug: plan.slug,
+          plano_nome: plan.nome,
+          ciclo: billingCycle,
+          valor: Number(valor),
+        },
+      });
+
+      if (error || !data?.success) throw new Error(data?.error || 'Erro ao processar pagamento');
+
+      toast.success(`Plano ${plan.nome} ativado com seus créditos! 🎉`);
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao pagar com créditos.');
+    } finally {
+      setPagandoCreditos(false);
+    }
+  }, [currentOrganization, user, plan, billingCycle, valor, checkBalance, onSuccess, onClose]);
+
   const confirmarPagamento = async () => {
     if (!currentOrganization || !user) return;
     setConfirmando(true);
@@ -285,6 +322,36 @@ export default function ModalContratarPlano({ plan, billingCycle, onClose, onSuc
                   O pagamento ativa os benefícios do plano escolhido. O valor <strong>não entra como crédito</strong> — ele ativa os benefícios do plano escolhido.
                 </p>
               </div>
+
+              {/* Pagar com créditos internos */}
+              {balance >= Number(valor) && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-px bg-gray-100"></div>
+                    <span className="text-xs text-gray-400 font-semibold uppercase tracking-widest">ou</span>
+                    <div className="flex-1 h-px bg-gray-100"></div>
+                  </div>
+
+                  <button
+                    onClick={pagarComCreditos}
+                    disabled={pagandoCreditos}
+                    className="w-full py-4 bg-purple-600 text-white rounded-2xl font-black shadow-lg hover:bg-purple-700 hover:-translate-y-0.5 transition-all cursor-pointer active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2"
+                  >
+                    {pagandoCreditos ? (
+                      <><i className="ri-loader-4-line animate-spin"></i> Processando...</>
+                    ) : (
+                      <>
+                        <i className="ri-wallet-3-line text-lg"></i>
+                        <span>Pagar com Créditos</span>
+                        <span className="text-xs bg-white/20 rounded-full px-2 py-0.5 font-bold">
+                          R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} disponível
+                        </span>
+                      </>
+                    )}
+                  </button>
+                  <p className="text-center text-xs text-gray-400">Ativação instantânea · Sem burocracia</p>
+                </>
+              )}
 
               {!loadingSettings && !pixConfigurado && !infinitePayConfigurado && (
                 <p className="text-center text-xs text-amber-600 font-medium">
