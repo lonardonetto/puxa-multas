@@ -76,12 +76,14 @@ Deno.serve(async (req) => {
     }
 
     if (!recargaSol) {
-      // Último fallback: buscar por metodo_pagamento=cartao_infinitepay e status pendente mais recente
+      // Último fallback: buscar por metodo_pagamento=credit_card e status pendente mais recente
+      // Mas apenas se o order_nsu estiver presente no payload_pix ou observacao para evitar match errado
       const { data } = await supabase
         .from('solicitacoes_recarga' as any)
         .select('*')
         .eq('metodo_pagamento', 'credit_card')
         .eq('status', 'pendente')
+        .or(`payload_pix.like.%${order_nsu}%,observacao.like.%${order_nsu}%`)
         .order('created_at', { ascending: false })
         .limit(1);
       recargaSol = data?.[0] || null;
