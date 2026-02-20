@@ -38,11 +38,19 @@ Deno.serve(async (req) => {
         });
       }
 
-      const payload = {
+      const finalOrderNsu = order_nsu || `CDM${Date.now().toString(36).toUpperCase()}`;
+      const amountInCents = Math.round(Number(valor) * 100);
+
+      const payload: Record<string, unknown> = {
         handle,
-        amount: Math.round(valor * 100), // centavos
-        description: descricao || 'Pagamento Central da Multa',
-        order_nsu: order_nsu || `CDM${Date.now().toString(36).toUpperCase()}`,
+        order_nsu: finalOrderNsu,
+        items: [
+          {
+            name: descricao || 'Pagamento Central da Multa',
+            amount: amountInCents,
+            quantity: 1,
+          },
+        ],
         ...(redirect_url ? { redirect_url } : {}),
       };
 
@@ -62,7 +70,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      return new Response(JSON.stringify({ success: true, link: data.url || data.checkout_url || data.link, order_nsu: payload.order_nsu, raw: data }), {
+      return new Response(JSON.stringify({ success: true, link: data.url || data.checkout_url || data.link, order_nsu: finalOrderNsu, raw: data }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
