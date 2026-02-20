@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.enviar-email]
 verify_jwt = false
+
+[functions.infinitepay-checkout]
+verify_jwt = false
