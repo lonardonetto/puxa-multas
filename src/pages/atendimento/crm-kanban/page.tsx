@@ -183,12 +183,18 @@ export default function CRMKanban() {
     }
   }, [customStages, formData.crm_status]);
 
+  // Apenas clientes que são leads do CRM (têm crm_status preenchido)
+  const crmLeads = useMemo(() => {
+    const stageNames = new Set(customStages.map(s => s.nome));
+    return clientes.filter(c => c.crm_status && stageNames.has(c.crm_status));
+  }, [clientes, customStages]);
+
   const kanbanColumns = useMemo(() => {
     return customStages.map(stage => ({
       ...stage,
-      leads: clientes.filter(c => c.crm_status === stage.nome)
+      leads: crmLeads.filter(c => c.crm_status === stage.nome)
     }));
-  }, [customStages, clientes]);
+  }, [customStages, crmLeads]);
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     e.dataTransfer.setData('clienteId', id);
@@ -204,11 +210,12 @@ export default function CRMKanban() {
     if (id) await updateCliente(id, { crm_status: newStatus } as any);
   };
 
-  const totalValue = clientes.reduce((acc, c) => acc + Number(c.crm_valor || 0), 0);
-  const totalLeads = clientes.length;
+  // Stats baseados apenas nos leads do CRM (não todos os clientes da org)
+  const totalValue = crmLeads.reduce((acc, c) => acc + Number(c.crm_valor || 0), 0);
+  const totalLeads = crmLeads.length;
 
   const countBySource = useMemo(() => {
-    return clientes.reduce((acc, c) => {
+    return crmLeads.reduce((acc, c) => {
       const source = c.crm_origem || 'Outros';
       acc[source] = (acc[source] || 0) + 1;
       return acc;
