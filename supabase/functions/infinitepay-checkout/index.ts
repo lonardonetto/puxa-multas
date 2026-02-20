@@ -5,6 +5,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Calcula a data de expiração do plano baseado no ciclo
+function calcularExpiracao(ciclo: string): string {
+  const agora = new Date();
+  if (ciclo === 'anual') {
+    agora.setFullYear(agora.getFullYear() + 1);
+  } else {
+    agora.setMonth(agora.getMonth() + 1);
+  }
+  return agora.toISOString();
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -23,7 +34,6 @@ Deno.serve(async (req) => {
     if (action === 'create_link') {
       const { valor, descricao, order_nsu, redirect_url } = body;
 
-      // Buscar InfiniteTag configurada no banco
       const { data: tagSetting } = await supabase
         .from('system_settings')
         .select('value')
@@ -41,13 +51,11 @@ Deno.serve(async (req) => {
       const finalOrderNsu = order_nsu || `CDM${Date.now().toString(36).toUpperCase()}`;
       const amountInCents = Math.round(Number(valor) * 100);
 
-      // Montar redirect_url com parâmetros para aprovação automática no retorno
       const baseUrl = Deno.env.get('VITE_APP_URL') || 'https://edita-multas.lovable.app';
       const solId = body.solicitacao_id || '';
       const tipo = body.tipo || 'recarga';
       const returnUrl = `${baseUrl}/pagamento-confirmado?order_nsu=${finalOrderNsu}&sol_id=${solId}&tipo=${tipo}`;
 
-      // URL do webhook para aprovação automática via InfinitePay
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       const webhookUrl = `${supabaseUrl}/functions/v1/infinitepay-webhook`;
 
@@ -154,7 +162,6 @@ Deno.serve(async (req) => {
 
       // 2. Pagamento confirmado → processar aprovação automática
       if (tipo === 'recarga') {
-        // Buscar solicitação de recarga
         const { data: sol } = await supabase
           .from('solicitacoes_recarga' as any)
           .select('*')
@@ -163,7 +170,6 @@ Deno.serve(async (req) => {
           .single();
 
         if (sol) {
-          // Atualizar saldo da organização
           const { data: orgData } = await supabase
             .from('organizations')
             .select('saldo_sacavel')
@@ -178,10 +184,9 @@ Deno.serve(async (req) => {
             .update({ saldo_sacavel: novoSaldo })
             .eq('id', (sol as any).organization_id);
 
-          // Registrar no faturamento
           await supabase.from('faturamento' as any).insert({
             organization_id: (sol as any).organization_id,
-            descricao: `Recarga via InfinitePay (cartão/PIX) aprovada automaticamente — R$ ${Number((sol as any).valor).toFixed(2)}`,
+            descricao: `Recarga via InfinitePay aprovada automaticamente — R$ ${Number((sol as any).valor).toFixed(2)}`,
             valor: (sol as any).valor,
             status: 'paid',
             tipo: 'credit_purchase',
@@ -189,7 +194,6 @@ Deno.serve(async (req) => {
             data_pagamento: new Date().toISOString().split('T')[0],
           });
 
-          // Atualizar status da solicitação
           await supabase
             .from('solicitacoes_recarga' as any)
             .update({
@@ -199,7 +203,6 @@ Deno.serve(async (req) => {
             })
             .eq('id', solicitacao_id);
 
-          // Notificação para o cliente
           await supabase.from('notificacoes_recarga' as any).insert({
             organization_id: (sol as any).organization_id,
             solicitacao_id: solicitacao_id,
@@ -211,7 +214,6 @@ Deno.serve(async (req) => {
           });
         }
       } else if (tipo === 'plano') {
-        // Buscar solicitação de plano
         const { data: sol } = await supabase
           .from('solicitacoes_plano' as any)
           .select('*')
@@ -220,16 +222,18 @@ Deno.serve(async (req) => {
           .single();
 
         if (sol) {
-          // Ativar plano na organização
+          const expiracao = calcularExpiracao((sol as any).ciclo);
+
           await supabase
             .from('organizations')
             .update({
               plano: (sol as any).plano_slug,
               plan: (sol as any).plano_slug,
-            })
+              plano_expiracao_em: expiracao,
+              plano_ciclo: (sol as any).ciclo,
+            } as any)
             .eq('id', (sol as any).organization_id);
 
-          // Registrar no faturamento
           await supabase.from('faturamento' as any).insert({
             organization_id: (sol as any).organization_id,
             descricao: `Assinatura plano ${(sol as any).plano_nome} (${(sol as any).ciclo}) via InfinitePay — aprovado automaticamente`,
@@ -240,7 +244,6 @@ Deno.serve(async (req) => {
             data_pagamento: new Date().toISOString().split('T')[0],
           });
 
-          // Atualizar status
           await supabase
             .from('solicitacoes_plano' as any)
             .update({
@@ -250,13 +253,12 @@ Deno.serve(async (req) => {
             })
             .eq('id', solicitacao_id);
 
-          // Notificação para o cliente
           await supabase.from('notificacoes_recarga' as any).insert({
             organization_id: (sol as any).organization_id,
             solicitacao_id: solicitacao_id,
             tipo: 'plano_aprovado',
             titulo: `Plano ${(sol as any).plano_nome} ativado! 🎉`,
-            mensagem: `Seu plano foi ativado automaticamente. Bem-vindo ao plano ${(sol as any).plano_nome}!`,
+            mensagem: `Seu plano foi ativado automaticamente. Válido até ${new Date(expiracao).toLocaleDateString('pt-BR')}.`,
             valor: (sol as any).valor,
             para_super_admin: false,
           });
@@ -264,6 +266,105 @@ Deno.serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ success: true, paid: true, approved: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ─── PAGAR PLANO COM CRÉDITOS INTERNOS ───────────────────────────────────
+    if (action === 'pagar_plano_creditos') {
+      const { organization_id, plano_id, plano_slug, plano_nome, ciclo, valor, user_id } = body;
+
+      // Buscar saldo atual
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('saldo_sacavel, saldo_bonus')
+        .eq('id', organization_id)
+        .single();
+
+      const saldoTotal = ((org as any)?.saldo_sacavel || 0) + ((org as any)?.saldo_bonus || 0);
+
+      if (saldoTotal < valor) {
+        return new Response(JSON.stringify({ error: 'Saldo insuficiente para contratar o plano.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const expiracao = calcularExpiracao(ciclo);
+
+      // Debitar do saldo sacável primeiro, depois do bônus
+      let novoSacavel = (org as any)?.saldo_sacavel || 0;
+      let novoBonus = (org as any)?.saldo_bonus || 0;
+      let restante = valor;
+
+      if (novoSacavel >= restante) {
+        novoSacavel -= restante;
+        restante = 0;
+      } else {
+        restante -= novoSacavel;
+        novoSacavel = 0;
+        novoBonus -= restante;
+        restante = 0;
+      }
+
+      // Ativar plano e debitar saldo
+      await supabase
+        .from('organizations')
+        .update({
+          plano: plano_slug,
+          plan: plano_slug,
+          plano_expiracao_em: expiracao,
+          plano_ciclo: ciclo,
+          saldo_sacavel: novoSacavel,
+          saldo_bonus: novoBonus,
+        } as any)
+        .eq('id', organization_id);
+
+      // Criar solicitação já aprovada
+      const { data: solData } = await supabase
+        .from('solicitacoes_plano' as any)
+        .insert({
+          organization_id,
+          user_id,
+          plano_id,
+          plano_slug,
+          plano_nome,
+          ciclo,
+          valor,
+          status: 'aprovado',
+          observacao: `Pago com créditos internos — debitado automaticamente`,
+          aprovado_em: new Date().toISOString(),
+        })
+        .select()
+        .limit(1);
+
+      const solId = (solData as any)?.[0]?.id;
+
+      // Registrar no faturamento
+      await supabase.from('faturamento' as any).insert({
+        organization_id,
+        descricao: `Assinatura plano ${plano_nome} (${ciclo}) — pago com créditos internos`,
+        valor: -valor, // negativo = consumo de crédito
+        status: 'paid',
+        tipo: 'subscription',
+        metodo_pagamento: 'creditos_internos',
+        data_pagamento: new Date().toISOString().split('T')[0],
+      });
+
+      // Notificação
+      if (solId) {
+        await supabase.from('notificacoes_recarga' as any).insert({
+          organization_id,
+          solicitacao_id: solId,
+          tipo: 'plano_aprovado',
+          titulo: `Plano ${plano_nome} ativado! 🎉`,
+          mensagem: `Seu plano foi ativado usando seus créditos. Válido até ${new Date(expiracao).toLocaleDateString('pt-BR')}.`,
+          valor,
+          para_super_admin: false,
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, expiracao }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

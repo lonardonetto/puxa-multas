@@ -5,6 +5,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+function calcularExpiracao(ciclo: string): string {
+  const agora = new Date();
+  if (ciclo === 'anual') {
+    agora.setFullYear(agora.getFullYear() + 1);
+  } else {
+    agora.setMonth(agora.getMonth() + 1);
+  }
+  return agora.toISOString();
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -19,7 +29,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     console.log('InfinitePay Webhook received:', JSON.stringify(body));
 
-    const { order_nsu, transaction_nsu, invoice_slug, amount, paid_amount, capture_method } = body;
+    const { order_nsu, transaction_nsu, capture_method } = body;
 
     if (!order_nsu) {
       return new Response(JSON.stringify({ success: false, message: 'order_nsu ausente' }), {
@@ -28,7 +38,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Buscar solicitação de recarga pelo order_nsu na observação
+    // ── Buscar solicitação de recarga pelo order_nsu
     const { data: recargas } = await supabase
       .from('solicitacoes_recarga' as any)
       .select('*')
@@ -39,7 +49,6 @@ Deno.serve(async (req) => {
     if (recargas && recargas.length > 0) {
       const sol = recargas[0] as any;
 
-      // Atualizar saldo
       const { data: orgData } = await supabase
         .from('organizations')
         .select('saldo_sacavel')
@@ -82,13 +91,13 @@ Deno.serve(async (req) => {
       });
 
       console.log(`Recarga ${sol.id} aprovada via webhook`);
-      return new Response(JSON.stringify({ success: true, message: null }), {
+      return new Response(JSON.stringify({ success: true }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Buscar solicitação de plano
+    // ── Buscar solicitação de plano
     const { data: planos } = await supabase
       .from('solicitacoes_plano' as any)
       .select('*')
@@ -98,10 +107,16 @@ Deno.serve(async (req) => {
 
     if (planos && planos.length > 0) {
       const sol = planos[0] as any;
+      const expiracao = calcularExpiracao(sol.ciclo || 'mensal');
 
       await supabase
         .from('organizations')
-        .update({ plano: sol.plano_slug, plan: sol.plano_slug })
+        .update({
+          plano: sol.plano_slug,
+          plan: sol.plano_slug,
+          plano_expiracao_em: expiracao,
+          plano_ciclo: sol.ciclo || 'mensal',
+        } as any)
         .eq('id', sol.organization_id);
 
       await supabase.from('faturamento' as any).insert({
@@ -128,13 +143,13 @@ Deno.serve(async (req) => {
         solicitacao_id: sol.id,
         tipo: 'plano_aprovado',
         titulo: `Plano ${sol.plano_nome} ativado! 🎉`,
-        mensagem: `Seu plano foi ativado automaticamente via InfinitePay.`,
+        mensagem: `Seu plano foi ativado automaticamente. Válido até ${new Date(expiracao).toLocaleDateString('pt-BR')}.`,
         valor: sol.valor,
         para_super_admin: false,
       });
 
       console.log(`Plano ${sol.id} aprovado via webhook`);
-      return new Response(JSON.stringify({ success: true, message: null }), {
+      return new Response(JSON.stringify({ success: true }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
