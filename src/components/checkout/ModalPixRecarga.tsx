@@ -6,6 +6,8 @@ import { useOrganization } from '@/contexts/OrganizationContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { ModalInfinitePayCheckout } from './ModalInfinitePayCheckout';
+
 
 interface ModalPixRecargaProps {
   onClose: () => void;
@@ -28,6 +30,9 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
   const [carregandoQr, setCarregandoQr] = useState(false);
   const [enviandoSolicitacao, setEnviandoSolicitacao] = useState(false);
   const [gerandoLinkCard, setGerandoLinkCard] = useState(false);
+  const [infinitePayModal, setInfinitePayModal] = useState<{
+    url: string; orderNsu: string; solicitacaoId: string;
+  } | null>(null);
 
   const valorFinal = valorSelecionado ?? (parseFloat(valorCustom.replace(',', '.')) || 0);
 
@@ -154,7 +159,7 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
           solicitacao_id: solId,
           tipo: 'pix_pendente',
           titulo: `Nova recarga — ${currentOrganization.nome}`,
-          mensagem: `Recarga de R$ ${valorFinal.toFixed(2).replace('.', ',')} via cartão/PIX InfinitePay aguardando confirmação.`,
+          mensagem: `Recarga de R$ ${valorFinal.toFixed(2).replace('.', ',')} via cartão/PIX InfinitePay iniciada.`,
           valor: valorFinal,
           para_super_admin: true,
         });
@@ -173,8 +178,8 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
         throw new Error(data?.error || 'Erro ao gerar link de pagamento');
       }
 
-      window.open(data.link, '_blank');
-      toast.success('Link de pagamento gerado! Complete o pagamento na nova aba.');
+      // Abre o checkout embutido em modal (iframe)
+      setInfinitePayModal({ url: data.link, orderNsu, solicitacaoId: solId || '' });
     } catch (err: any) {
       console.error('InfinitePay error:', err);
       toast.error(err.message || 'Erro ao gerar link InfinitePay. Tente novamente.');
@@ -233,8 +238,22 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
   };
 
   return (
+    <>
+    {/* Modal iframe InfinitePay */}
+    {infinitePayModal && (
+      <ModalInfinitePayCheckout
+        checkoutUrl={infinitePayModal.url}
+        orderNsu={infinitePayModal.orderNsu}
+        solicitacaoId={infinitePayModal.solicitacaoId}
+        tipo="recarga"
+        valor={valorFinal}
+        onClose={() => setInfinitePayModal(null)}
+        onSuccess={() => { onSuccess?.(); onClose(); }}
+      />
+    )}
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100">
+
 
         {/* Header */}
         <div className="p-6 border-b border-gray-100 bg-gray-50/30 flex justify-between items-center">
@@ -439,5 +458,7 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
         </div>
       </div>
     </div>
+    </>
   );
 }
+

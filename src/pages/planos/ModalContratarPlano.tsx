@@ -6,6 +6,8 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
 import { useSystemSettings } from '../../hooks/useSystemSettings';
+import { ModalInfinitePayCheckout } from '@/components/checkout/ModalInfinitePayCheckout';
+
 
 interface Props {
   plan: any;
@@ -26,6 +28,9 @@ export default function ModalContratarPlano({ plan, billingCycle, onClose, onSuc
   const [gerando, setGerando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoLinkCard, setGerandoLinkCard] = useState(false);
+  const [infinitePayModal, setInfinitePayModal] = useState<{
+    url: string; orderNsu: string; solicitacaoId: string;
+  } | null>(null);
 
   const valor = billingCycle === 'anual' && plan.preco_anual > 0 ? plan.preco_anual : plan.preco_mensal;
   const valorFormatado = Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -172,8 +177,8 @@ export default function ModalContratarPlano({ plan, billingCycle, onClose, onSuc
         throw new Error(data?.error || 'Erro ao gerar link de pagamento');
       }
 
-      window.open(data.link, '_blank');
-      toast.success('Link de pagamento gerado! Complete o pagamento na nova aba.');
+      // Abre o checkout embutido em modal (iframe)
+      setInfinitePayModal({ url: data.link, orderNsu, solicitacaoId: solId || '' });
     } catch (err: any) {
       console.error('InfinitePay error:', err);
       toast.error(err.message || 'Erro ao gerar link InfinitePay. Tente novamente.');
@@ -215,8 +220,21 @@ export default function ModalContratarPlano({ plan, billingCycle, onClose, onSuc
   };
 
   return (
+    <>
+    {infinitePayModal && (
+      <ModalInfinitePayCheckout
+        checkoutUrl={infinitePayModal.url}
+        orderNsu={infinitePayModal.orderNsu}
+        solicitacaoId={infinitePayModal.solicitacaoId}
+        tipo="plano"
+        valor={Number(valor)}
+        onClose={() => setInfinitePayModal(null)}
+        onSuccess={() => { onSuccess(); onClose(); }}
+      />
+    )}
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md overflow-hidden">
+
 
         {/* Header */}
         <div className="p-6 border-b border-gray-100 bg-gray-50/30 flex items-center justify-between">
@@ -387,5 +405,7 @@ export default function ModalContratarPlano({ plan, billingCycle, onClose, onSuc
         </div>
       </div>
     </div>
+    </>
   );
 }
+
