@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
       const { data } = await supabase
         .from('solicitacoes_recarga' as any)
         .select('*')
-        .eq('metodo_pagamento', 'cartao_infinitepay')
+        .eq('metodo_pagamento', 'credit_card')
         .eq('status', 'pendente')
         .order('created_at', { ascending: false })
         .limit(1);
@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
         valor: sol.valor,
         status: 'paid',
         tipo: 'credit_purchase',
-        metodo_pagamento: 'cartao_infinitepay',
+        metodo_pagamento: capture_method === 'pix' ? 'pix' : 'credit_card',
         data_pagamento: new Date().toISOString().split('T')[0],
       });
 
@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
         valor: sol.valor,
         status: 'paid',
         tipo: 'subscription',
-        metodo_pagamento: 'cartao_infinitepay',
+        metodo_pagamento: capture_method === 'pix' ? 'pix' : 'credit_card',
         data_pagamento: new Date().toISOString().split('T')[0],
       });
 

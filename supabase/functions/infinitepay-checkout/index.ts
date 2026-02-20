@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
             valor: (sol as any).valor,
             status: 'paid',
             tipo: 'credit_purchase',
-            metodo_pagamento: 'cartao_infinitepay',
+            metodo_pagamento: 'credit_card',
             data_pagamento: new Date().toISOString().split('T')[0],
           });
 
@@ -240,7 +240,7 @@ Deno.serve(async (req) => {
             valor: (sol as any).valor,
             status: 'paid',
             tipo: 'subscription',
-            metodo_pagamento: 'cartao_infinitepay',
+            metodo_pagamento: 'credit_card',
             data_pagamento: new Date().toISOString().split('T')[0],
           });
 
