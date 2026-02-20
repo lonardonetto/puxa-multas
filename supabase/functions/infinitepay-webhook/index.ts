@@ -38,16 +38,57 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── Buscar solicitação de recarga pelo order_nsu
-    const { data: recargas } = await supabase
-      .from('solicitacoes_recarga' as any)
-      .select('*')
-      .like('observacao', `%${order_nsu}%`)
-      .eq('status', 'pendente')
-      .limit(1);
+    // ── Extrair solicitacao_id dos items do body (salvo na descrição) ou do campo direto
+    const solicitacaoIdFromItems = (() => {
+      try {
+        // Tenta extrair o ID da solicitação que foi embutido na descrição do item pelo checkout
+        const items = body.items || [];
+        for (const item of items) {
+          const match = (item.description || '').match(/sol:([a-f0-9-]{36})/i);
+          if (match) return match[1];
+        }
+      } catch (_) {}
+      return null;
+    })();
 
-    if (recargas && recargas.length > 0) {
-      const sol = recargas[0] as any;
+    // ── Buscar solicitação de recarga: primeiro por solicitacao_id, depois por order_nsu no payload_pix
+    let recargaSol: any = null;
+
+    if (solicitacaoIdFromItems) {
+      const { data } = await supabase
+        .from('solicitacoes_recarga' as any)
+        .select('*')
+        .eq('id', solicitacaoIdFromItems)
+        .eq('status', 'pendente')
+        .limit(1);
+      recargaSol = data?.[0] || null;
+    }
+
+    if (!recargaSol) {
+      // Fallback: buscar pelo order_nsu no campo payload_pix ou observacao
+      const { data } = await supabase
+        .from('solicitacoes_recarga' as any)
+        .select('*')
+        .or(`payload_pix.like.%${order_nsu}%,observacao.like.%${order_nsu}%`)
+        .eq('status', 'pendente')
+        .limit(1);
+      recargaSol = data?.[0] || null;
+    }
+
+    if (!recargaSol) {
+      // Último fallback: buscar por metodo_pagamento=cartao_infinitepay e status pendente mais recente
+      const { data } = await supabase
+        .from('solicitacoes_recarga' as any)
+        .select('*')
+        .eq('metodo_pagamento', 'cartao_infinitepay')
+        .eq('status', 'pendente')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      recargaSol = data?.[0] || null;
+    }
+
+    if (recargaSol) {
+      const sol = recargaSol;
 
       const { data: orgData } = await supabase
         .from('organizations')
@@ -98,12 +139,39 @@ Deno.serve(async (req) => {
     }
 
     // ── Buscar solicitação de plano
-    const { data: planos } = await supabase
-      .from('solicitacoes_plano' as any)
-      .select('*')
-      .like('observacao', `%${order_nsu}%`)
-      .eq('status', 'pendente')
-      .limit(1);
+    let planoBusca: any[] = [];
+
+    if (solicitacaoIdFromItems) {
+      const { data } = await supabase
+        .from('solicitacoes_plano' as any)
+        .select('*')
+        .eq('id', solicitacaoIdFromItems)
+        .eq('status', 'pendente')
+        .limit(1);
+      planoBusca = data || [];
+    }
+
+    if (!planoBusca.length) {
+      const { data } = await supabase
+        .from('solicitacoes_plano' as any)
+        .select('*')
+        .or(`observacao.like.%${order_nsu}%`)
+        .eq('status', 'pendente')
+        .limit(1);
+      planoBusca = data || [];
+    }
+
+    if (!planoBusca.length) {
+      const { data } = await supabase
+        .from('solicitacoes_plano' as any)
+        .select('*')
+        .eq('status', 'pendente')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      planoBusca = data || [];
+    }
+
+    const planos = planoBusca;
 
     if (planos && planos.length > 0) {
       const sol = planos[0] as any;
