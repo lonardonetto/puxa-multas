@@ -31,6 +31,9 @@ export default function CRMKanban() {
   const [showModalEditarLead, setShowModalEditarLead] = useState<string | null>(null);
   const [showCreatingAnimation, setShowCreatingAnimation] = useState(false);
   const [creatingLeadName, setCreatingLeadName] = useState('');
+  const [showConvertingAnimation, setShowConvertingAnimation] = useState(false);
+  const [convertingLeadName, setConvertingLeadName] = useState('');
+  const [convertingStep, setConvertingStep] = useState(0);
   const [showModalGerenciarColunas, setShowModalGerenciarColunas] = useState(false);
   const [novoNomeStage, setNovoNomeStage] = useState('');
   const [editandoStageId, setEditandoStageId] = useState<string | null>(null);
@@ -842,15 +845,28 @@ export default function CRMKanban() {
                         const leadData = clientes.find(c => c.id === showModalEditarLead);
                         if (leadData) {
                           setShowModalEditarLead(null);
-                          navigate('/cadastro/novo-cliente', {
-                            state: {
-                              leadData: {
-                                nome_completo: leadData.nome_completo,
-                                email: leadData.email,
-                                celular: leadData.celular,
+                          setConvertingLeadName(leadData.nome_completo);
+                          setConvertingStep(0);
+                          setShowConvertingAnimation(true);
+
+                          // Sequência de steps da animação
+                          setTimeout(() => setConvertingStep(1), 900);
+                          setTimeout(() => setConvertingStep(2), 1900);
+                          setTimeout(() => setConvertingStep(3), 2900);
+
+                          // Navega após animação completa
+                          setTimeout(() => {
+                            setShowConvertingAnimation(false);
+                            navigate('/cadastro/novo-cliente', {
+                              state: {
+                                leadData: {
+                                  nome_completo: leadData.nome_completo,
+                                  email: leadData.email,
+                                  celular: leadData.celular,
+                                }
                               }
-                            }
-                          });
+                            });
+                          }, 3800);
                         }
                       }}
                       className="w-full py-2.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-500 to-green-600 rounded-lg hover:from-emerald-600 hover:to-green-700 shadow-sm transition-all uppercase tracking-widest flex items-center justify-center gap-2"
@@ -1177,6 +1193,68 @@ export default function CRMKanban() {
             @keyframes kanban-step-in {
               from { opacity: 0; transform: translateX(-8px); }
               to { opacity: 1; transform: translateX(0); }
+            }
+          `}</style>
+        </div>
+      )}
+
+      {/* Animação de conversão de lead em cliente */}
+      {showConvertingAnimation && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 flex flex-col items-center gap-6 border border-gray-100">
+            {/* Ícone animado */}
+            <div className="relative w-28 h-28 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping" style={{ animationDuration: '1.2s' }}></div>
+              <div className="absolute inset-3 rounded-full bg-emerald-500/15 animate-ping" style={{ animationDuration: '1.2s', animationDelay: '0.25s' }}></div>
+              <div className="absolute inset-6 rounded-full bg-emerald-500/20 animate-ping" style={{ animationDuration: '1.2s', animationDelay: '0.5s' }}></div>
+              <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 shadow-xl flex items-center justify-center">
+                <i className="ri-vip-crown-line text-2xl text-white"></i>
+              </div>
+            </div>
+
+            {/* Texto principal */}
+            <div className="text-center space-y-2">
+              <h3 className="text-xl font-bold text-gray-900">Convertendo Lead</h3>
+              <p className="text-sm font-semibold text-emerald-600 truncate max-w-[240px]">{convertingLeadName}</p>
+              <p className="text-xs text-gray-400">Promovendo para cliente oficial do sistema...</p>
+            </div>
+
+            {/* Barra de progresso */}
+            <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-400 to-green-600 rounded-full"
+                style={{ animation: 'convert-progress 3.8s linear forwards' }}
+              ></div>
+            </div>
+
+            {/* Passos sequenciais */}
+            <div className="w-full space-y-2.5">
+              {[
+                { icon: 'ri-git-commit-line', label: 'Coletando dados do lead', active: convertingStep >= 0 },
+                { icon: 'ri-shield-check-line', label: 'Validando informações', active: convertingStep >= 1 },
+                { icon: 'ri-user-star-line', label: 'Promovendo a cliente', active: convertingStep >= 2 },
+                { icon: 'ri-rocket-line', label: 'Abrindo cadastro completo!', active: convertingStep >= 3 },
+              ].map((step, idx) => (
+                <div
+                  key={idx}
+                  className={`flex items-center gap-3 text-xs transition-all duration-500 ${step.active ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'}`}
+                >
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-colors duration-300 ${step.active ? 'bg-emerald-100' : 'bg-gray-100'}`}>
+                    <i className={`${step.icon} text-sm transition-colors duration-300 ${step.active ? 'text-emerald-600' : 'text-gray-400'}`}></i>
+                  </div>
+                  <span className={`font-medium transition-colors duration-300 ${step.active ? 'text-gray-800' : 'text-gray-300'}`}>{step.label}</span>
+                  {step.active && idx < 3 && convertingStep > idx && (
+                    <i className="ri-check-line text-emerald-500 ml-auto text-sm"></i>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <style>{`
+            @keyframes convert-progress {
+              from { width: 0%; }
+              to { width: 100%; }
             }
           `}</style>
         </div>
