@@ -62,10 +62,7 @@ export function ModalAguardandoInfinitePay({
   }, [orderNsu, solicitacaoId, tipo, onSuccess, onClose]);
 
   useEffect(() => {
-    // Abre o link em nova aba automaticamente
-    window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
-
-    // Começa a verificar após 20s
+    // Começa a verificar após 20s (a janela já foi aberta no clique do botão)
     const startDelay = setTimeout(() => {
       intervalRef.current = setInterval(verificarPagamento, 10000);
     }, 20000);
@@ -74,7 +71,7 @@ export function ModalAguardandoInfinitePay({
       clearTimeout(startDelay);
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [checkoutUrl, verificarPagamento]);
+  }, [verificarPagamento]);
 
   const handleVerificarManual = () => {
     tentativasRef.current = 0;

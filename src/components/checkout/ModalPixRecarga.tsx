@@ -133,6 +133,10 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
 
   const gerarLinkInfinitePay = useCallback(async () => {
     if (!currentOrganization || !user || valorFinal <= 0) return;
+
+    // Abre a janela IMEDIATAMENTE no clique (antes de qualquer async), senão o browser bloqueia
+    const popupWindow = window.open('about:blank', '_blank');
+
     setGerandoLinkCard(true);
     try {
       const orderNsu = `CDM${Date.now().toString(36).toUpperCase()}`;
@@ -177,10 +181,18 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
       });
 
       if (error || !data?.link) {
+        if (popupWindow) popupWindow.close();
         throw new Error(data?.error || 'Erro ao gerar link de pagamento');
       }
 
-      // Abre o checkout embutido em modal (iframe)
+      // Redireciona o popup já aberto para a URL do checkout
+      if (popupWindow) {
+        popupWindow.location.href = data.link;
+      } else {
+        // Fallback: tenta abrir normalmente se o popup anterior falhou
+        window.open(data.link, '_blank');
+      }
+
       setInfinitePayModal({ url: data.link, orderNsu, solicitacaoId: solId || '' });
     } catch (err: any) {
       console.error('InfinitePay error:', err);
