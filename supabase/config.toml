@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.infinitepay-checkout]
 verify_jwt = false
+
+[functions.infinitepay-webhook]
+verify_jwt = false

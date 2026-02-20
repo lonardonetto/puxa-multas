@@ -41,9 +41,21 @@ Deno.serve(async (req) => {
       const finalOrderNsu = order_nsu || `CDM${Date.now().toString(36).toUpperCase()}`;
       const amountInCents = Math.round(Number(valor) * 100);
 
+      // Montar redirect_url com parâmetros para aprovação automática no retorno
+      const baseUrl = Deno.env.get('VITE_APP_URL') || 'https://edita-multas.lovable.app';
+      const solId = body.solicitacao_id || '';
+      const tipo = body.tipo || 'recarga';
+      const returnUrl = `${baseUrl}/pagamento-confirmado?order_nsu=${finalOrderNsu}&sol_id=${solId}&tipo=${tipo}`;
+
+      // URL do webhook para aprovação automática via InfinitePay
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const webhookUrl = `${supabaseUrl}/functions/v1/infinitepay-webhook`;
+
       const payload: Record<string, unknown> = {
         handle,
         order_nsu: finalOrderNsu,
+        redirect_url: redirect_url || returnUrl,
+        webhook_url: webhookUrl,
         items: [
           {
             description: descricao || 'Pagamento Central da Multa',
@@ -51,7 +63,6 @@ Deno.serve(async (req) => {
             quantity: 1,
           },
         ],
-        ...(redirect_url ? { redirect_url } : {}),
       };
 
       const response = await fetch('https://api.infinitepay.io/invoices/public/checkout/links', {

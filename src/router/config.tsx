@@ -15,6 +15,8 @@ const LoadingFallback = () => (
 // Auth pages
 const Login = lazy(() => import('../pages/auth/login/page'));
 const Register = lazy(() => import('../pages/auth/register/page'));
+const PagamentoConfirmado = lazy(() => import('../pages/pagamento-confirmado/page'));
+
 
 // Super Admin pages
 const SuperAdminDashboard = lazy(() => import('../pages/super-admin/dashboard/page'));
@@ -66,6 +68,15 @@ const routes: RouteObject[] = [
       </Suspense>
     ),
   },
+  {
+    path: '/pagamento-confirmado',
+    element: (
+      <Suspense fallback={<LoadingFallback />}>
+        <PagamentoConfirmado />
+      </Suspense>
+    ),
+  },
+
   // Protected routes
   {
     path: '/',

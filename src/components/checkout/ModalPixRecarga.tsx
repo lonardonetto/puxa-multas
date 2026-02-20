@@ -6,7 +6,7 @@ import { useOrganization } from '@/contexts/OrganizationContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { ModalInfinitePayCheckout } from './ModalInfinitePayCheckout';
+import { ModalAguardandoInfinitePay } from './ModalAguardandoInfinitePay';
 
 
 interface ModalPixRecargaProps {
@@ -171,6 +171,8 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
           valor: valorFinal,
           descricao: `Recarga Central da Multa — ${currentOrganization.nome}`,
           order_nsu: orderNsu,
+          solicitacao_id: solId || '',
+          tipo: 'recarga',
         },
       });
 
@@ -239,9 +241,8 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
 
   return (
     <>
-    {/* Modal iframe InfinitePay */}
     {infinitePayModal && (
-      <ModalInfinitePayCheckout
+      <ModalAguardandoInfinitePay
         checkoutUrl={infinitePayModal.url}
         orderNsu={infinitePayModal.orderNsu}
         solicitacaoId={infinitePayModal.solicitacaoId}
