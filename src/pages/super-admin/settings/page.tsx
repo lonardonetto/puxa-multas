@@ -36,6 +36,11 @@ export default function SystemSettings() {
     const [savingAi, setSavingAi] = useState(false);
     const [initialLoaded, setInitialLoaded] = useState(false);
 
+    // InfinitePay settings state
+    const [infiniteTag, setInfiniteTag] = useState('');
+    const [savingInfinite, setSavingInfinite] = useState(false);
+    const [infiniteSaved, setInfiniteSaved] = useState(false);
+
     // PIX settings state
     const [pixSettings, setPixSettings] = useState<PixSettings>({
         tipoChave: 'aleatoria',
@@ -56,6 +61,10 @@ export default function SystemSettings() {
             const anthropicKey = dbSettings.find(s => s.key === 'anthropic_api_key')?.value || '';
             
             // Load PIX settings
+            // Load InfinitePay tag
+            const infiniteTagValue = dbSettings.find(s => s.key === 'infinitepay_tag')?.value || '';
+            setInfiniteTag(infiniteTagValue);
+
             const pixTipo = (dbSettings.find(s => s.key === 'pix_tipo_chave')?.value || 'aleatoria') as TipoChavePix;
             const pixChave = dbSettings.find(s => s.key === 'pix_chave')?.value || '';
             const pixNome = dbSettings.find(s => s.key === 'pix_nome_recebedor')?.value || '';
@@ -382,6 +391,89 @@ export default function SystemSettings() {
                             </div>
                         </div>
                     )}
+                </div>
+
+                {/* InfinitePay */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-9 h-9 bg-[#00C88C]/10 rounded-xl flex items-center justify-center">
+                            <i className="ri-bank-card-line text-[#00C88C] text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-800">InfinitePay — Checkout Integrado</h2>
+                        </div>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-6">
+                        Configura sua <strong>InfiniteTag</strong> (o @ da sua conta, sem o $) para gerar links de pagamento automáticos com cartão de crédito e PIX.
+                    </p>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                InfiniteTag <span className="text-gray-400 font-normal">(sem o símbolo $)</span>
+                            </label>
+                            <div className="flex gap-2 items-center">
+                                <span className="text-gray-400 font-bold text-lg">$</span>
+                                <input
+                                    type="text"
+                                    value={infiniteTag}
+                                    onChange={e => setInfiniteTag(e.target.value.replace(/[$\s]/g, '').toLowerCase())}
+                                    placeholder="suatag"
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00C88C]/50 font-mono text-sm"
+                                />
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">
+                                Encontre em: App InfinitePay → Perfil → InfiniteTag
+                            </p>
+                        </div>
+
+                        {infiniteTag && (
+                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2 text-sm">
+                                <i className="ri-check-double-line text-emerald-600"></i>
+                                <span className="text-emerald-800">
+                                    Pagamentos serão gerados para: <strong>${infiniteTag}</strong>
+                                </span>
+                            </div>
+                        )}
+
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700 flex gap-2">
+                            <i className="ri-information-line mt-0.5 shrink-0"></i>
+                            <div>
+                                <p className="font-semibold mb-1">Como funciona:</p>
+                                <ul className="list-disc list-inside space-y-0.5 text-blue-600">
+                                    <li>Cliente escolhe o valor → sistema gera link InfinitePay</li>
+                                    <li>Aceita cartão de crédito (até 12x) e PIX</li>
+                                    <li>Confirmação automática — sem aprovação manual</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end">
+                            <button
+                                onClick={async () => {
+                                    setSavingInfinite(true);
+                                    await updateSetting('infinitepay_tag', infiniteTag);
+                                    setInfiniteSaved(true);
+                                    setTimeout(() => setInfiniteSaved(false), 3000);
+                                    setSavingInfinite(false);
+                                }}
+                                disabled={savingInfinite || !infiniteTag}
+                                className={`px-5 py-2.5 font-bold rounded-lg transition-all flex items-center gap-2 text-sm ${
+                                    infiniteSaved
+                                        ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                                        : 'bg-[#00C88C] text-white hover:bg-emerald-600 disabled:opacity-50'
+                                }`}
+                            >
+                                {savingInfinite ? (
+                                    <><i className="ri-loader-4-line animate-spin"></i> Salvando...</>
+                                ) : infiniteSaved ? (
+                                    <><i className="ri-check-line"></i> Salvo!</>
+                                ) : (
+                                    <><i className="ri-save-line"></i> Salvar InfiniteTag</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Configurações PIX */}

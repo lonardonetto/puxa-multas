@@ -5,6 +5,7 @@ import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface ModalPixRecargaProps {
   onClose: () => void;
@@ -26,6 +27,7 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
   const [copiado, setCopiado] = useState(false);
   const [carregandoQr, setCarregandoQr] = useState(false);
   const [enviandoSolicitacao, setEnviandoSolicitacao] = useState(false);
+  const [gerandoLinkCard, setGerandoLinkCard] = useState(false);
 
   const valorFinal = valorSelecionado ?? (parseFloat(valorCustom.replace(',', '.')) || 0);
 
@@ -39,8 +41,10 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
   const pixBanco = getSetting('pix_banco') || '';
   const pixTipo = getSetting('pix_tipo_chave') || 'aleatoria';
   const whatsappSuporte = getSetting('whatsapp_suporte') || getSetting('whatsappSupportNumber') || '';
+  const infiniteTag = getSetting('infinitepay_tag') || '';
 
   const pixConfigurado = !!pixChave && !!pixNome && !!pixCidade;
+  const infinitePayConfigurado = !!infiniteTag;
 
   const [solicitacaoId, setSolicitacaoId] = useState<string | null>(null);
 
@@ -121,6 +125,63 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
     setCopiado(true);
     setTimeout(() => setCopiado(false), 3000);
   };
+
+  const gerarLinkInfinitePay = useCallback(async () => {
+    if (!currentOrganization || !user || valorFinal <= 0) return;
+    setGerandoLinkCard(true);
+    try {
+      const orderNsu = `CDM${Date.now().toString(36).toUpperCase()}`;
+
+      // Criar solicitação no banco antes de redirecionar
+      const { data: solData } = await (supabase as any)
+        .from('solicitacoes_recarga')
+        .insert({
+          organization_id: currentOrganization.id,
+          user_id: user.id,
+          valor: valorFinal,
+          status: 'pendente',
+          metodo_pagamento: 'cartao_infinitepay',
+          observacao: `order_nsu: ${orderNsu}`,
+        })
+        .select()
+        .limit(1);
+
+      const solId = solData?.[0]?.id;
+
+      if (solId) {
+        await (supabase as any).from('notificacoes_recarga').insert({
+          organization_id: currentOrganization.id,
+          solicitacao_id: solId,
+          tipo: 'pix_pendente',
+          titulo: `Nova recarga — ${currentOrganization.nome}`,
+          mensagem: `Recarga de R$ ${valorFinal.toFixed(2).replace('.', ',')} via cartão/PIX InfinitePay aguardando confirmação.`,
+          valor: valorFinal,
+          para_super_admin: true,
+        });
+      }
+
+      const { data, error } = await supabase.functions.invoke('infinitepay-checkout', {
+        body: {
+          action: 'create_link',
+          valor: valorFinal,
+          descricao: `Recarga Central da Multa — ${currentOrganization.nome}`,
+          order_nsu: orderNsu,
+        },
+      });
+
+      if (error || !data?.link) {
+        throw new Error(data?.error || 'Erro ao gerar link de pagamento');
+      }
+
+      window.open(data.link, '_blank');
+      toast.success('Link de pagamento gerado! Complete o pagamento na nova aba.');
+    } catch (err: any) {
+      console.error('InfinitePay error:', err);
+      toast.error(err.message || 'Erro ao gerar link InfinitePay. Tente novamente.');
+    } finally {
+      setGerandoLinkCard(false);
+    }
+  }, [currentOrganization, user, valorFinal]);
 
   const montarLinkWhatsapp = () => {
     const numero = whatsappSuporte.replace(/\D/g, '');
@@ -238,7 +299,7 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
 
             <button
               onClick={gerarQrCode}
-              disabled={carregandoQr || valorFinal <= 0 || loadingSettings}
+              disabled={carregandoQr || valorFinal <= 0 || loadingSettings || !pixConfigurado}
               className="w-full py-4 bg-[#1E3A8A] text-white rounded-2xl font-black shadow-lg hover:bg-blue-800 hover:-translate-y-0.5 transition-all cursor-pointer uppercase tracking-widest active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2"
             >
               {carregandoQr ? (
@@ -248,9 +309,37 @@ export function ModalPixRecarga({ onClose, onSuccess }: ModalPixRecargaProps) {
               )}
             </button>
 
-            {!loadingSettings && !pixConfigurado && (
+            {/* Divisor */}
+            {infinitePayConfigurado && (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-gray-100"></div>
+                  <span className="text-xs text-gray-400 font-semibold uppercase tracking-widest">ou</span>
+                  <div className="flex-1 h-px bg-gray-100"></div>
+                </div>
+
+                <button
+                  onClick={gerarLinkInfinitePay}
+                  disabled={gerandoLinkCard || valorFinal <= 0 || loadingSettings}
+                  className="w-full py-4 bg-[#00C88C] text-white rounded-2xl font-black shadow-lg hover:bg-emerald-600 hover:-translate-y-0.5 transition-all cursor-pointer active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2"
+                >
+                  {gerandoLinkCard ? (
+                    <><i className="ri-loader-4-line animate-spin"></i> Gerando link...</>
+                  ) : (
+                    <>
+                      <i className="ri-bank-card-line text-lg"></i>
+                      <span>Pagar com Cartão ou PIX</span>
+                      <span className="text-xs bg-white/20 rounded-full px-2 py-0.5 font-bold">InfinitePay</span>
+                    </>
+                  )}
+                </button>
+                <p className="text-center text-xs text-gray-400">Crédito em até 12x · Confirmação automática</p>
+              </>
+            )}
+
+            {!loadingSettings && !pixConfigurado && !infinitePayConfigurado && (
               <p className="text-center text-xs text-amber-600 font-medium">
-                Pagamento via PIX temporariamente indisponível. Entre em contato com o suporte.
+                Pagamento temporariamente indisponível. Entre em contato com o suporte.
               </p>
             )}
           </div>
