@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       const finalOrderNsu = order_nsu || `CDM${Date.now().toString(36).toUpperCase()}`;
       const amountInCents = Math.round(Number(valor) * 100);
 
-      const baseUrl = Deno.env.get('VITE_APP_URL') || 'https://edita-multas.lovable.app';
+      const baseUrl = Deno.env.get('VITE_APP_URL') || 'https://app.centraldamulta.app.br';
       const solId = body.solicitacao_id || '';
       const tipo = body.tipo || 'recarga';
       const returnUrl = `${baseUrl}/pagamento-confirmado?order_nsu=${finalOrderNsu}&sol_id=${solId}&tipo=${tipo}`;
