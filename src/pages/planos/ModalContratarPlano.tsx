@@ -6,7 +6,7 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
 import { useSystemSettings } from '../../hooks/useSystemSettings';
-import { ModalInfinitePayCheckout } from '@/components/checkout/ModalInfinitePayCheckout';
+import { ModalAguardandoInfinitePay } from '@/components/checkout/ModalAguardandoInfinitePay';
 
 
 interface Props {
@@ -170,6 +170,8 @@ export default function ModalContratarPlano({ plan, billingCycle, onClose, onSuc
           valor: Number(valor),
           descricao: `Plano ${plan.nome} ${billingCycle} — ${currentOrganization.nome}`,
           order_nsu: orderNsu,
+          solicitacao_id: solId || '',
+          tipo: 'plano',
         },
       });
 
@@ -222,7 +224,7 @@ export default function ModalContratarPlano({ plan, billingCycle, onClose, onSuc
   return (
     <>
     {infinitePayModal && (
-      <ModalInfinitePayCheckout
+      <ModalAguardandoInfinitePay
         checkoutUrl={infinitePayModal.url}
         orderNsu={infinitePayModal.orderNsu}
         solicitacaoId={infinitePayModal.solicitacaoId}
