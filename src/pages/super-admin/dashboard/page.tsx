@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Line, Doughnut } from 'react-chartjs-2';
+import { supabase } from '../../../lib/supabase';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -31,9 +32,67 @@ const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 };
 
+const formatDate = (d: string) => {
+  const dt = new Date(d);
+  return dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+};
+
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
   const { stats, loading, refresh } = useSuperAdminStats();
+  const [ultimasMovs, setUltimasMovs] = useState<any[]>([]);
+  const [loadingMovs, setLoadingMovs] = useState(true);
+
+  useEffect(() => {
+    const fetchMovs = async () => {
+      setLoadingMovs(true);
+      try {
+        const [fatRes, recRes, plRes] = await Promise.all([
+          (supabase as any)
+            .from('faturamento')
+            .select('id, organization_id, valor, status, tipo, metodo_pagamento, descricao, created_at, organizations(nome)')
+            .order('created_at', { ascending: false })
+            .limit(10),
+          (supabase as any)
+            .from('solicitacoes_recarga')
+            .select('id, organization_id, valor, status, metodo_pagamento, created_at, organizations(nome)')
+            .eq('status', 'pendente')
+            .order('created_at', { ascending: false })
+            .limit(5),
+          (supabase as any)
+            .from('solicitacoes_plano')
+            .select('id, organization_id, valor, status, plano_nome, ciclo, created_at, organizations(nome)')
+            .eq('status', 'pendente')
+            .order('created_at', { ascending: false })
+            .limit(5),
+        ]);
+
+        const movs: any[] = [
+          ...(fatRes.data || []).map((f: any) => ({
+            id: `fat-${f.id}`, org_nome: f.organizations?.nome || '—',
+            descricao: f.descricao || '—', valor: f.valor, status: f.status,
+            tipo: f.tipo, created_at: f.created_at, organization_id: f.organization_id, origem: 'faturamento',
+          })),
+          ...(recRes.data || []).map((r: any) => ({
+            id: `rec-${r.id}`, org_nome: r.organizations?.nome || '—',
+            descricao: `Pedido recarga — ${r.metodo_pagamento || 'PIX'}`, valor: r.valor, status: r.status,
+            tipo: 'pedido_recarga', created_at: r.created_at, organization_id: r.organization_id, origem: 'recarga',
+          })),
+          ...(plRes.data || []).map((p: any) => ({
+            id: `pla-${p.id}`, org_nome: p.organizations?.nome || '—',
+            descricao: `Pedido plano ${p.plano_nome} (${p.ciclo})`, valor: p.valor, status: p.status,
+            tipo: 'pedido_plano', created_at: p.created_at, organization_id: p.organization_id, origem: 'plano',
+          })),
+        ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 15);
+
+        setUltimasMovs(movs);
+      } finally {
+        setLoadingMovs(false);
+      }
+    };
+    fetchMovs();
+  }, []);
+
 
   const receitaChartData = {
     labels: stats.evolucaoMensal.map(e => e.mes),
@@ -321,69 +380,86 @@ export default function SuperAdminDashboard() {
         </div>
       </div>
 
-      {/* Tabela de Organizações */}
+      {/* Últimas Movimentações */}
       <div className="bg-card rounded-xl p-5 shadow-md border border-border">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-foreground text-lg">Clientes (Organizações)</h3>
+          <div>
+            <h3 className="font-bold text-foreground text-lg">Últimas Movimentações</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Pedidos, aprovações e consumos recentes do sistema</p>
+          </div>
           <button
-            onClick={() => navigate('/super-admin/dashboard/clientes')}
+            onClick={() => navigate('/super-admin/movimentacoes')}
             className="text-sm text-primary font-medium hover:underline"
           >
-            Ver todos <i className="ri-arrow-right-line"></i>
+            Ver tudo <i className="ri-arrow-right-line"></i>
           </button>
         </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-3 px-2 font-medium text-muted-foreground">Organização</th>
-                <th className="text-center py-3 px-2 font-medium text-muted-foreground">Plano</th>
-                <th className="text-center py-3 px-2 font-medium text-muted-foreground">Clientes</th>
-                <th className="text-center py-3 px-2 font-medium text-muted-foreground">Recursos IA</th>
-                <th className="text-center py-3 px-2 font-medium text-muted-foreground">Veículos</th>
-                <th className="text-right py-3 px-2 font-medium text-muted-foreground">Saldo</th>
-                <th className="text-right py-3 px-2 font-medium text-muted-foreground">Gasto Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.organizationsDetails.slice(0, 10).map((org) => (
-                <tr 
-                  key={org.id} 
-                  className="border-b border-border/50 hover:bg-muted/50 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/super-admin/organizations/${org.id}`)}
+
+        {loadingMovs ? (
+          <div className="flex items-center justify-center py-8">
+            <i className="ri-loader-4-line text-2xl text-primary animate-spin"></i>
+          </div>
+        ) : ultimasMovs.length === 0 ? (
+          <p className="text-center text-muted-foreground py-6 text-sm">Nenhuma movimentação registrada.</p>
+        ) : (
+          <div className="space-y-2">
+            {ultimasMovs.map(m => {
+              const isPositivo = m.tipo === 'adjustment' || m.tipo === 'credit_purchase' || m.tipo === 'subscription' || m.tipo === 'pedido_plano' || m.tipo === 'pedido_recarga';
+              const isNegativo = m.tipo === 'system_usage' || m.valor < 0;
+              const isPendente = m.status === 'pendente';
+              const isRejeitado = m.status === 'rejeitado';
+
+              const tipoIcon: Record<string, string> = {
+                credit_purchase: 'ri-add-circle-line text-blue-500',
+                adjustment: 'ri-gift-line text-purple-500',
+                subscription: 'ri-vip-crown-line text-indigo-500',
+                system_usage: 'ri-robot-line text-rose-500',
+                pedido_recarga: 'ri-time-line text-amber-500',
+                pedido_plano: 'ri-time-line text-amber-500',
+              };
+              const tipoLabel: Record<string, string> = {
+                credit_purchase: 'Recarga', adjustment: 'Crédito Manual',
+                subscription: 'Assinatura', system_usage: 'Consumo IA',
+                pedido_recarga: 'Pedido Recarga', pedido_plano: 'Pedido Plano',
+              };
+
+              return (
+                <div
+                  key={m.id}
+                  className={`flex items-center gap-3 p-3 rounded-xl border transition-colors cursor-pointer hover:bg-muted/50 ${
+                    isPendente ? 'border-amber-200 bg-amber-50/50' :
+                    isRejeitado ? 'border-red-200 bg-red-50/50' : 'border-border'
+                  }`}
+                  onClick={() => {
+                    if (m.origem !== 'faturamento') navigate('/super-admin/recargas');
+                    else navigate(`/super-admin/organizations/${m.organization_id}`);
+                  }}
                 >
-                  <td className="py-3 px-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <i className="ri-building-2-line text-primary"></i>
-                      </div>
-                      <span className="font-medium text-foreground">{org.nome}</span>
-                    </div>
-                  </td>
-                  <td className="text-center py-3 px-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                      org.plano === 'top' ? 'bg-amber-100 text-amber-700' :
-                      org.plano === 'intermediario' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {org.plano || 'Free'}
-                    </span>
-                  </td>
-                  <td className="text-center py-3 px-2 font-medium">{org.total_clientes}</td>
-                  <td className="text-center py-3 px-2 font-medium">{org.total_recursos}</td>
-                  <td className="text-center py-3 px-2 font-medium">{org.veiculos_rastreados}</td>
-                  <td className="text-right py-3 px-2">
-                    <span className="font-bold text-green-600">{formatCurrency(org.saldo_sacavel + org.saldo_bonus)}</span>
-                  </td>
-                  <td className="text-right py-3 px-2">
-                    <span className="font-medium text-foreground">{formatCurrency(org.gasto_total)}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
+                    <i className={`${tipoIcon[m.tipo] || 'ri-exchange-line text-muted-foreground'} text-xl`}></i>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{m.org_nome}</p>
+                    <p className="text-xs text-muted-foreground truncate">{m.descricao}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className={`text-sm font-black ${isNegativo ? 'text-rose-600' : isPendente ? 'text-amber-600' : 'text-green-600'}`}>
+                      {isNegativo ? '−' : isPendente ? '' : '+'}
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Math.abs(m.valor))}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">{formatDate(m.created_at)}</p>
+                  </div>
+                  <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                    isPendente ? 'bg-amber-100 text-amber-700' :
+                    isRejeitado ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                  }`}>
+                    {tipoLabel[m.tipo] || m.tipo}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -31,6 +31,7 @@ const SuperAdminEditais = lazy(() => import('../pages/super-admin/editais/page')
 const SuperAdminKnowledgeBase = lazy(() => import('../pages/super-admin/knowledge-base/page'));
 const SuperAdminAuditoria = lazy(() => import('../pages/super-admin/auditoria/page'));
 const SuperAdminRecargas = lazy(() => import('../pages/super-admin/recargas/page'));
+const SuperAdminMovimentacoes = lazy(() => import('../pages/super-admin/movimentacoes/page'));
 
 // App pages
 const Layout = lazy(() => import('../components/feature/Layout'));
@@ -318,6 +319,16 @@ const routes: RouteObject[] = [
           <SuperAdminRoute>
             <Suspense fallback={<LoadingFallback />}>
               <SuperAdminRecargas />
+            </Suspense>
+          </SuperAdminRoute>
+        ),
+      },
+      {
+        path: 'super-admin/movimentacoes',
+        element: (
+          <SuperAdminRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <SuperAdminMovimentacoes />
             </Suspense>
           </SuperAdminRoute>
         ),

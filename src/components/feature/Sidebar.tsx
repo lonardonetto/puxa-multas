@@ -305,7 +305,15 @@ export default function Sidebar({ darkMode, toggleDarkMode, isCollapsed }: Sideb
                     }`}
                 >
                   <i className="ri-bank-card-line text-base mr-3"></i>
-                  <span className="text-sm font-medium">Recargas PIX</span>
+                  <span className="text-sm font-medium">Recargas & Planos</span>
+                </Link>
+                <Link
+                  to="/super-admin/movimentacoes"
+                  className={`flex items-center px-4 py-2 pl-10 text-gray-300 ${bgHover} transition-colors ${location.pathname === '/super-admin/movimentacoes' ? `${bgActive} text-primary` : ''
+                    }`}
+                >
+                  <i className="ri-exchange-funds-line text-base mr-3"></i>
+                  <span className="text-sm font-medium">Movimentações</span>
                 </Link>
               </div>
             )}
