@@ -230,11 +230,15 @@ export default function CRMKanban() {
     await createCliente({
       ...formData,
       crm_status: statusFinal,
+      crm_infracao: false, // garantir boolean correto
       user_id: user.id,
       organization_id: currentOrganization.id,
       tipo_pessoa: 'fisica',
       ativo: true
     } as any);
+
+    // Refetch para garantir sincronização com o banco
+    await fetchClientesByOrganization(currentOrganization.id);
 
     // Manter animação por 4 segundos
     setTimeout(() => {
