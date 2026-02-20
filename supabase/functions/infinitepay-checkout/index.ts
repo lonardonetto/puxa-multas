@@ -46,8 +46,8 @@ Deno.serve(async (req) => {
         order_nsu: finalOrderNsu,
         items: [
           {
-            name: descricao || 'Pagamento Central da Multa',
-            amount: amountInCents,
+            description: descricao || 'Pagamento Central da Multa',
+            price: amountInCents,
             quantity: 1,
           },
         ],
