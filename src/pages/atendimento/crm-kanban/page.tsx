@@ -29,6 +29,8 @@ export default function CRMKanban() {
   const [isDragging, setIsDragging] = useState<string | null>(null);
   const [showModalNovoLead, setShowModalNovoLead] = useState(false);
   const [showModalEditarLead, setShowModalEditarLead] = useState<string | null>(null);
+  const [showCreatingAnimation, setShowCreatingAnimation] = useState(false);
+  const [creatingLeadName, setCreatingLeadName] = useState('');
   const [showModalGerenciarColunas, setShowModalGerenciarColunas] = useState(false);
   const [novoNomeStage, setNovoNomeStage] = useState('');
   const [editandoStageId, setEditandoStageId] = useState<string | null>(null);
@@ -216,14 +218,30 @@ export default function CRMKanban() {
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentOrganization?.id || !user?.id) return;
+
+    // Garantir que o crm_status seja sempre válido
+    const statusFinal = formData.crm_status || customStages[0]?.nome || 'novo';
+    const nomeLead = formData.nome_completo;
+
+    setShowModalNovoLead(false);
+    setCreatingLeadName(nomeLead);
+    setShowCreatingAnimation(true);
+
     await createCliente({
       ...formData,
+      crm_status: statusFinal,
       user_id: user.id,
       organization_id: currentOrganization.id,
       tipo_pessoa: 'fisica',
       ativo: true
     } as any);
-    setShowModalNovoLead(false);
+
+    // Manter animação por 4 segundos
+    setTimeout(() => {
+      setShowCreatingAnimation(false);
+      setCreatingLeadName('');
+    }, 4000);
+
     resetForm();
   };
 
@@ -1083,6 +1101,76 @@ export default function CRMKanban() {
           </div>
         </div>
       )}
+
+      {/* Animação de criação de lead */}
+      {showCreatingAnimation && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 flex flex-col items-center gap-6 border border-gray-100">
+            {/* Ícone animado */}
+            <div className="relative w-24 h-24 flex items-center justify-center">
+              {/* Círculos pulsantes */}
+              <div className="absolute inset-0 rounded-full bg-blue-500/10 animate-ping" style={{ animationDuration: '1.5s' }}></div>
+              <div className="absolute inset-2 rounded-full bg-blue-500/20 animate-ping" style={{ animationDuration: '1.5s', animationDelay: '0.3s' }}></div>
+              {/* Círculo central */}
+              <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg flex items-center justify-center">
+                <i className="ri-user-add-line text-2xl text-white"></i>
+              </div>
+            </div>
+
+            {/* Texto */}
+            <div className="text-center space-y-2">
+              <h3 className="text-xl font-bold text-gray-900">Criando Lead</h3>
+              <p className="text-sm font-semibold text-blue-600 truncate max-w-[240px]">{creatingLeadName}</p>
+              <p className="text-xs text-gray-400">Adicionando ao funil de vendas...</p>
+            </div>
+
+            {/* Barra de progresso */}
+            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-blue-500 to-blue-700 rounded-full"
+                style={{
+                  animation: 'kanban-progress 4s linear forwards'
+                }}
+              ></div>
+            </div>
+
+            {/* Passos animados */}
+            <div className="w-full space-y-2">
+              {[
+                { icon: 'ri-database-2-line', label: 'Salvando no banco de dados', delay: 0 },
+                { icon: 'ri-layout-column-line', label: 'Adicionando ao funil', delay: 1 },
+                { icon: 'ri-checkbox-circle-line', label: 'Lead criado com sucesso!', delay: 2.5 },
+              ].map((step, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-3 text-xs opacity-0"
+                  style={{
+                    animation: `kanban-step-in 0.4s ease forwards`,
+                    animationDelay: `${step.delay}s`
+                  }}
+                >
+                  <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    <i className={`${step.icon} text-blue-600 text-sm`}></i>
+                  </div>
+                  <span className="text-gray-600 font-medium">{step.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <style>{`
+            @keyframes kanban-progress {
+              from { width: 0%; }
+              to { width: 100%; }
+            }
+            @keyframes kanban-step-in {
+              from { opacity: 0; transform: translateX(-8px); }
+              to { opacity: 1; transform: translateX(0); }
+            }
+          `}</style>
+        </div>
+      )}
     </div>
   );
 }
+
