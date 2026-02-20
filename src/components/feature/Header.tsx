@@ -351,7 +351,22 @@ export default function Header({ darkMode, isSidebarCollapsed, toggleSidebar }: 
               </div>
               <div className={`w-10 h-10 bg-primary rounded-full flex items-center justify-center overflow-hidden`}>
                 {user?.avatar_url ? (
-                  <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                  <img
+                    src={user.avatar_url}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Se a URL estiver quebrada, esconde a imagem e mostra a inicial
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      const parent = (e.target as HTMLImageElement).parentElement;
+                      if (parent) {
+                        const span = document.createElement('span');
+                        span.className = 'text-black font-semibold';
+                        span.textContent = user?.nome?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U';
+                        parent.appendChild(span);
+                      }
+                    }}
+                  />
                 ) : (
                   <span className="text-black font-semibold">
                     {user?.nome?.charAt(0) || user?.email?.charAt(0).toUpperCase()}
