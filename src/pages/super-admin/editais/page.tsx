@@ -103,8 +103,9 @@ export default function EditaisManagement() {
                 for (const file of selectedFiles) {
                     const fileExt = file.name.split('.').pop();
                     const originalName = file.name.replace(`.${fileExt}`, '');
-                    // Delimitador _---_ para separar o ID único do nome original
-                    const fileName = `${Math.random().toString(36).slice(2)}_${Date.now()}_---_${originalName}.${fileExt}`;
+                    // Sanitizar nome removendo caracteres especiais não permitidos pelo Storage
+                    const safeName = originalName.replace(/[^a-zA-Z0-9_\-]/g, '_');
+                    const fileName = `${Math.random().toString(36).slice(2)}_${Date.now()}_---_${safeName}.${fileExt}`;
                     const filePath = `${fileName}`;
 
                     const { error: uploadError } = await supabase.storage
