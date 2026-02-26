@@ -3,7 +3,6 @@ import { useBilling } from '../../hooks/useBilling';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCurrentPlan } from '../../hooks/useCurrentPlan';
-import { useSolicitacoesRecarga } from '../../hooks/useSolicitacoesRecarga';
 import { FinancialSummaryCards } from '../../components/checkout/FinancialSummaryCards';
 import { ExtractFilters, type ExtractFiltersState } from '../../components/checkout/ExtractFilters';
 import { ExtractTable } from '../../components/checkout/ExtractTable';
@@ -16,7 +15,6 @@ export default function Checkout() {
   const { currentOrganization } = useOrganization();
   const { billing, fetchBilling, loading: billingLoading } = useBilling();
   const { plan: planDetails } = useCurrentPlan();
-  const { pendentes, totalPendente, fetchSolicitacoes } = useSolicitacoesRecarga();
   const [abaSelecionada, setAbaSelecionada] = useState<'extrato' | 'assinatura'>('extrato');
   const [mostrarModalCobranca, setMostrarModalCobranca] = useState(false);
   
@@ -82,26 +80,6 @@ export default function Checkout() {
         </div>
       </div>
 
-      {/* Banner de pendentes */}
-      {pendentes.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-4">
-          <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
-            <i className="ri-time-line text-amber-600 text-xl"></i>
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-black text-amber-800">
-              {pendentes.length} recarga{pendentes.length > 1 ? 's' : ''} aguardando aprovação
-            </p>
-            <p className="text-xs text-amber-600 mt-0.5">
-              Total pendente: <span className="font-bold">R$ {totalPendente.toFixed(2).replace('.', ',')}</span> — Envie o comprovante via WhatsApp para agilizar a aprovação.
-            </p>
-          </div>
-          <span className="px-3 py-1 bg-amber-200 text-amber-800 text-xs font-black rounded-full uppercase tracking-wide">
-            Pendente
-          </span>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
@@ -123,31 +101,16 @@ export default function Checkout() {
           <p className="text-2xl font-black text-gray-900 mt-1">R$ {saldoBloqueado.toFixed(2).replace('.', ',')}</p>
         </div>
 
-        {/* Card pendente */}
-        {pendentes.length > 0 ? (
-          <div className="bg-amber-50 p-6 rounded-2xl shadow-sm border border-amber-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
-                <i className="ri-time-line text-xl"></i>
-              </div>
-              <span className="text-[10px] font-black bg-amber-200 text-amber-700 px-2 py-1 rounded uppercase tracking-wide animate-pulse">Pendente</span>
+        <div className="bg-gradient-to-br from-[#1E3A8A] to-blue-600 p-6 rounded-2xl shadow-lg text-white">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center border border-white/30">
+              <i className="ri-vip-diamond-line text-xl"></i>
             </div>
-            <p className="text-xs font-bold text-amber-700 uppercase tracking-widest">Aguardando Aprovação</p>
-            <p className="text-2xl font-black text-amber-900 mt-1">R$ {totalPendente.toFixed(2).replace('.', ',')}</p>
-            <p className="text-xs text-amber-600 mt-1">{pendentes.length} solicitaç{pendentes.length > 1 ? 'ões' : 'ão'}</p>
+            <span className="text-[10px] font-black uppercase bg-white/20 px-2 py-1 rounded border border-white/30">Ativo</span>
           </div>
-        ) : (
-          <div className="bg-gradient-to-br from-[#1E3A8A] to-blue-600 p-6 rounded-2xl shadow-lg text-white">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center border border-white/30">
-                <i className="ri-vip-diamond-line text-xl"></i>
-              </div>
-              <span className="text-[10px] font-black uppercase bg-white/20 px-2 py-1 rounded border border-white/30">Ativo</span>
-            </div>
-            <p className="text-xs font-bold text-blue-100 uppercase tracking-widest">Plano Atual</p>
-            <p className="text-2xl font-black mt-1">{planDetails?.nome || 'Carregando...'}</p>
-          </div>
-        )}
+          <p className="text-xs font-bold text-blue-100 uppercase tracking-widest">Plano Atual</p>
+          <p className="text-2xl font-black mt-1">{planDetails?.nome || 'Carregando...'}</p>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -179,29 +142,6 @@ export default function Checkout() {
         <div className="p-8">
           {abaSelecionada === 'extrato' && (
             <div className="space-y-6">
-              {/* Lista de solicitações pendentes */}
-              {pendentes.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Recargas PIX Pendentes</h3>
-                  {pendentes.map(sol => (
-                    <div key={sol.id} className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-                          <i className="ri-time-line text-amber-600 text-sm"></i>
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-amber-900">Recarga via PIX</p>
-                          <p className="text-xs text-amber-600">{new Date(sol.created_at).toLocaleString('pt-BR')}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-base font-black text-amber-700">+ R$ {sol.valor.toFixed(2).replace('.', ',')}</p>
-                        <span className="text-[10px] font-black bg-amber-200 text-amber-700 px-2 py-0.5 rounded-full uppercase">Aguardando aprovação</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
 
               {/* Cards de resumo */}
               <FinancialSummaryCards billing={transacoes} dateRange={filters.dateRange} />
@@ -287,7 +227,6 @@ export default function Checkout() {
           onClose={() => setMostrarModalCobranca(false)}
           onSuccess={() => {
             fetchBilling(currentOrganization?.id || '');
-            fetchSolicitacoes();
           }}
         />
       )}
