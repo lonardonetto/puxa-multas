@@ -1,46 +1,12 @@
-import { Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
-
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend as RechartsLegend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 
 import { useNotificationAlerts } from '../../hooks/useNotificationAlerts';
 import { useDashboardStats } from '../../hooks/useDashboardStats';
 import { useCurrentPlan } from '../../hooks/useCurrentPlan';
 import { useOrganization } from '../../contexts/OrganizationContext';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -49,42 +15,11 @@ export default function Dashboard() {
   const { plan, prices } = useCurrentPlan();
   const { alerts, markAsCheckedIn } = useNotificationAlerts();
 
-  const chartData = {
-    labels: stats.evolucaoMensal.map(e => e.mes),
-    datasets: [
-      {
-        label: 'Contratos',
-        data: stats.evolucaoMensal.map(e => e.contratos),
-        borderColor: '#10B981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        fill: true,
-        tension: 0.4,
-      },
-      {
-        label: 'Recursos',
-        data: stats.evolucaoMensal.map(e => e.recursos),
-        borderColor: '#1E3A8A',
-        backgroundColor: 'rgba(30, 58, 138, 0.1)',
-        fill: true,
-        tension: 0.4,
-      },
-    ],
-  };
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-      },
-    },
-  };
+  const rechartData = stats.evolucaoMensal.map(e => ({
+    mes: e.mes,
+    Contratos: e.contratos,
+    Recursos: e.recursos,
+  }));
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
@@ -258,8 +193,18 @@ export default function Dashboard() {
         <div className="lg:col-span-2 bg-card rounded-lg shadow-md p-4">
           <h3 className="text-base font-semibold text-foreground mb-3">Evolução Mensal</h3>
           <div className="h-64">
-            {stats.evolucaoMensal.length > 0 ? (
-              <Line data={chartData} options={chartOptions} />
+            {rechartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={rechartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="mes" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+                  <RechartsTooltip />
+                  <RechartsLegend />
+                  <Area type="monotone" dataKey="Contratos" stroke="#10B981" fill="rgba(16,185,129,0.1)" />
+                  <Area type="monotone" dataKey="Recursos" stroke="#1E3A8A" fill="rgba(30,58,138,0.1)" />
+                </AreaChart>
+              </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center text-muted-foreground">
                 <div className="text-center">
